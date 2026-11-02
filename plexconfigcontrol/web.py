@@ -63,6 +63,20 @@ class Web:
             return respond('401 Unauthorized',{'error':'Sign in required'})
         if method=='POST' and not self.sessions.check_csrf(token,environ.get('HTTP_X_CSRF_TOKEN')):
             return respond('403 Forbidden',{'error':'Invalid CSRF token'})
+        if path=='/api/account/password' and method=='POST':
+            current=data.get('current_password')
+            new=data.get('new_password')
+            confirm=data.get('confirm_new_password')
+            if (not all(isinstance(p,str) and 0<len(p)<=4096 for p in (current,new,confirm))):
+                return respond('400 Bad Request',{'error':'All password fields are required'})
+            if new!=confirm:
+                return respond('400 Bad Request',{'error':'New passwords do not match'})
+            if not self.account.change_password(current,new):
+                return respond('403 Forbidden',{'error':'Current password rejected or account blocked'})
+            self.sessions.revoke_all()
+            headers.append(('Set-Cookie','pcc_session=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Strict'))
+            self.history.add('PASSWORD_CHANGE','SUCCESS','Panel password changed. All sessions revoked.')
+            return respond('200 OK',{'changed':True,'sign_in_required':True})
         if path=='/api/logout' and method=='POST':
             self.sessions.logout(token)
             headers.append(('Set-Cookie','pcc_session=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Strict'))
