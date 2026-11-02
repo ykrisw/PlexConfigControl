@@ -10,9 +10,11 @@ from .downloads import history_logs, MissingHistoryEvent
 from .archive_store import ArchiveStore, Archive, ArchiveChanged
 from .locking import OperationBusy
 from dataclasses import asdict
+from .plex import PlexStatus
 
 class Web:
-    def __init__(self,state_directory,archive_directory=None):
+    def __init__(self,state_directory,archive_directory=None,truenas_api=None):
+        self.plex=PlexStatus(truenas_api) if truenas_api is not None else None
         self.archives=ArchiveStore(archive_directory,state_directory) if archive_directory else None
         self.account=Account(state_directory)
         self.sessions=Sessions(state_directory)
@@ -87,6 +89,10 @@ class Web:
             return respond('200 OK',prefs)
         if path=='/api/translations' and method=='GET':
             return respond('200 OK',CATALOG[self.settings.read()['language']])
+        if path=='/api/status' and method=='GET':
+            status=self.plex.read() if self.plex else {
+                'state':'UNKNOWN','available':False,'restore_allowed':False,'checked_at':None}
+            return respond('200 OK',status)
         if path=='/api/archives' and method=='GET':
             if self.archives is None:
                 return respond('503 Service Unavailable',{'error':'Archive location is not configured'})
