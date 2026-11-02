@@ -6,6 +6,7 @@ from .sessions import Sessions
 from .settings import Settings
 from .history import History
 from .i18n import CATALOG
+from .downloads import history_logs, MissingHistoryEvent
 
 class Web:
     def __init__(self,state_directory):
@@ -70,6 +71,18 @@ class Web:
             return respond('200 OK',CATALOG[self.settings.read()['language']])
         if path=='/api/history' and method=='GET':
             return respond('200 OK',self.history.list())
+        if path=='/api/history/download' and method=='POST':
+            try:
+                name,content_type,body=history_logs(self.history,data.get('ids'))
+            except MissingHistoryEvent:
+                return respond('404 Not Found',{'error':'History event no longer exists'})
+            except ValueError:
+                return respond('400 Bad Request',{'error':'Invalid or oversized log selection'})
+            start_response('200 OK',[
+                ('Content-Type',content_type),('Content-Length',str(len(body))),
+                ('Content-Disposition','attachment; filename="'+name+'"'),
+                ('Cache-Control','no-store'),('X-Content-Type-Options','nosniff')])
+            return [body]
         if path=='/api/history/clear' and method=='POST':
             ids=data.get('ids')
             if (data.get('confirmed') is not True or not isinstance(ids,list)
