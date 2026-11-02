@@ -3,7 +3,9 @@ import os
 import re
 import stat
 from dataclasses import dataclass
-from .locking import operation_lock
+from .locking import operation_lock, OperationBusy
+from .operations import Phase
+from .state import StateStore
 
 NAME = re.compile(r'TrueNASPlexConfig_\d{4}\.\d{2}\.\d{2}_\d{2}\.\d{2}\.\d{2}\.tar\.gz\Z')
 
@@ -22,6 +24,7 @@ class ArchiveStore:
     def __init__(self, directory, state_directory):
         self.directory = directory
         self.state_directory = state_directory
+        self.state = StateStore(state_directory)
 
     def _open(self):
         return os.open(self.directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
@@ -56,6 +59,9 @@ class ArchiveStore:
         if len({item.name for item in selected}) != len(selected):
             raise ValueError('Duplicate selection')
         with operation_lock(self.state_directory):
+            with self.state.transaction() as operation:
+                if operation.snapshot_id or operation.phase not in (Phase.IDLE,Phase.SUCCESS,Phase.FAILED):
+                    raise OperationBusy('Operation or recovery must finish before archive deletion')
             fd = self._open()
             try:
                 for item in selected:
