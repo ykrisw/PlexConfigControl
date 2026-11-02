@@ -61,6 +61,10 @@ class Web:
             except RuntimeError:
                 return respond('503 Service Unavailable',{'error':'Installation not initialized'})
             if not result['authenticated']:
+                blocked=result['blocked_until']
+                self.history.add('LOGIN','FAILED',
+                    'Sign-in rejected. Remaining attempts: '+str(result['remaining'])+
+                    '. Blocked until (Unix UTC): '+str(blocked)+'.')
                 return respond('401 Unauthorized',result)
             if token: self.sessions.logout(token)
             token,csrf=self.sessions.create()
@@ -140,6 +144,14 @@ class Web:
             self.history.add('ARCHIVE_DELETE','SUCCESS',
                              'Deleted archives: '+', '.join(removed))
             return respond('200 OK',{'deleted':removed})
+        if path=='/api/history/detail' and method=='POST':
+            event_id=data.get('id')
+            if type(event_id) is not int or event_id<=0:
+                return respond('400 Bad Request',{'error':'Invalid event identity'})
+            event=self.history.detail(event_id)
+            if event is None:
+                return respond('404 Not Found',{'error':'History event no longer exists'})
+            return respond('200 OK',event)
         if path=='/api/history' and method=='GET':
             return respond('200 OK',self.history.list())
         if path=='/api/history/download' and method=='POST':
