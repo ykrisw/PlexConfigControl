@@ -15,7 +15,7 @@ class SettingsTests(unittest.TestCase):
     def test_invalid_batch_does_not_partially_change_settings(self):
         with tempfile.TemporaryDirectory() as d:
             settings=Settings(d)
-            with self.assertRaises(ValueError): settings.update(theme='Dark',language='pl')
+            with self.assertRaises(ValueError): settings.update(theme='Dark',language='invalid')
             self.assertEqual(settings.read()['theme'],'System')
             with self.assertRaises(ValueError): settings.update(timezone='not/a/timezone')
             self.assertEqual(settings.read()['timezone'],'Europe/London')
