@@ -29,13 +29,13 @@ class Validation:
     files: int
     bytes_read: int
 
-def validate_archive(path, max_bytes=1024**4, max_members=2_000_000):
+def validate_archive(path, max_bytes=1024**4, max_members=2_000_000, *, source_fd=None):
     """Reject links/special files conservatively; read all files and gzip trailer.
 
     Database integrity and metadata checks are separate restore steps.
     Caller must prevent replacement/modification between validation and use.
     """
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    fd = os.dup(source_fd) if source_fd is not None else os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     with os.fdopen(fd, 'rb') as source:
         before = os.fstat(source.fileno())
         if not stat.S_ISREG(before.st_mode):
