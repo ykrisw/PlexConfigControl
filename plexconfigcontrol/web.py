@@ -7,9 +7,13 @@ from .settings import Settings
 from .history import History
 from .i18n import CATALOG
 from .downloads import history_logs, MissingHistoryEvent
+from .archive_store import ArchiveStore, Archive, ArchiveChanged
+from .locking import OperationBusy
+from dataclasses import asdict
 
 class Web:
-    def __init__(self,state_directory):
+    def __init__(self,state_directory,archive_directory=None):
+        self.archives=ArchiveStore(archive_directory,state_directory) if archive_directory else None
         self.account=Account(state_directory)
         self.sessions=Sessions(state_directory)
         self.settings=Settings(state_directory)
@@ -69,6 +73,44 @@ class Web:
             return respond('200 OK',prefs)
         if path=='/api/translations' and method=='GET':
             return respond('200 OK',CATALOG[self.settings.read()['language']])
+        if path=='/api/archives' and method=='GET':
+            if self.archives is None:
+                return respond('503 Service Unavailable',{'error':'Archive location is not configured'})
+            try:
+                return respond('200 OK',[asdict(item) for item in self.archives.list()])
+            except OSError:
+                return respond('503 Service Unavailable',{'error':'Archive location is unavailable'})
+        if path=='/api/archives/delete' and method=='POST':
+            if self.archives is None:
+                return respond('503 Service Unavailable',{'error':'Archive location is not configured'})
+            selected=data.get('archives')
+            if (data.get('confirmed') is not True or not isinstance(selected,list)
+                    or not selected or len(selected)>1000):
+                return respond('400 Bad Request',{'error':'Select archives and confirm deletion'})
+            try:
+                items=[]
+                for item in selected:
+                    if not isinstance(item,dict) or set(item)!=set(Archive.__dataclass_fields__):
+                        raise ValueError('Invalid identity')
+                    if not isinstance(item['name'],str) or any(
+                            type(item[k]) is not int or item[k]<0
+                            for k in ('size','device','inode','modified_ns')):
+                        raise ValueError('Invalid identity')
+                    items.append(Archive(**item))
+                removed=self.archives.delete(items,confirmed=True)
+            except (ValueError,TypeError):
+                return respond('400 Bad Request',{'error':'Invalid archive selection'})
+            except OperationBusy:
+                return respond('409 Conflict',{'error':'Another operation is running'})
+            except (ArchiveChanged,FileNotFoundError):
+                return respond('409 Conflict',{'error':'Archive selection changed; refresh the list'})
+            except OSError:
+                # Some prior selected files may have been removed. Do not claim
+                # batch atomicity; the UI must refresh after any deletion error.
+                return respond('503 Service Unavailable',{'error':'Deletion incomplete; refresh archive list'})
+            self.history.add('ARCHIVE_DELETE','SUCCESS',
+                             'Deleted archives: '+', '.join(removed))
+            return respond('200 OK',{'deleted':removed})
         if path=='/api/history' and method=='GET':
             return respond('200 OK',self.history.list())
         if path=='/api/history/download' and method=='POST':
