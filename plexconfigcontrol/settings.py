@@ -26,7 +26,7 @@ class Settings:
             return dict(db.execute('SELECT name,value FROM preferences'))
 
     def update(self, **changes):
-        # Language stays English until complete translated resources are shipped.
+        # Persist the selected UI language independently of filenames and machine states.
         for name,value in changes.items():
             if name not in DEFAULTS:
                 raise ValueError('Unknown preference')
@@ -34,8 +34,8 @@ class Settings:
                 raise ValueError('Preference must be text')
             if name=='theme' and value not in ('System','Light','Dark'):
                 raise ValueError('Unsupported theme')
-            if name=='language' and value!='en':
-                raise ValueError('Translation is not available yet')
+            if name=='language' and value not in ('en','pl'):
+                raise ValueError('Unsupported language')
             if name=='timezone':
                 try: ZoneInfo(value)
                 except (ZoneInfoNotFoundError, ValueError) as error:
