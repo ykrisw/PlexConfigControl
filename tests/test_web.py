@@ -12,6 +12,19 @@ class Quiet(WSGIRequestHandler):
     def log_message(self,*args): pass
 
 class WebTests(unittest.TestCase):
+    def test_browser_module_served_without_exposing_other_paths(self):
+        with tempfile.TemporaryDirectory() as d:
+            app=Web(d); responses=[]
+            body=b''.join(app({'REQUEST_METHOD':'GET','PATH_INFO':'/assets/panel-client.mjs'},
+                lambda status,headers:responses.append((status,dict(headers)))))
+            self.assertEqual(responses[0][0],'200 OK')
+            self.assertEqual(responses[0][1]['Content-Type'],'text/javascript; charset=utf-8')
+            self.assertIn(b'export class PanelClient',body)
+            responses=[]
+            app({'REQUEST_METHOD':'GET','PATH_INFO':'/assets/../auth.py'},
+                lambda status,headers:responses.append(status))
+            self.assertEqual(responses[0],'401 Unauthorized')
+
     @patch('plexconfigcontrol.auth.ITERATIONS',1000)
     def test_http_auth_settings_history_logout(self):
         with tempfile.TemporaryDirectory() as d:
@@ -31,6 +44,9 @@ class WebTests(unittest.TestCase):
                 self.assertEqual(r.status,200)
                 cookie=r.getheader('Set-Cookie'); self.assertIn('Secure; HttpOnly; SameSite=Strict',cookie)
                 headers={'Cookie':cookie.split(';')[0]}
+                r,session=request('GET','/api/session',headers=headers)
+                self.assertEqual(r.status,200)
+                self.assertEqual(session['csrf'],body['csrf'])
                 r,operation=request('GET','/api/operation',headers=headers)
                 self.assertEqual(r.status,200)
                 self.assertEqual(operation['publication']['status'],'NONE')
