@@ -87,6 +87,7 @@ def exercise(driver, fixture, output, *, mobile):
         assert driver.execute_script('return document.documentElement.scrollWidth<=innerWidth'),name+' horizontal overflow'
     driver.get(fixture['url'])
     visible('.pcc-login input').send_keys(fixture['password'])
+    assert driver.execute_script("return document.querySelector('.pcc-login input').value.length")==len(fixture['password']),'WebDriver did not populate the password input'
     click('.pcc-login button')
     visible('.pcc-nav')
     driver.execute_script("window.__pccAppleErrors=[];addEventListener('error',e=>window.__pccAppleErrors.push(String(e.message)));addEventListener('unhandledrejection',e=>window.__pccAppleErrors.push(String(e.reason)));")
@@ -182,10 +183,11 @@ def main():
     if platform.system()!='Darwin' or os.environ.get('GITHUB_ACTIONS')!='true':
         raise RuntimeError('Apple tests run only on disposable macOS CI runners')
     output=Path('dist/browser-screenshots')/mode;output.mkdir(parents=True,exist_ok=True)
-    driver=None;simulator=None;trusted_hash=None
+    driver=None;simulator=None;trusted_hash=None;fixture_state=None
     print(command('sw_vers'),flush=True)
     try:
         with apple_fixture() as fixture:
+            fixture_state=fixture
             if mode.startswith('safari'):
                 trusted_hash=command('openssl','x509','-in',str(fixture['cert']),'-noout','-fingerprint','-sha1').split('=')[-1].replace(':','')
                 command('sudo','security','add-trusted-cert','-d','-r','trustRoot','-k','/Library/Keychains/System.keychain',str(fixture['cert']))
@@ -216,6 +218,7 @@ def main():
             exercise(driver,fixture,output,mobile=mobile)
             print('Apple interface checks passed:',mode,flush=True)
     except BaseException:
+        if fixture_state is not None:print('Apple fixture API status audit:',json.dumps(fixture_state['requests'][-40:]),flush=True)
         if simulator:
             subprocess.run(['xcrun','simctl','io',simulator,'screenshot',str(output/'simulator-failure.png')],check=False,timeout=30)
         if driver is not None:

@@ -42,7 +42,16 @@ def apple_fixture():
         app, cert, key = prepare(Configuration(root/'state', '127.0.0.1', archives=archives), password_verifier(password))
         for index in range(20):
             app.web.history.add('BACKUP' if index%2 else 'RESTORE', 'SUCCESS', 'CI Apple fixture '+str(index))
-        server = make_server('127.0.0.1', 0, app, server_class=ThreadedServer, handler_class=QuietHandler)
+        requests = []
+        def monitored(environ, start_response):
+            def respond(status, headers, exc_info=None):
+                if environ.get('PATH_INFO','').startswith('/api/'):
+                    requests.append({'path':environ['PATH_INFO'], 'status':status,
+                        'session_cookie_received':'pcc_session=' in environ.get('HTTP_COOKIE',''),
+                        'session_cookie_set':any(name.lower()=='set-cookie' for name,value in headers)})
+                return start_response(status,headers,exc_info)
+            return app(environ,respond)
+        server = make_server('127.0.0.1', 0, monitored, server_class=ThreadedServer, handler_class=QuietHandler)
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(cert, key)
         server.socket = context.wrap_socket(server.socket, server_side=True)
@@ -57,7 +66,7 @@ def apple_fixture():
                 if response.status != 200:
                     raise RuntimeError('Apple fixture HTTPS health check failed')
             yield dict(root=root, archives=archives, state=root/'state', app=app.web,
-                       url=url, cert=cert, password=password)
+                       url=url, cert=cert, password=password, requests=requests)
         finally:
             server.shutdown()
             server.server_close()
