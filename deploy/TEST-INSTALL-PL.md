@@ -1,4 +1,4 @@
-# PlexConfigControl — instalacja testowa na TrueNAS 25.10.7
+# PlexConfigControl — instalacja testowa na TrueNAS SCALE 25.10.7
 
 To pierwsza wersja do sprawdzania panelu, logowania, historii i trwałości ustawień.
 Nie wykonuje Backup ani właściwego Restore. Nie tworzy i nie usuwa snapshotów.
