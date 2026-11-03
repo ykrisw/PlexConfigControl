@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import patch
 from wsgiref.simple_server import make_server, WSGIRequestHandler
 from plexconfigcontrol.web import Web
+from plexconfigcontrol.publication_intent import record
 
 class Quiet(WSGIRequestHandler):
     def log_message(self,*args): pass
@@ -30,6 +31,15 @@ class WebTests(unittest.TestCase):
                 self.assertEqual(r.status,200)
                 cookie=r.getheader('Set-Cookie'); self.assertIn('Secure; HttpOnly; SameSite=Strict',cookie)
                 headers={'Cookie':cookie.split(';')[0]}
+                r,operation=request('GET','/api/operation',headers=headers)
+                self.assertEqual(r.status,200)
+                self.assertEqual(operation['publication']['status'],'NONE')
+                archive='TrueNASPlexConfig_2026.11.03_04.15.35.tar.gz'
+                record(d,'.pcc-'+'a'*32+'.tmp',archive)
+                r,operation=request('GET','/api/operation',headers=headers)
+                self.assertEqual(r.status,200)
+                self.assertEqual(operation['publication']['archive'],archive)
+                self.assertEqual(operation['publication']['status'],'VERIFICATION_REQUIRED')
                 r,_=request('POST','/api/settings',{'language':'pl'},headers); self.assertEqual(r.status,403)
                 headers['X-CSRF-Token']=body['csrf']
                 r,prefs=request('POST','/api/settings',{'language':'pl'},headers)
