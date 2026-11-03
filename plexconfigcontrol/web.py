@@ -45,11 +45,15 @@ class Web:
         method=environ.get('REQUEST_METHOD','GET')
         path=environ.get('PATH_INFO','/')
         assets={'/assets/panel-client.mjs':'panel-client.mjs',
-                '/assets/restore-panel.mjs':'restore-panel.mjs'}
+                '/assets/restore-panel.mjs':'restore-panel.mjs',
+                '/assets/restore-view.mjs':'restore-view.mjs',
+                '/assets/restore-view.css':'restore-view.css',
+                '/assets/panel-shell.mjs':'panel-shell.mjs',
+                '/assets/panel-layout.css':'panel-layout.css'}
         if method=='GET' and path in assets:
             body=files('plexconfigcontrol').joinpath('static/'+assets[path]).read_bytes()
             start_response('200 OK',[
-                ('Content-Type','text/javascript; charset=utf-8'),
+                ('Content-Type',('text/css' if path.endswith('.css') else 'text/javascript')+'; charset=utf-8'),
                 ('Content-Length',str(len(body))),('Cache-Control','no-store'),
                 ('X-Content-Type-Options','nosniff')])
             return [body]
