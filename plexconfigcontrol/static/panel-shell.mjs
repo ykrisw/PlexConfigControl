@@ -49,7 +49,11 @@ export function mountPanelShell(root, {onNavigate = () => {}, theme = 'System'} 
     for (const section of sections.values()) section.dataset.theme = value.toLowerCase();
   }
   setTheme(theme); select('dashboard');
-  return {sections, select, setTheme, dispose() {
+  function setLanguage(language) {
+    const names=language==='pl'?['Pulpit','Kopia zapasowa','Przywracanie','Historia','Ustawienia']:panels;
+    for (const [index,title] of panels.entries()) buttons.get(title.toLowerCase()).querySelector('span').textContent=names[index];
+  }
+  return {sections, select, setTheme, setLanguage, dispose() {
     events.abort(); root.replaceChildren(); root.classList.remove('pcc-shell'); delete root.dataset.theme;
   }};
 }

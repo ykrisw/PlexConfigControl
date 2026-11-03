@@ -118,3 +118,11 @@ test('download rejects unsafe server filenames before reading file contents',asy
   client.csrf='token';
   await assert.rejects(client.downloadHistory([1]),ApiError);assert.equal(reads,0);
 });
+
+test('manual theme/language settings use authenticated CSRF-protected writes',async()=>{
+  const {client,calls}=setup([[200,{theme:'Dark',language:'pl',timezone:'Europe/London'}]]);
+  client.csrf='token';await client.updateSettings({theme:'Dark',language:'pl'});
+  assert.equal(calls[0].path,'/api/settings');
+  assert.equal(calls[0].options.headers['X-CSRF-Token'],'token');
+  assert.deepEqual(JSON.parse(calls[0].options.body),{theme:'Dark',language:'pl'});
+});

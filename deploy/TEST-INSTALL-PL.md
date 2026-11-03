@@ -88,8 +88,9 @@ pozostaje w iXVolume i nie zmienia się po restarcie aplikacji.
    powinny pozostać zachowane.
 
 **UNKNOWN przy Plex jest oczekiwane**, dopóki osobno nie skonfigurujemy odczytu
-statusu z TrueNAS. Aplikacja nie zgaduje jego stanu. Backup i Settings są jeszcze
-nieukończone. Pobieranie logów dotyczy tekstu zapisanego przy zdarzeniach historii,
+statusu z TrueNAS. Aplikacja nie zgaduje jego stanu. Backup jest jeszcze
+nieukończony. Settings jest podłączony w paczkach nowszych od pierwszej wersji testowej;
+pierwsza paczka zawiera jeszcze jego placeholder. Pobieranie logów dotyczy tekstu zapisanego przy zdarzeniach historii,
 a nie pełnych operacyjnych plików `.log` z katalogu użytkownika.
 
 Przy testowaniu usuwania historii pliki w `Plex Config/Logs` pozostają nietknięte.

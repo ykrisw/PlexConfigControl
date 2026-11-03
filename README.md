@@ -1,9 +1,9 @@
 # PlexConfigControl
 
 Development project for one TrueNAS App managing manual Plex configuration
-backups and restores. **Not ready for installation or production data.**
+backups and restores. **Restricted test installation available; not ready for production data.**
 
-First test-installation packaging is under active verification. `Dockerfile`
+First test-installation packaging passed CI image/HTTPS/restart checks. `Dockerfile`
 builds the unprivileged HTTPS image; **Build test installation** runs a disposable
 container smoke test before producing a downloadable image artifact. Follow
 `deploy/TEST-INSTALL.md` only after that workflow succeeds. This is a restricted
@@ -28,10 +28,10 @@ specification in `design/README.md`. Shared production styles import
 
 - Real TrueNAS WebSocket authentication and verified TLS transport.
 - Container access to snapshots and tested file ownership/ACL/xattr preservation.
-- Backup and Settings views connected to the server.
+- Backup view connected to the server.
 - Profile photo support and complete UI translations of errors.
 - Single-existing-archive overwrite workflow and crash-safe publication recovery.
-- Verified image build on CI, TrueNAS installation test and final Apps password/secret form.
+- TrueNAS installation test and final Apps password/secret form.
 - Complete restore verification and rollback verification adapters.
 - End-to-end tests on an isolated TrueNAS test dataset before live use.
 
@@ -71,8 +71,8 @@ restore readiness, password changes and explicit logout.
 
 The WSGI application now serves a development entry page at `/`, loading
 `panel-app.mjs`. It restores the existing session or shows password-only sign-in,
-then mounts the approved shell, Dashboard, Restore and History views. No preview archives
-or events are included. Backup and Settings show explicit integration
+then mounts the approved shell, Dashboard, Restore, History and Settings views. No preview archives
+or events are included. Backup shows an explicit integration
 placeholders; they are not usable panels yet. Mount behind HTTPS: session cookies
 remain Secure. The installation must initialize the account beforehand.
 
@@ -105,7 +105,7 @@ Use `pcc-card pcc-account` in Dashboard, `pcc-card pcc-archives` in Backup,
 `pcc-card pcc-events` in History and `pcc-card pcc-about` in Settings for the
 cards whose lower edges should expand to the bottom. Backup's Important card
 keeps its natural height below the expanded archive list. These are shared
-layout hooks; Backup and Settings content still needs integration.
+layout hooks; Backup content still needs integration.
 
 `restore-view.mjs` exports `mountRestoreView(section, client)` and binds the
 actual archive list, selection, validation, progress, readiness, cancellation
@@ -140,6 +140,14 @@ events. Existing history databases migrate transactionally, preserving live IDs
 and contents. This prevents stale browser selections from targeting later events.
 
 ## Storage contract
+
+Settings theme buttons persist Light/Dark/System through the authenticated API;
+appearance changes only after server confirmation. First installation stays
+System until manually changed. English/Polish selection updates Settings and tab
+labels immediately. Dashboard and History remount in the new language when next
+opened. Disposing a Restore view never cancels server validation. Complete Restore
+and error translations remain pending. The first downloadable test image predates
+the Settings view; subsequent successful build artifacts include it.
 
 All application settings, credentials, sessions, profile data, panel history and
 working state belong in the application ixVolume. The user-selected destination

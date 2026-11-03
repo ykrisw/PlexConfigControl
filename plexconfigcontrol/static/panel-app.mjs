@@ -3,6 +3,7 @@ import {mountPanelShell} from './panel-shell.mjs';
 import {mountDashboardView} from './dashboard-view.mjs';
 import {mountRestoreView} from './restore-view.mjs';
 import {mountHistoryView} from './history-view.mjs';
+import {mountSettingsView} from './settings-view.mjs';
 
 export function mountPanelApp(root) {
   let epoch = 0, cleanup = () => {}, stopped = false;
@@ -46,6 +47,17 @@ export function mountPanelApp(root) {
       if (key === 'dashboard') viewDisposers.set(key, mountDashboardView(section, client, {language: prefs.language, onSignedOut: signedOut}));
       else if (key === 'restore') viewDisposers.set(key, mountRestoreView(section, client));
       else if (key === 'history') viewDisposers.set(key, mountHistoryView(section, client, {language:prefs.language,timezone:prefs.timezone}));
+      else if (key === 'settings') viewDisposers.set(key,mountSettingsView(section,client,{preferences:prefs,onChanged(next){
+        const languageChanged=prefs.language!==next.language;
+        prefs=next;shell.setTheme(prefs.theme);shell.setLanguage(prefs.language);
+        root.ownerDocument.documentElement.lang=prefs.language;
+        if(languageChanged){
+          // Dispose only browser views; this never cancels server validation.
+          for(const [name,dispose]of viewDisposers){
+            if(name!=='settings'){dispose();viewDisposers.delete(name);}
+          }
+        }
+      }}));
       else {
         const card = root.ownerDocument.createElement('section'); card.className = 'pcc-card pcc-fill';
         const text = root.ownerDocument.createElement('p');
@@ -53,6 +65,7 @@ export function mountPanelApp(root) {
         card.append(text); section.append(card); viewDisposers.set(key, () => section.replaceChildren());
       }
     }});
+    shell.setLanguage(prefs.language);
     root.ownerDocument.documentElement.lang = prefs.language;
     cleanup = () => { for (const dispose of viewDisposers.values()) dispose(); shell.dispose(); };
   }

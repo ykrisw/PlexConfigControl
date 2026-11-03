@@ -91,6 +91,7 @@ export class PanelClient {
   }
 
   settings(signal) { return this.request('/api/settings', {signal}); }
+  updateSettings(changes,signal) { return this.request('/api/settings', {body:changes,signal}); }
   history(signal) { return this.request('/api/history', {signal}); }
   clearHistory(ids, signal) {
     return this.request('/api/history/clear', {body: {ids, confirmed: true}, signal});

@@ -31,4 +31,5 @@ Approval of this appearance does not establish implementation or end-to-end
 verification of every operation shown in the preview. Dashboard account actions
 and Plex status are connected; profile photo management remains pending.
 History is connected to web-history records and their stored log-text exports.
-Backup and Settings content integration is still incomplete.
+Settings theme/language choices are connected to persistent preferences.
+Backup content integration is still incomplete.

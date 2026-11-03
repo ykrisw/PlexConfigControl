@@ -74,7 +74,8 @@ class WebTests(unittest.TestCase):
             for name in ('panel-layout.css','panel-shell.mjs','restore-view.css','restore-view.mjs',
                          'approved-appearance.css','panel-app.css','panel-app.mjs',
                          'dashboard-controller.mjs','dashboard-view.mjs',
-                         'history-controller.mjs','history-view.mjs'):
+                         'history-controller.mjs','history-view.mjs',
+                         'settings-controller.mjs','settings-view.mjs'):
                 responses=[]
                 body=b''.join(app({'REQUEST_METHOD':'GET','PATH_INFO':'/assets/'+name},
                     lambda status,headers:responses.append((status,dict(headers)))))

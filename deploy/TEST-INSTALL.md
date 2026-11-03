@@ -14,7 +14,8 @@ The default branch source ZIP is not the installation image.
 - Optional archive selection/validation with a read-only archive host-path mount.
 
 Backup creation, config restoration, snapshot operations and archive deletion are
-blocked by the test runtime. Backup and Settings UI are still placeholders.
+blocked by the test runtime. Backup UI is still a placeholder. Settings is connected
+in builds after the first test image; the first image still has its placeholder.
 History downloads export stored event text, not full permanent operation files.
 No Docker socket, ZFS device, host shell, live Plex config or Plex container mounts
 are needed or permitted by this test configuration. Do not change Plex ACLs.
@@ -29,8 +30,8 @@ SMB directory. In the TrueNAS shell, use its actual path:
 sudo docker load --input '/YOUR/ACTUAL/PATH/PlexConfigControl-test-image.tar.gz'
 ```
 
-The loaded image is `plexconfigcontrol:test`. This one-time image import is the
-only reason to use the shell for installation. No backup/restore shell scripts
+The loaded image is `plexconfigcontrol:test`. Image import and the password
+helper below are installation steps. No backup/restore shell scripts
 are installed. The archive can be removed manually after the installation works.
 
 ## 2. Prepare the initial password without storing it in Apps configuration
