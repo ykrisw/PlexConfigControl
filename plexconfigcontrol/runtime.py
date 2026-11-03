@@ -1,4 +1,4 @@
-"""Unprivileged test runtime. No backup, restore writes or snapshot access."""
+"""Unprivileged test runtime with optional scoped reads; host writes disabled."""
 import json
 import os
 from dataclasses import dataclass
@@ -77,7 +77,7 @@ class ReadOnlyTrueNAS:
 class TestApplication:
     """Explicit route boundary even if future Web routes add host operations."""
     READS={'/api/session','/api/settings','/api/translations','/api/status',
-           '/api/operation','/api/recovery','/api/archives','/api/history','/api/restore/readiness',
+           '/api/operation','/api/recovery','/api/integration','/api/archives','/api/history','/api/restore/readiness',
            '/api/capabilities','/api/backup/plan','/api/account/photo','/api/account/photo/status'}
     POSTS={'/api/login','/api/logout','/api/account/password','/api/settings',
            '/api/history/detail','/api/history/download','/api/history/clear',

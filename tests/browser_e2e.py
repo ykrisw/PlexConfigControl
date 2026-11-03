@@ -266,11 +266,31 @@ def main():
             page.set_viewport_size({'width':1440,'height':1080})
             page.get_by_role('tab',name='Settings',exact=True).click()
             settings=page.locator('[data-panel=settings]')
+            diagnostic_requests=[]
+            page.on('request',lambda request:diagnostic_requests.append(request.method) if request.url.endswith('/api/integration') else None)
+            expect(settings.locator('[data-integration-check]')).to_be_hidden()
+            settings.locator('[data-details-label]').click()
+            expect(settings.locator('[data-integration-check]')).to_be_visible()
+            assert diagnostic_requests==[], 'Opening Details must not start host probes'
+            settings.locator('[data-integration-check]').click()
+            expect(settings.locator('[data-integration-checks]')).to_contain_text('Archive list read verified; count: 13')
+            expect(settings.locator('[data-integration-limit]')).to_contain_text('do not enable')
+            assert diagnostic_requests==['GET']
+            page.set_viewport_size({'width':360,'height':900})
+            assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth')
+            page.screenshot(path=str(output/'settings-connection-checks.png'),full_page=True)
+            page.set_viewport_size({'width':1440,'height':1080})
+            settings.locator('[data-details-label]').click()
             settings.locator('[data-theme-choice=Dark]').click()
             expect(page.locator('#pcc-app')).to_have_attribute('data-theme','dark')
             settings.locator('[data-language]').select_option('pl')
             expect(page.get_by_role('tab',name='Ustawienia',exact=True)).to_be_visible()
             expect(settings.locator('[data-about]')).to_have_text('O aplikacji')
+            settings.locator('[data-details-label]').click()
+            expect(settings.locator('[data-integration-title]')).to_have_text('Sprawdzanie połączenia')
+            expect(settings.locator('[data-integration-checks]')).to_contain_text('liczba: 13')
+            assert diagnostic_requests==['GET'], 'Changing language must not run diagnostics again'
+            settings.locator('[data-details-label]').click()
             page.get_by_role('tab',name='Kopia zapasowa',exact=True).click()
             expect(page.locator('[data-panel=backup] [data-operation-result]')).to_contain_text('Nie potwierdzono utworzenia nowego archiwum')
             docker('exec',name,'python','-c',

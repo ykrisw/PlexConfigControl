@@ -23,6 +23,7 @@ from .archives import InvalidArchive
 from .operations import OperationDenied
 from .restore_readiness import restore_readiness
 from .recovery_status import recovery_status
+from .integration_diagnostics import inspect_integration
 from .outcome import describe_outcome
 from .profile_photo import ProfilePhoto,InvalidPhoto,PhotoChanged,MAX_UPLOAD
 
@@ -68,6 +69,8 @@ class Web:
                 '/assets/history-controller.mjs':'history-controller.mjs',
                 '/assets/history-view.mjs':'history-view.mjs',
                 '/assets/settings-controller.mjs':'settings-controller.mjs',
+                '/assets/integration-controller.mjs':'integration-controller.mjs',
+                '/assets/integration-view.mjs':'integration-view.mjs',
                 '/assets/settings-view.mjs':'settings-view.mjs',
                 '/assets/recovery-view.mjs':'recovery-view.mjs',
                 '/assets/recovery-controller.mjs':'recovery-controller.mjs',
@@ -214,6 +217,9 @@ class Web:
                 return respond('409 Conflict',{'error':'Another operation or recovery must finish'})
             except Exception:
                 return respond('503 Service Unavailable',{'error':'Recovery status could not be confirmed'})
+        if path=='/api/integration' and method=='GET':
+            return respond('200 OK',inspect_integration(self.operation_store,self.archives,
+                                                       self.plex,self.recovery_inspector))
         if path=='/api/status' and method=='GET':
             status=self.plex.read() if self.plex else {
                 'state':'UNKNOWN','available':False,'restore_allowed':False,'checked_at':None}

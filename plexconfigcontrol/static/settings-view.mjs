@@ -1,3 +1,4 @@
+import {mountIntegrationView} from './integration-view.mjs';
 import {createSettingsController} from './settings-controller.mjs';
 
 export function mountSettingsView(root,client,{preferences,onChanged}={}) {
@@ -13,11 +14,13 @@ export function mountSettingsView(root,client,{preferences,onChanged}={}) {
       <div class="pcc-about-row"><span data-application-label></span><span>PlexConfigControl</span></div>
       <div class="pcc-about-row"><span data-version-label></span><span data-version></span></div>
       <div class="pcc-about-row"><span data-created-label></span><span class="pcc-author">Krzysztof Wojciechowski</span></div>
-      <details><summary data-details-label></summary><p data-details></p></details>
+      <details><summary data-details-label></summary><p data-details></p><section data-integration></section></details>
     </div></section>`;
   const find=selector=>root.querySelector(selector);
   const lifecycle=new AbortController();
+  const integration=mountIntegrationView(find('[data-integration]'),client,{language:preferences.language});
   const controller=createSettingsController(client,preferences,state=>{
+    integration.setLanguage(state.preferences.language);
     const pl=state.preferences.language==='pl';const tx=(en,polish)=>pl?polish:en;
     const labels={
       '[data-language-label]':tx('Language','Język'),'[data-appearance]':tx('Appearance','Wygląd'),
@@ -45,5 +48,5 @@ export function mountSettingsView(root,client,{preferences,onChanged}={}) {
     if(button)void controller.save('theme',button.dataset.themeChoice);
   },{signal:lifecycle.signal});
   find('[data-language]').addEventListener('change',event=>void controller.save('language',event.target.value),{signal:lifecycle.signal});
-  return()=>{lifecycle.abort();controller.dispose();root.replaceChildren();root.classList.remove('pcc-settings');};
+  return()=>{lifecycle.abort();controller.dispose();integration.dispose();root.replaceChildren();root.classList.remove('pcc-settings');};
 }

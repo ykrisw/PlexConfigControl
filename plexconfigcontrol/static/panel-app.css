@@ -89,3 +89,10 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 }
 
 .pcc-shell [data-recovery-snapshot]{overflow-wrap:anywhere}
+
+/* Optional read-only diagnostics stay inside the existing collapsed Details. */
+.pcc-shell .pcc-integration{margin-top:18px;overflow-wrap:anywhere}
+.pcc-shell .pcc-integration button{font:600 13px Arial,sans-serif;padding:10px 14px;border:1px solid var(--pcc-line);border-radius:8px;background:var(--pcc-bg);color:var(--pcc-ink);min-height:44px;cursor:pointer}
+.pcc-shell .pcc-integration dl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:10px 16px}
+.pcc-shell .pcc-integration dt{font-weight:600}.pcc-shell .pcc-integration dd{margin:0;min-width:0}
+@media(max-width:420px){.pcc-shell .pcc-integration dl{grid-template-columns:minmax(0,1fr)}.pcc-shell .pcc-integration dd{margin-bottom:10px}}

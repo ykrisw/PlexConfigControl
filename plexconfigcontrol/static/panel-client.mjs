@@ -19,7 +19,8 @@ export class PanelClient {
     const abort = () => controller.abort();
     if (signal?.aborted) abort();
     signal?.addEventListener('abort', abort, {once: true});
-    const timer = setTimeout(abort, 15000);
+    // Diagnostics may perform two separately bounded 10-second reads.
+    const timer = setTimeout(abort, path === '/api/integration' ? 30000 : 15000);
     try {
       const headers = {Accept: download ? 'application/zip, text/plain, application/json' : 'application/json'};
       if(body!==undefined&&raw!==undefined)throw new ApiError(400,{error:'Choose one request body'});
@@ -97,6 +98,7 @@ export class PanelClient {
   uploadPhoto(file,signal) { return this.request('/api/account/photo',{raw:file,signal}); }
   removePhoto(revision,signal) { return this.request('/api/account/photo/remove',{body:{confirmed:true,revision},signal}); }
   updateSettings(changes,signal) { return this.request('/api/settings', {body:changes,signal}); }
+  integration(signal) { return this.request('/api/integration', {signal}); }
   capabilities(signal) { return this.request('/api/capabilities', {signal}); }
   backupPlan(signal) { return this.request('/api/backup/plan', {signal}); }
   deleteArchives(archives,signal) {

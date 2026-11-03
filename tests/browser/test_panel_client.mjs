@@ -167,3 +167,10 @@ test('recovery status uses only an authenticated same-origin GET',async()=>{
   assert.equal(calls[0].path,'/api/recovery');assert.equal(calls[0].options.method,'GET');
   assert.equal(calls[0].options.body,undefined);assert.equal(calls[0].options.credentials,'same-origin');
 });
+
+test('integration diagnostics use only an authenticated same-origin GET',async()=>{
+  const {client,calls}=setup([[200,{schema:1}]]);
+  await client.integration();assert.equal(calls[0].path,'/api/integration');
+  assert.equal(calls[0].options.method,'GET');assert.equal(calls[0].options.credentials,'same-origin');
+  assert.equal(calls[0].options.body,undefined);
+});

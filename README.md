@@ -634,3 +634,29 @@ to stop Plex has no execution record and survives restart without this warning.
 Tests cover both paths and real coordinator checkpoint selection with injected
 host adapters. Browser CI adds synthetic read-only rollback/recovery fixtures
 and reload checks; these fixtures perform no real snapshot or Restore operation.
+
+
+## Read-only connection diagnostics
+
+Settings → About → Details contains an explicit Run checks action. Opening
+Settings/Details or changing language does not trigger probes. The authenticated
+GET `/api/integration` checks only configured read capabilities: Plex status,
+archive directory listing, and (when configured and recorded for recovery) one
+exact application snapshot. It never creates a test snapshot, starts/stops Plex,
+changes ACLs, hashes/extracts archives or runs import/history logging.
+
+A readable archive list is reported separately from archive content validation.
+With no recorded snapshot the result says that snapshot access was not tested;
+configured scope alone does not prove permissions. Busy/changing operations clear
+snapshot confirmations. Missing configuration, unavailable reads and unknown
+states remain explicit. Transport errors, API keys, connection URLs and private
+paths are not returned. Checks have a UTC timestamp and are historical observations,
+not a continuously monitored connection status.
+
+Backup/Restore availability remains false even when every read succeeds: host
+execution integration is still not connected in this restricted test runtime.
+The panel runs no automatic retries or polling. Failed checks remove previous
+confirmations, and disposal/logout cancels pending browser reads. The diagnostics
+POST route is unavailable; configuration continues to belong in deployment setup.
+The added controls stay inside the existing collapsed Details, preserving the
+approved default Settings layout in Light/Dark/System and English/Polish.
