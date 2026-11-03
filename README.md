@@ -49,8 +49,32 @@ The Restore markup can bind radios named `restore-archive` and buttons with
 receives the current selection, busy flag, server snapshot and error; write
 server strings using `textContent`. Calling the returned disposer stops browser
 polling and listeners without cancelling the server operation. No archive is
-selected automatically. Full HTML, styling and the final restore action remain
-to be connected.
+selected automatically. The final restore action and complete five-panel
+application still need integration.
+
+### Shared panel geometry and Restore view
+
+`panel-shell.mjs` exports `mountPanelShell(root, {onNavigate, theme})`. It creates
+the five top tabs and persistent panel sections with a shared content height
+(820px minimum), 18px side/bottom insets and 14px spacing. The height is shared
+through `--pcc-content-height`; individual tabs must not override it.
+
+Use `pcc-card pcc-account` in Dashboard, `pcc-card pcc-archives` in Backup,
+`pcc-card pcc-events` in History and `pcc-card pcc-about` in Settings for the
+cards whose lower edges should expand to the bottom. Backup's Important card
+keeps its natural height below the expanded archive list. These are shared
+layout hooks; the full content of those four panels still needs integration.
+
+`restore-view.mjs` exports `mountRestoreView(section, client)` and binds the
+actual archive list, selection, validation, progress, readiness, cancellation
+and Plex status to the API. It can mount into `shell.sections.get('restore')`.
+No archive is automatically selected. Dynamic text uses `textContent`.
+The final destructive Restore action remains unavailable in this development
+view until the host adapters are fully integrated and verified. A disposer
+removes listeners and browser polling without cancelling server work.
+
+The inline conversation preview remains illustrative; it is not an installed
+application. Browser rendering of the packaged views still requires visual QA.
 
 ## Storage contract
 
