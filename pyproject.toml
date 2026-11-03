@@ -13,4 +13,4 @@ dependencies = ["websocket-client>=1.9,<2"]
 include = ["plexconfigcontrol*"]
 
 [tool.setuptools.package-data]
-plexconfigcontrol = ["static/*.mjs", "static/*.css"]
+plexconfigcontrol = ["static/*.mjs", "static/*.css", "static/*.html"]

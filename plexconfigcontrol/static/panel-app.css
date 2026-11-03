@@ -1,0 +1,22 @@
+html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:0;font-family:Arial,sans-serif}
+#pcc-app{width:100%;margin:auto}
+.pcc-shell button,.pcc-shell input{font:inherit}
+.pcc-shell .pcc-account-actions button,.pcc-shell .pcc-dialog-actions button,.pcc-shell .pcc-login button{border:1px solid var(--pcc-line);background:var(--pcc-bg);color:var(--pcc-ink);border-radius:9px;min-height:54px;padding:10px 16px;font-weight:600;cursor:pointer}
+.pcc-shell button:disabled{cursor:wait}
+.pcc-shell .pcc-avatar{display:grid;place-items:center}
+.pcc-shell .pcc-avatar svg{width:24px;height:24px;fill:none;stroke:#fff;stroke-width:1.5}
+.pcc-shell [data-plex-state],.pcc-shell [data-account-active]{font-size:13px;font-weight:600}
+.pcc-shell [data-plex-state]::before,.pcc-shell [data-account-active]::before{content:'●';display:inline-block;margin-right:8px;color:#8596ac;-webkit-text-fill-color:currentColor}
+.pcc-shell [data-plex-state=RUNNING]::before,.pcc-shell [data-account-active]::before{color:#158843;animation:pcc-live-dot 2s ease-in-out infinite}
+.pcc-shell [data-plex-state=STOPPED]::before{color:#dc2626;animation:pcc-live-dot 2s ease-in-out infinite}
+@keyframes pcc-live-dot{50%{opacity:.6;text-shadow:0 0 9px currentColor}}
+@media(prefers-reduced-motion:reduce){.pcc-shell [data-plex-state]::before,.pcc-shell [data-account-active]::before{animation:none}}
+.pcc-shell .pcc-password-dialog{color:var(--pcc-ink);border-radius:14px;padding:24px;width:calc(100% - 40px);max-width:440px;max-height:90%;box-sizing:border-box}
+.pcc-shell .pcc-password-dialog::backdrop{background:#10182788}
+.pcc-shell .pcc-password-dialog label,.pcc-shell .pcc-login label{display:grid;gap:8px;margin:16px 0}
+.pcc-shell .pcc-password-dialog input,.pcc-shell .pcc-login input{width:100%;box-sizing:border-box;background:var(--pcc-card);color:var(--pcc-ink);border:1px solid var(--pcc-line);padding:12px;border-radius:8px;font-size:16px}
+.pcc-shell .pcc-dialog-actions{display:flex;justify-content:flex-end;gap:10px}
+.pcc-shell .pcc-notice{padding:12px;border-radius:9px;overflow-wrap:anywhere}
+.pcc-shell .pcc-login{max-width:400px;margin:60px auto;padding:24px;background:var(--pcc-card);border-radius:15px}
+.pcc-shell .pcc-login button{width:100%}
+.pcc-shell .pcc-notice:empty{display:none}

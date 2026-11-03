@@ -57,3 +57,24 @@ test('page reload restores an existing session without asking for password', asy
   assert.equal(calls[0].options.method,'GET');
   assert.equal(calls[1].options.headers['X-CSRF-Token'],'existing');
 });
+
+test('password change sends all confirmation fields and clears the revoked session token', async () => {
+  const {client,calls}=setup([[200,{changed:true,sign_in_required:true}]]);
+  client.csrf='old-token';
+  await client.changePassword('current','next','next');
+  assert.equal(calls[0].path,'/api/account/password');
+  assert.deepEqual(JSON.parse(calls[0].options.body),{
+    current_password:'current',new_password:'next',confirm_new_password:'next',
+  });
+  assert.equal(calls[0].options.headers['X-CSRF-Token'],'old-token');
+  assert.equal(client.csrf,null);
+});
+
+test('rejected password change preserves the current session; malformed logout is not success', async () => {
+  const {client}=setup([[403,{error:'Current password rejected'}],[200,{}]]);
+  client.csrf='valid';
+  await assert.rejects(client.changePassword('bad','next','next'),ApiError);
+  assert.equal(client.csrf,'valid');
+  await assert.rejects(client.logout(),ApiError);
+  assert.equal(client.csrf,'valid');
+});

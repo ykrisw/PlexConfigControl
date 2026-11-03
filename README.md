@@ -22,7 +22,7 @@ specification in `design/README.md`. Shared production styles import
 
 - Real TrueNAS WebSocket authentication and verified TLS transport.
 - Container access to snapshots and tested file ownership/ACL/xattr preservation.
-- Approved Light/Dark interface connected to the server.
+- Backup, History and Settings views connected to the server.
 - Profile photo support and complete UI translations of errors.
 - Single-existing-archive overwrite workflow and crash-safe publication recovery.
 - Production HTTP/HTTPS server, certificate setup and TrueNAS installation form.
@@ -45,7 +45,23 @@ node --test tests/browser/*.mjs
 
 The browser API module is served at `/assets/panel-client.mjs`. It supports
 session login, CSRF-protected background validation, operation polling and
-restore readiness. It does not yet render or bind the approved interface.
+restore readiness, password changes and explicit logout.
+
+The WSGI application now serves a development entry page at `/`, loading
+`panel-app.mjs`. It restores the existing session or shows password-only sign-in,
+then mounts the approved shell, Dashboard and Restore views. No preview archives
+or events are included. Backup, History and Settings show explicit integration
+placeholders; they are not usable panels yet. Mount behind HTTPS: session cookies
+remain Secure. The installation must initialize the account beforehand.
+
+Dashboard uses actual Plex status reads, returning to UNKNOWN after failed reads.
+Change Password opens the current/new/confirmation dialog. A successful change
+revokes all sessions and returns to sign-in; explicit logout also returns to
+sign-in only after server confirmation. Leaving the application disposes polling.
+There is no timer that signs users out for inactivity. Saved theme and language
+preferences are loaded at sign-in; Dashboard labels support English and Polish,
+while Restore, sign-in messages and server errors still need full translation.
+Profile photo upload/removal is not implemented yet.
 
 `/assets/restore-panel.mjs` exports `bindRestoreControls(root, client, render)`.
 The Restore markup can bind radios named `restore-archive` and buttons with
@@ -67,7 +83,7 @@ Use `pcc-card pcc-account` in Dashboard, `pcc-card pcc-archives` in Backup,
 `pcc-card pcc-events` in History and `pcc-card pcc-about` in Settings for the
 cards whose lower edges should expand to the bottom. Backup's Important card
 keeps its natural height below the expanded archive list. These are shared
-layout hooks; the full content of those four panels still needs integration.
+layout hooks; Backup, History and Settings content still needs integration.
 
 `restore-view.mjs` exports `mountRestoreView(section, client)` and binds the
 actual archive list, selection, validation, progress, readiness, cancellation

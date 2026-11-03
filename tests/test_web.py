@@ -1,4 +1,5 @@
 import http.client
+import io
 import json
 import tempfile
 import threading
@@ -12,10 +13,39 @@ class Quiet(WSGIRequestHandler):
     def log_message(self,*args): pass
 
 class WebTests(unittest.TestCase):
+    @patch('plexconfigcontrol.auth.ITERATIONS',1000)
+    def test_password_change_revokes_every_session_after_confirmation(self):
+        with tempfile.TemporaryDirectory() as d:
+            app=Web(d); app.account.initialize('old-password')
+            first,csrf=app.sessions.create(); second,_=app.sessions.create()
+            def change(current,new,confirmation):
+                data=json.dumps({'current_password':current,'new_password':new,
+                                 'confirm_new_password':confirmation}).encode()
+                responses=[]
+                body=b''.join(app({'REQUEST_METHOD':'POST','PATH_INFO':'/api/account/password',
+                    'HTTP_COOKIE':'pcc_session='+first,'HTTP_X_CSRF_TOKEN':csrf,
+                    'CONTENT_TYPE':'application/json','CONTENT_LENGTH':str(len(data)),
+                    'wsgi.input':io.BytesIO(data)},
+                    lambda status,headers:responses.append((status,dict(headers)))))
+                return responses[0],json.loads(body)
+            (status,_),_=change('old-password','new-password','different')
+            self.assertEqual(status,'400 Bad Request')
+            self.assertTrue(app.sessions.authenticated(first))
+            (status,headers),body=change('old-password','new-password','new-password')
+            self.assertEqual(status,'200 OK')
+            self.assertEqual(body,{'changed':True,'sign_in_required':True})
+            self.assertIn('Max-Age=0',headers['Set-Cookie'])
+            self.assertFalse(app.sessions.authenticated(first))
+            self.assertFalse(app.sessions.authenticated(second))
+            self.assertFalse(app.account.login('old-password')['authenticated'])
+            self.assertTrue(app.account.login('new-password')['authenticated'])
+
     def test_panel_assets_have_correct_mime_types(self):
         with tempfile.TemporaryDirectory() as d:
             app=Web(d)
-            for name in ('panel-layout.css','panel-shell.mjs','restore-view.css','restore-view.mjs','approved-appearance.css'):
+            for name in ('panel-layout.css','panel-shell.mjs','restore-view.css','restore-view.mjs',
+                         'approved-appearance.css','panel-app.css','panel-app.mjs',
+                         'dashboard-controller.mjs','dashboard-view.mjs'):
                 responses=[]
                 body=b''.join(app({'REQUEST_METHOD':'GET','PATH_INFO':'/assets/'+name},
                     lambda status,headers:responses.append((status,dict(headers)))))
@@ -23,6 +53,20 @@ class WebTests(unittest.TestCase):
                 expected='text/css' if name.endswith('.css') else 'text/javascript'
                 self.assertEqual(responses[0][1]['Content-Type'],expected+'; charset=utf-8')
                 self.assertTrue(body)
+
+    def test_entry_page_is_public_but_contains_no_private_state(self):
+        with tempfile.TemporaryDirectory() as d:
+            app=Web(d); responses=[]
+            body=b''.join(app({'REQUEST_METHOD':'GET','PATH_INFO':'/'},
+                lambda status,headers:responses.append((status,dict(headers)))))
+            status,headers=responses[0]
+            self.assertEqual(status,'200 OK')
+            self.assertEqual(headers['Content-Type'],'text/html; charset=utf-8')
+            self.assertIn("script-src 'self'",headers['Content-Security-Policy'])
+            self.assertIn("frame-ancestors 'none'",headers['Content-Security-Policy'])
+            self.assertIn(b'/assets/panel-app.mjs',body)
+            self.assertNotIn(b'csrf',body)
+            self.assertNotIn(b'TrueNASPlexConfig_',body)
 
     def test_browser_module_served_without_exposing_other_paths(self):
         with tempfile.TemporaryDirectory() as d:

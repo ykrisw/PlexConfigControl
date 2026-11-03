@@ -1,4 +1,4 @@
-"""WSGI JSON endpoints. Mount behind an HTTPS server; UI integration pending."""
+"""Development panel and WSGI JSON endpoints. Mount behind an HTTPS server."""
 import json
 from importlib.resources import files
 from http.cookies import SimpleCookie, CookieError
@@ -50,7 +50,20 @@ class Web:
                 '/assets/restore-view.css':'restore-view.css',
                 '/assets/panel-shell.mjs':'panel-shell.mjs',
                 '/assets/panel-layout.css':'panel-layout.css',
+                '/assets/panel-app.css':'panel-app.css',
+                '/assets/panel-app.mjs':'panel-app.mjs',
+                '/assets/dashboard-controller.mjs':'dashboard-controller.mjs',
+                '/assets/dashboard-view.mjs':'dashboard-view.mjs',
                 '/assets/approved-appearance.css':'approved-appearance.css'}
+        if method=='GET' and path=='/':
+            body=files('plexconfigcontrol').joinpath('static/index.html').read_bytes()
+            start_response('200 OK',[
+                ('Content-Type','text/html; charset=utf-8'),
+                ('Content-Length',str(len(body))),('Cache-Control','no-store'),
+                ('X-Content-Type-Options','nosniff'),('X-Frame-Options','DENY'),
+                ('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; "
+                 "object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")])
+            return [body]
         if method=='GET' and path in assets:
             body=files('plexconfigcontrol').joinpath('static/'+assets[path]).read_bytes()
             start_response('200 OK',[

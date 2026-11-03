@@ -61,10 +61,25 @@ export class PanelClient {
     return result;
   }
 
-  async logout() {
-    await this.request('/api/logout', {body: {}});
+  async logout(signal) {
+    const result = await this.request('/api/logout', {body: {}, signal});
+    if (result.authenticated !== false) throw new ApiError(502, {error: 'Sign-out could not be confirmed'});
     this.csrf = null;
   }
+
+  async changePassword(current, password, confirmation, signal) {
+    const result = await this.request('/api/account/password', {body: {
+      current_password: current, new_password: password,
+      confirm_new_password: confirmation,
+    }, signal});
+    if (result.changed !== true || result.sign_in_required !== true) {
+      throw new ApiError(502, {error: 'Password change could not be confirmed'});
+    }
+    this.csrf = null;
+    return result;
+  }
+
+  settings(signal) { return this.request('/api/settings', {signal}); }
 
   async restoreSession() {
     this.csrf = null;

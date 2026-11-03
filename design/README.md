@@ -28,5 +28,6 @@ panel layout and standalone Restore view.
 - Default application theme remains System; English/Polish selection persists.
 
 Approval of this appearance does not establish implementation or end-to-end
-verification of every operation shown in the preview. Dashboard, Backup,
-History and Settings content integration is still incomplete.
+verification of every operation shown in the preview. Dashboard account actions
+and Plex status are connected; profile photo management remains pending.
+Backup, History and Settings content integration is still incomplete.
