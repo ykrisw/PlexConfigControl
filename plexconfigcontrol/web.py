@@ -1,7 +1,9 @@
 """Development panel and WSGI JSON endpoints. Mount behind an HTTPS server."""
 import json
 from importlib.resources import files
+from pathlib import Path
 from http.cookies import SimpleCookie, CookieError
+from .execution import ExecutionGateway, InvalidExecutionRequest
 from .auth import Account
 from .sessions import Sessions, SessionChanged
 from .settings import Settings
@@ -28,7 +30,13 @@ from .outcome import describe_outcome
 from .profile_photo import ProfilePhoto,InvalidPhoto,PhotoChanged,MAX_UPLOAD
 
 class Web:
-    def __init__(self,state_directory,archive_directory=None,truenas_api=None,*,archive_deletion_enabled=True,archive_logs_enabled=True,recovery_inspector=None):
+    def __init__(self,state_directory,archive_directory=None,truenas_api=None,*,archive_deletion_enabled=True,archive_logs_enabled=True,recovery_inspector=None,execution_service=None):
+        if execution_service is not None:
+            if (not isinstance(execution_service, ExecutionGateway) or archive_directory is None
+                    or execution_service.state != Path(state_directory).resolve()
+                    or execution_service.destination != Path(archive_directory).resolve()):
+                raise ValueError('Execution backend must use the panel state and archive directories')
+        self.execution=execution_service
         self.state_directory=state_directory
         self.recovery_inspector=recovery_inspector
         self.operation_store=StateStore(state_directory)
@@ -180,10 +188,23 @@ class Web:
                 return respond('401 Unauthorized',{'error':'Sign in required'})
             return respond('200 OK',{'authenticated':True,'csrf':csrf})
         if path=='/api/capabilities' and method=='GET':
-            return respond('200 OK',{'backup_create':False,'backup_overwrite':False,
-                'restore_execute':False,'snapshot_management':False,
+            return respond('200 OK',{'backup_create':self.execution is not None,'backup_overwrite':self.execution is not None,
+                'restore_execute':self.execution is not None,'snapshot_management':False,
                 'archive_delete':self.archives is not None and self.archive_deletion_enabled,
                 'archive_validation':self.archives is not None})
+        if path in ('/api/backup/start','/api/restore/execute') and method=='POST':
+            if self.execution is None:
+                return respond('403 Forbidden',{'error':'Operation execution is disabled in this installation'})
+            try:
+                result=(self.execution.backup(data) if path=='/api/backup/start'
+                        else self.execution.restore(data))
+                return respond('202 Accepted',result)
+            except InvalidExecutionRequest as error:
+                return respond('400 Bad Request',{'error':str(error)})
+            except (OperationBusy,OperationDenied):
+                return respond('409 Conflict',{'error':'Operation readiness or archive selection changed; refresh before confirming'})
+            except Exception:
+                return respond('503 Service Unavailable',{'error':'Submission could not be confirmed. Check operation status before retrying.'})
         if path=='/api/account/password' and method=='POST':
             current=data.get('current_password')
             new=data.get('new_password')
@@ -250,6 +271,7 @@ class Web:
                 return respond('409 Conflict',{'error':'Another operation or recovery must finish'})
             except OSError:
                 return respond('503 Service Unavailable',{'error':'Archive location is unavailable'})
+            plan['overwrite_available']=self.execution is not None
             if plan['existing_archive'] is not None:
                 plan['existing_archive']=archive_wire(plan['existing_archive'])
             return respond('200 OK',plan)

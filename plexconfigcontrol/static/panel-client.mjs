@@ -123,6 +123,21 @@ export class PanelClient {
   integration(signal) { return this.request('/api/integration', {signal}); }
   capabilities(signal) { return this.request('/api/capabilities', {signal}); }
   backupPlan(signal) { return this.request('/api/backup/plan', {signal}); }
+  async submitOperation(path, kind, request, signal) {
+    const expected=request?.request_id;
+    if(typeof expected!=='string'||!/^[0-9a-f]{32}$/.test(expected))throw new ApiError(400,{error:'Operation request identity is required'});
+    const result=await this.request(path,{body:request,signal});
+    if(result?.accepted!==true||result.request_id!==expected||result.kind!==kind||result.status_url!=='/api/operation'){
+      throw new ApiError(502,{error:'Submission could not be confirmed. Check operation status before retrying.'});
+    }
+    return {accepted:true,request_id:expected,kind,status_url:'/api/operation'};
+  }
+  startBackup(request, signal) {
+    return this.submitOperation('/api/backup/start','BACKUP',request,signal);
+  }
+  executeRestore(request, signal) {
+    return this.submitOperation('/api/restore/execute','RESTORE',request,signal);
+  }
   deleteArchives(archives,signal) {
     return this.request('/api/archives/delete',{body:{archives,confirmed:true},signal});
   }

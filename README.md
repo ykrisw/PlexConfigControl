@@ -834,3 +834,35 @@ stale archive choices and the single-copy decision still resolve before host
 reads. These added checks have local regression coverage; the previous host
 coordinator pass predates this additional guard. The restricted web runtime still
 does not enable host writes or operational Backup/Restore routes.
+
+### Explicit operation-submission boundary (not enabled in the restricted runtime)
+
+`ExecutionGateway` accepts only fixed Backup/Restore request types. An explicitly
+configured Web instance can expose `/api/backup/start` and `/api/restore/execute`
+behind the existing credential-bound session and CSRF checks. Backup modes are
+NEW, ANOTHER and OVERWRITE with explicit confirmation and exact displayed archive
+identity for the latter two. Restore requires the validated name/digest and typed
+RESTORE. Every request has a 32-character lowercase hexadecimal request_id; extra
+fields, command strings, paths and dataset names are rejected. Current Plex state,
+archive identities, operation/recovery blocks and readiness are checked before
+submission. Admission does not mark progress/history successful.
+
+No execution backend is supplied by this change. A separately authorised backend
+must durably deduplicate request_id together with the complete request payload,
+reserve exclusive execution before returning `AcceptedOperation`, and repeat
+identity/readiness checks under the coordinator lock. A restore request's queued
+digest must still match the validation checkpoint before execution; Backup must
+recount and check the confirmed identity. It must execute only the fixed Backup
+or Restore coordinators and write progress to the same private state store.
+The gateway cannot itself guarantee those backend responsibilities. Network loss
+or a mismatched acceptance receipt returns an unconfirmed submission, with no
+automatic retry. Browser methods validate the receipt against the request identity
+and fixed status URL; they never interpret acceptance as completion.
+
+`Web` defaults to no execution service; `prepare()` supplies none. The restricted
+`TestApplication` additionally rejects any Web instance configured with one and
+continues blocking host-write routes. No privilege, API credential, general root
+shell, default worker architecture or live host action is added. The approved UI
+layout is unchanged; controller/button execution wiring awaits the authorised
+backend and its acceptance tests. HTTP and browser-client tests here use an inert
+submission stub; they do not exercise real asynchronous host execution.
