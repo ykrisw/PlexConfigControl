@@ -18,6 +18,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.firefox.service import Service as FirefoxService
+from selenium.webdriver.safari.service import Service as SafariService
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -58,6 +59,10 @@ def create_simulator(tablet):
     try:
         command('xcrun','simctl','boot',identifier)
         command('xcrun','simctl','bootstatus',identifier,'-b',timeout=360)
+        simulator_app=Path(command('xcode-select','-p'))/'Applications'/'Simulator.app'
+        command('open','-a',str(simulator_app),'--args','-CurrentDeviceUDID',identifier)
+        command('xcrun','simctl','launch',identifier,'com.apple.mobilesafari')
+        command('xcrun','simctl','openurl',identifier,'about:blank')
     except BaseException:
         subprocess.run(['xcrun','simctl','shutdown',identifier],check=False,timeout=60)
         subprocess.run(['xcrun','simctl','delete',identifier],check=False,timeout=60)
@@ -192,7 +197,7 @@ def main():
                     options.platform_name='iOS'
                     options.set_capability('safari:useSimulator',True)
                     options.set_capability('safari:deviceUDID',simulator)
-                driver=webdriver.Safari(options=options)
+                driver=webdriver.Safari(options=options,service=SafariService(log_output=str(output/'safaridriver.log')))
             else:
                 options=webdriver.FirefoxOptions();options.binary_location='/Applications/Firefox.app/Contents/MacOS/firefox'
                 options.accept_insecure_certs=True
@@ -208,6 +213,8 @@ def main():
             exercise(driver,fixture,output,mobile=mobile)
             print('Apple interface checks passed:',mode,flush=True)
     except BaseException:
+        if simulator:
+            subprocess.run(['xcrun','simctl','io',simulator,'screenshot',str(output/'simulator-failure.png')],check=False,timeout=30)
         if driver is not None:
             try:
                 driver.save_screenshot(str(output/'failure.png'))
