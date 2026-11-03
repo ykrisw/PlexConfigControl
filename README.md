@@ -781,5 +781,25 @@ private state live temporarily in RAM and are removed after the diagnostic. It
 checks snapshot-only contents while the sandbox live file changes, publication,
 terminal progress/state, the one-existing-copy decision and History clearing
 without changing diagnostic log/archive bytes. It never uses production archives
-or permanent user operation logs. This coordinator host test has not yet run on
-the user's NAS; application HTTP/WSS/container/SMB acceptance remains separate.
+or permanent user operation logs. The user ran this coordinator host test at
+`9ad81c4f05ec32bace5e4438a1eea221d7cc4bf5`: every check passed, including
+confirmed cleanup and Plex RUNNING. Application HTTP/WSS/container/SMB acceptance
+remains separate.
+
+
+### Opt-in sandbox Restore success with manual Plex stop
+
+`python -m tests.host_restore_smoke --run-sandbox-restore-test` requires Plex
+RUNNING initially and no Filebrowser-held mounts of disposable datasets. It uses
+one fresh sandbox, real ZFS snapshots, the actual Restore coordinator, staging,
+ConfigWriter/rsync, metadata comparison and SQLite integrity checks on synthetic
+fixture databases. The code confirms the real RUNNING gate before writes, then
+waits up to ten minutes for the user to stop Plex in Apps. It never calls app.stop
+or app.start and leaves Plex STOPPED. Success confirms History/log/checkpoints,
+staging/snapshot absence and dataset deletion. Diagnostic archive/log/state files
+are temporary in RAM. Failure retains the sandbox and prints exact identities;
+do not rerun until it has been investigated. This is not a Restore of production
+Plex data, a Plex-specific SQLite compatibility test or deployment acceptance.
+This Restore host test has not yet run on the user's NAS. Failure/rollback host
+acceptance is a subsequent step; its verifier is wired but not exercised by this
+success-only diagnostic.

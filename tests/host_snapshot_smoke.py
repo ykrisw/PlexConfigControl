@@ -20,11 +20,12 @@ from plexconfigcontrol.state import StateStore
 
 
 class SandboxAPI:
-    def __init__(self, dataset, runner=subprocess.run):
+    def __init__(self, dataset, runner=subprocess.run, *, allow_restore=False):
         if not re.fullmatch(r'TrueNAS/pcc-test-[0-9a-f]{32}', dataset):
             raise ValueError('Fresh sandbox dataset required')
         self.dataset, self.runner = dataset, runner
         self.owned_snapshots = set()
+        self.allow_restore = allow_restore
 
     def call(self, method, *args):
         d = self.dataset
@@ -43,7 +44,8 @@ class SandboxAPI:
             permitted = (isinstance(data, dict) and set(data) == {'dataset', 'name', 'recursive'}
                 and data['dataset'] == d and data['recursive'] is False
                 and isinstance(data['name'], str)
-                and re.fullmatch(r'pcc-backup-[0-9a-f]{32}', data['name']) is not None)
+                and re.fullmatch(r'pcc-(backup|restore)-[0-9a-f]{32}' if self.allow_restore
+                                 else r'pcc-backup-[0-9a-f]{32}', data['name']) is not None)
             if permitted:
                 self.owned_snapshots.add(d + '@' + data['name'])
         elif method == 'pool.snapshot.query' and len(args) == 1:
@@ -52,6 +54,11 @@ class SandboxAPI:
         elif method == 'pool.snapshot.delete' and len(args) == 2:
             permitted = (isinstance(args[0], str) and args[0] in self.owned_snapshots
                 and args[1] == {'defer': False, 'recursive': False})
+        elif method == 'pool.snapshot.rollback' and self.allow_restore and len(args) == 2:
+            permitted = (isinstance(args[0], str) and args[0] in self.owned_snapshots
+                and args[0].startswith(d+'@pcc-restore-')
+                and args[1] == {'recursive': False, 'recursive_clones': False,
+                                'force': False, 'recursive_rollback': False})
         if not permitted:
             raise ValueError('Host test call outside sandbox scope')
         result = self.runner(['midclt', 'call', method, *map(json.dumps, args)],
