@@ -800,6 +800,21 @@ staging/snapshot absence and dataset deletion. Diagnostic archive/log/state file
 are temporary in RAM. Failure retains the sandbox and prints exact identities;
 do not rerun until it has been investigated. This is not a Restore of production
 Plex data, a Plex-specific SQLite compatibility test or deployment acceptance.
-This Restore host test has not yet run on the user's NAS. Failure/rollback host
-acceptance is a subsequent step; its verifier is wired but not exercised by this
-success-only diagnostic.
+The user ran the success test at commit
+`f06ce3d20e90aae5cb520dceb9f906e9e1ec63cf`: all checks passed, including
+manual-stop gating, real rsync, fixture database integrity, History/log/state,
+snapshot/staging cleanup and sandbox removal. Plex remained STOPPED.
+
+
+The Restore diagnostic flag `--failure-test` requires Plex already STOPPED. It
+injects a known failure after sandbox synchronization and an additional sandbox
+file write, exercises the actual coordinator's scoped ZFS rollback, and verifies
+recovered bytes, permissions/metadata and fixture database integrity. It requires
+FAILED History/log reporting, RECOVERY_REQUIRED state, one retained emergency
+snapshot and rejection of another snapshot. A passing failure diagnostic
+intentionally retains that snapshot and sandbox for separately confirmed manual
+cleanup; private diagnostic state/log/archive copies in RAM are removed. It never
+removes that recovery point automatically. Unexpected failures or unverified
+recovery cannot produce PASS. This failure/rollback host diagnostic has not yet
+run on the user's NAS. Production WSS authentication, least-privilege container
+integration, reboot persistence and full app acceptance remain untested.
