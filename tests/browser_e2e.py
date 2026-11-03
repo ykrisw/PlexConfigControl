@@ -35,7 +35,7 @@ def main():
     name='pcc-browser-'+uuid.uuid4().hex[:12];volume=name+'-state'
     password='ci-browser-only-password';environment=dict(os.environ,PCC_BOOTSTRAP_VERIFIER=password_verifier(password))
     docker('volume','create',volume)
-    page=None;playwright=None;errors=[]
+    page=None;playwright=None;errors=[];network_errors=[]
     try:
         with tempfile.TemporaryDirectory() as temporary:
             temporary=Path(temporary);archives=temporary/'archives';fixtures(archives)
@@ -74,6 +74,12 @@ def main():
             page=context.new_page();page.set_default_timeout(12000)
             if engine=='msedge': assert 'Edg/' in page.evaluate('navigator.userAgent'),'Microsoft Edge channel was not launched'
             page.on('pageerror',lambda error:errors.append(str(error)))
+            page.on('requestfailed',lambda request:network_errors.append({'url':request.url,'failure':request.failure}))
+            page.on('console',lambda message:network_errors.append({'console':message.text}) if message.type=='error' else None)
+            if engine!='firefox':
+                # Only this disposable browser accepts this fixture's generated
+                # certificate. The host-side health probe verifies it above.
+                context.new_cdp_session(page).send('Security.setIgnoreCertificateErrors',{'ignore':True})
             page.goto(base);page.locator('.pcc-login input').fill(password)
             page.get_by_role('button',name='Sign In',exact=True).click()
             expect(page.locator('.pcc-nav')).to_be_visible()
@@ -236,6 +242,7 @@ def main():
         return 0
     except BaseException:
         print('Browser JavaScript errors:',errors)
+        print('Browser network/console errors:',network_errors)
         if page is not None:
             try:page.screenshot(path=str(output/'failure.png'),full_page=True)
             except Exception:pass
