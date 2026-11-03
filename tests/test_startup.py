@@ -8,6 +8,19 @@ from plexconfigcontrol.startup import reconcile_startup
 from plexconfigcontrol.locking import operation_lock, OperationBusy
 
 class StartupTests(unittest.TestCase):
+    def test_restart_reports_interrupted_validation_and_preserves_archive_name(self):
+        with tempfile.TemporaryDirectory() as d:
+            store=StateStore(d); progress=Progress(d); history=History(d)
+            with store.transaction() as op:
+                op.begin('RESTORE')
+                op.validation_details={'archive':'selected.tar.gz','status':'VALIDATING','reason':None}
+            progress.start('RESTORE')
+            reconcile_startup(store,progress,history,d)
+            with StateStore(d).transaction() as op:
+                self.assertEqual(op.validation_details['status'],'INTERRUPTED')
+                self.assertEqual(op.validation_details['archive'],'selected.tar.gz')
+                self.assertIsNone(op.archive_identity)
+
     def test_interrupted_backup_preserves_snapshot_and_is_idempotent(self):
         with tempfile.TemporaryDirectory() as d:
             store=StateStore(d); progress=Progress(d); history=History(d)
