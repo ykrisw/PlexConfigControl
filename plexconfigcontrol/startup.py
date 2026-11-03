@@ -1,6 +1,7 @@
 """Fail-closed startup reconciliation. Run before accepting operation requests."""
 from .locking import operation_lock
 from .operations import Phase
+from .publication_intent import pending
 
 
 def reconcile_startup(store, progress, history, state_directory):
@@ -13,7 +14,8 @@ def reconcile_startup(store, progress, history, state_directory):
     with operation_lock(state_directory):
         with store.transaction() as operation:
             phase=operation.phase
-            interrupted=phase in (Phase.VALIDATING,Phase.RUNNING)
+            interrupted=(phase in (Phase.VALIDATING,Phase.RUNNING) or
+                         (pending(state_directory) and phase != Phase.RECOVERY_REQUIRED))
             snapshot=operation.snapshot_id
             if not interrupted:
                 return {'interrupted':False,'phase':phase.value,'snapshot_id':snapshot}
