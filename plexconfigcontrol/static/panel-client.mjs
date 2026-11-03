@@ -122,6 +122,9 @@ export class PanelClient {
   updateSettings(changes,signal) { return this.request('/api/settings', {body:changes,signal}); }
   integration(signal) { return this.request('/api/integration', {signal}); }
   capabilities(signal) { return this.request('/api/capabilities', {signal}); }
+  executionStatus(request_id,signal) {
+    return this.request('/api/execution/status?request_id='+encodeURIComponent(request_id),{signal});
+  }
   backupPlan(signal) { return this.request('/api/backup/plan', {signal}); }
   async submitOperation(path, kind, request, signal) {
     const expected=request?.request_id;
@@ -167,8 +170,10 @@ export class PanelClient {
     const operation = await this.operation(signal);
     // Validation owns the operation lock. Do not query readiness until it ends.
     const phase = operation.operation.phase;
-    const readiness = ['WAITING_FOR_PLEX_STOP', 'READY'].includes(phase)
+    const admitted=['QUEUED','RUNNING','RECOVERY_REQUIRED'].includes(operation.execution?.state);
+    const readiness = ['WAITING_FOR_PLEX_STOP', 'READY'].includes(phase)&&!admitted
       ? await this.readiness(signal) : null;
-    return {operation, readiness};
+    const capabilities=await this.capabilities(signal);
+    return {operation, readiness, capabilities};
   }
 }

@@ -96,3 +96,5 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 .pcc-shell .pcc-integration dl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:10px 16px}
 .pcc-shell .pcc-integration dt{font-weight:600}.pcc-shell .pcc-integration dd{margin:0;min-width:0}
 @media(max-width:420px){.pcc-shell .pcc-integration dl{grid-template-columns:minmax(0,1fr)}.pcc-shell .pcc-integration dd{margin-bottom:10px}}
+
+.pcc-shell .pcc-notification-dialog .pcc-dialog-actions{flex-wrap:wrap}

@@ -20,6 +20,7 @@ const polish={
   'Application restarted before validation completed':'Aplikacja uruchomiła się ponownie przed zakończeniem weryfikacji.',
   'Validation could not be started':'Nie udało się rozpocząć weryfikacji.',
   'Sign in required':'Zaloguj się ponownie.',
+  'Restore confirmation changed. Refresh and confirm again.':'Potwierdzenie przywracania jest nieaktualne. Odśwież i potwierdź ponownie.',
 };
 
 export function restoreError(message,language='en'){
@@ -33,8 +34,9 @@ export function restorePresentation(state,language='en'){
   const restore=operation?.kind==='RESTORE';
   const unresolved=state.snapshot?.operation?.publication?.pending===true;
   const executing=restore&&normalizeOutcome(operation.outcome)?.code==='RESTORE_IN_PROGRESS';
-  const waiting=!executing&&!unresolved&&restore&&['WAITING_FOR_PLEX_STOP','READY'].includes(phase);
-  const active=executing||unresolved||['VALIDATING','RUNNING','RECOVERY_REQUIRED'].includes(phase);
+  const admitted=state.submission?.blocked===true||['QUEUED','RUNNING','RECOVERY_REQUIRED'].includes(state.snapshot?.operation?.execution?.state);
+  const waiting=!admitted&&!executing&&!unresolved&&restore&&['WAITING_FOR_PLEX_STOP','READY'].includes(phase);
+  const active=admitted||executing||unresolved||['VALIDATING','RUNNING','RECOVERY_REQUIRED'].includes(phase);
   const details=restore?operation.validation_details:null;
   let notice=restoreError(state.error,language);
   if(!notice&&['FAILED','INTERRUPTED'].includes(details?.status))notice=restoreError(details.reason,language);
@@ -50,7 +52,9 @@ export function restorePresentation(state,language='en'){
       VALIDATE_ARCHIVE_FIRST:tx('Validate the selected archive before continuing.','Przed kontynuowaniem zweryfikuj wybrane archiwum.'),
     };
     notice=readiness?.ready===true&&readiness.plex?.state==='STOPPED'&&readiness.plex?.available!==false?
-      tx('Archive validated and Plex is stopped. Final Restore execution is not connected in this development build.','Archiwum zweryfikowane i Plex zatrzymany. Wykonywanie przywracania nie jest jeszcze podłączone w tej wersji.'):
+      state.snapshot?.capabilities?.restore_execute===true?
+        tx('Archive validated and Plex is stopped. Confirm the selected archive to restore.','Archiwum zweryfikowane i Plex zatrzymany. Potwierdź wybrane archiwum, aby je przywrócić.'):
+        tx('Archive validated and Plex is stopped. Restore execution is disabled in this installation.','Archiwum zweryfikowane i Plex zatrzymany. Wykonywanie przywracania jest wyłączone w tej instalacji.'):
       reasons[readiness?.reason]||tx('Checking Restore readiness…','Sprawdzanie gotowości przywracania…');
   }
   const progress=state.snapshot?.operation?.progress;

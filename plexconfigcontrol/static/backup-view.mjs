@@ -1,6 +1,7 @@
+import {submissionText} from './submission-controller.mjs';
 import {backupResult} from './operation-outcome.mjs';
 import {mountRecoveryView} from './recovery-view.mjs';
-import {createBackupController} from './backup-controller.mjs';
+import {createBackupController,archiveIdentity} from './backup-controller.mjs';
 
 export function mountBackupView(root,client,{language='en',timezone='Europe/London'}={}){
   const document=root.ownerDocument,pl=language==='pl',tx=(en,polish)=>pl?polish:en;
@@ -9,14 +10,18 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
     <section class="pcc-plex"><strong data-server></strong><span data-plex-state="UNKNOWN">UNKNOWN</span></section>
     <section class="pcc-card pcc-backup-action"><div class="pcc-heading"><h2 data-create-heading></h2><button type="button" data-refresh></button></div>
       <p data-description></p><button type="button" class="pcc-primary" data-create disabled></button>
-      <p data-execution-note></p><p data-plan></p><p data-operation-result class="pcc-notice" role="status" aria-live="polite" hidden></p></section>
+      <p data-execution-note></p><p data-plan></p>
+      <div data-submission class="pcc-notice" role="status" aria-live="polite" hidden><p data-submission-text></p>
+        <button type="button" data-submission-check hidden></button><button type="button" data-submission-retry hidden></button></div><p data-operation-result class="pcc-notice" role="status" aria-live="polite" hidden></p></section>
     <section data-recovery hidden></section>
     <section class="pcc-card pcc-archives"><div class="pcc-heading"><h2 data-existing></h2><button type="button" data-delete disabled></button></div>
       <p data-access-note hidden></p><p class="pcc-notice" data-notice role="status" aria-live="polite" hidden></p><p data-empty role="status"></p><div class="pcc-scroll-list" data-archives></div></section>
     <section class="pcc-card pcc-important"><div class="pcc-heading"><h2 data-important></h2><span data-count></span></div><p data-important-text></p></section>
     <dialog class="pcc-notification-dialog pcc-password-dialog" aria-label="Confirm archive deletion"><h3 data-confirm-heading></h3><p data-confirm-text></p>
-      <ul data-confirm-files></ul><div class="pcc-dialog-actions"><button type="button" data-cancel></button><button type="button" data-confirm></button></div></dialog>`;
-  const find=selector=>root.querySelector(selector),list=find('[data-archives]'),dialog=find('dialog');
+      <ul data-confirm-files></ul><div class="pcc-dialog-actions"><button type="button" data-cancel></button><button type="button" data-confirm></button></div></dialog>
+    <dialog data-backup-dialog class="pcc-notification-dialog pcc-password-dialog"><h3 data-backup-heading></h3><p data-backup-question></p><p><strong data-backup-archive></strong></p>
+      <div class="pcc-dialog-actions"><button type="button" data-backup-cancel></button><button type="button" data-backup-another></button><button type="button" data-backup-overwrite></button></div></dialog>`;
+  const find=selector=>root.querySelector(selector),list=find('[data-archives]'),dialog=find('dialog'),backupDialog=find('[data-backup-dialog]');
   const labels={
     '[data-server]':tx('Plex Server','Serwer Plex'),'[data-create-heading]':tx('Create a new backup','Utwórz nową kopię zapasową'),
     '[data-refresh]':tx('Refresh','Odśwież'),'[data-description]':tx('Create and verify a new copy of your Plex configuration.','Utwórz i zweryfikuj nową kopię konfiguracji Plex.'),
@@ -27,17 +32,35 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
     '[data-confirm-heading]':tx('Delete Selected Archives','Usuń zaznaczone archiwa'),
     '[data-confirm-text]':tx('Permanently delete these archive files? Permanent logs and other archives will remain untouched.','Trwale usunąć te pliki archiwów? Trwałe logi i pozostałe archiwa pozostaną nietknięte.'),
     '[data-cancel]':tx('Cancel','Anuluj'),'[data-confirm]':tx('Delete','Usuń'),
+    '[data-backup-heading]':tx('One backup already exists','Istnieje już jedna kopia'),
+    '[data-backup-question]':tx('Create another dated copy or replace this archive? The existing archive is retained until the new copy is verified and its temporary snapshot removed.','Utworzyć kolejną kopię z datą czy zastąpić to archiwum? Dotychczasowe archiwum pozostanie do czasu weryfikacji nowej kopii i usunięcia jej tymczasowego snapshotu.'),
+    '[data-backup-cancel]':tx('Cancel','Anuluj'),'[data-backup-another]':tx('Create Another Copy','Utwórz kolejną kopię'),
+    '[data-backup-overwrite]':tx('Overwrite Existing','Nadpisz istniejącą'),
+    '[data-submission-check]':tx('Check Status','Sprawdź stan'),'[data-submission-retry]':tx('Retry Same Request','Ponów to samo żądanie'),
   };
   for(const [selector,text]of Object.entries(labels))find(selector).textContent=text;
+  dialog.setAttribute('aria-label',tx('Confirm archive deletion','Potwierdź usunięcie archiwów'));
+  backupDialog.setAttribute('aria-label',tx('Choose Backup Action','Wybierz działanie kopii zapasowej'));
   const dateFormat=new Intl.DateTimeFormat(pl?'pl-PL':'en-GB',{dateStyle:'medium',timeZone:timezone});
   const recovery=mountRecoveryView(find('[data-recovery]'),client,{language});
-  const lifecycle=new AbortController();let state,confirmation=[],disposed=false;
+  const lifecycle=new AbortController();let state,confirmation=[],backupConfirmation=null,disposed=false;
   function render(value){
     state=value;recovery.observe(value.operation);
     const result=find('[data-operation-result]');result.textContent=backupResult(value.operation,language);result.hidden=!result.textContent;
     const status=find('[data-plex-state]');status.dataset.plexState=value.plex;
     status.textContent=pl?({RUNNING:'DZIAŁA',STOPPED:'ZATRZYMANY',UNKNOWN:'NIEZNANY'})[value.plex]:value.plex;
-    find('[data-refresh]').disabled=value.loading||value.busy||dialog.open;
+    find('[data-refresh]').disabled=value.loading||value.busy||dialog.open||backupDialog.open;
+    find('[data-create]').disabled=!value.canCreate||dialog.open||backupDialog.open;
+    find('[data-execution-note]').textContent=value.creationEnabled?tx('Plex will keep running. The archive is read only from a temporary snapshot.','Plex będzie działał. Archiwum jest odczytywane wyłącznie z tymczasowego snapshotu.'):
+      tx('Backup creation is disabled in this installation. Plex will not be stopped.','Tworzenie kopii jest wyłączone w tej instalacji. Plex nie zostanie zatrzymany.');
+    const draftMatches=backupConfirmation&&value.entries.length===1&&archiveIdentity(backupConfirmation)===archiveIdentity(value.entries[0]);
+    find('[data-backup-another]').disabled=!value.canCreate||!draftMatches;
+    find('[data-backup-overwrite]').disabled=!value.canCreate||!draftMatches||!value.overwriteEnabled;
+    find('[data-backup-cancel]').disabled=value.submission.busy;
+    find('[data-submission-text]').textContent=submissionText(value.submission,language);
+    find('[data-submission]').hidden=!find('[data-submission-text]').textContent;
+    find('[data-submission-check]').hidden=!value.submission.canCheck;
+    find('[data-submission-retry]').hidden=!value.submission.canRetry;
     find('[data-delete]').disabled=!value.canDelete||!value.selected.length||value.selected.length>1000||value.loading||value.busy;
     find('[data-cancel]').disabled=value.busy;
     find('[data-confirm]').disabled=!value.canDelete||value.loading||value.busy;
@@ -72,6 +95,20 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
   const controller=createBackupController(client,render),options={signal:lifecycle.signal};
   root.addEventListener('change',event=>{const input=event.target.closest('[data-archive-name]');if(input)controller.select(input.dataset.archiveName,input.checked);},options);
   find('[data-refresh]').addEventListener('click',()=>void controller.refresh(),options);
+  find('[data-create]').addEventListener('click',()=>{
+    const choice=controller.prepareBackup();if(!choice)return;
+    if(choice.mode==='NEW'){void controller.startBackup();return;}
+    backupConfirmation=choice.archive;find('[data-backup-archive]').textContent=choice.archive.name;
+    backupDialog.showModal();render(state);
+  },options);
+  find('[data-backup-cancel]').addEventListener('click',()=>backupDialog.close(),options);
+  backupDialog.addEventListener('cancel',event=>{if(state.submission.busy)event.preventDefault();},options);
+  backupDialog.addEventListener('close',()=>{backupConfirmation=null;if(!disposed)render(state);},options);
+  for(const [selector,mode] of [['[data-backup-another]','ANOTHER'],['[data-backup-overwrite]','OVERWRITE']]){
+    find(selector).addEventListener('click',async()=>{if(!backupConfirmation)return;await controller.startBackup(mode,backupConfirmation);if(!disposed)backupDialog.close();},options);
+  }
+  find('[data-submission-check]').addEventListener('click',()=>void controller.checkSubmission(),options);
+  find('[data-submission-retry]').addEventListener('click',()=>void controller.retrySubmission(),options);
   find('[data-delete]').addEventListener('click',()=>{
     confirmation=controller.selection();find('[data-confirm-files]').replaceChildren();
     for(const archive of confirmation){const item=document.createElement('li');item.textContent=archive.name;find('[data-confirm-files]').append(item);}
@@ -81,5 +118,5 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
   dialog.addEventListener('close',()=>{confirmation=[];if(!disposed)render(state);},options);
   find('[data-cancel]').addEventListener('click',()=>dialog.close(),options);
   find('[data-confirm]').addEventListener('click',async()=>{await controller.remove(confirmation);if(!disposed)dialog.close();},options);
-  return()=>{disposed=true;lifecycle.abort();controller.dispose();recovery.dispose();if(dialog.open)dialog.close();root.replaceChildren();root.classList.remove('pcc-backup');};
+  return()=>{disposed=true;lifecycle.abort();controller.dispose();recovery.dispose();if(dialog.open)dialog.close();if(backupDialog.open)backupDialog.close();root.replaceChildren();root.classList.remove('pcc-backup');};
 }

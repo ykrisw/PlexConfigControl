@@ -2,6 +2,7 @@
 import json
 from importlib.resources import files
 from pathlib import Path
+from urllib.parse import parse_qs
 from http.cookies import SimpleCookie, CookieError
 from .execution import ExecutionGateway, InvalidExecutionRequest
 from .auth import Account
@@ -84,6 +85,7 @@ class Web:
                 '/assets/recovery-controller.mjs':'recovery-controller.mjs',
                 '/assets/operation-outcome.mjs':'operation-outcome.mjs',
                 '/assets/backup-controller.mjs':'backup-controller.mjs',
+                '/assets/submission-controller.mjs':'submission-controller.mjs',
                 '/assets/backup-view.mjs':'backup-view.mjs',
                 '/assets/approved-appearance.css':'approved-appearance.css'}
         if method=='GET' and path=='/':
@@ -194,6 +196,19 @@ class Web:
             if csrf is None:
                 return respond('401 Unauthorized',{'error':'Sign in required'})
             return respond('200 OK',{'authenticated':True,'csrf':csrf})
+        if path=='/api/execution/status' and method=='GET':
+            if self.execution is None:
+                return respond('403 Forbidden',{'error':'Operation execution is disabled in this installation'})
+            try:
+                query=parse_qs(environ.get('QUERY_STRING',''),keep_blank_values=True,strict_parsing=True,max_num_fields=2)
+                if set(query)!={'request_id'} or len(query['request_id'])!=1:
+                    raise InvalidExecutionRequest('Choose one operation request')
+                execution=self.execution.status(query['request_id'][0])
+                return respond('200 OK',{'found':execution is not None,'execution':execution})
+            except (ValueError,InvalidExecutionRequest):
+                return respond('400 Bad Request',{'error':'Choose one valid operation request identity'})
+            except Exception:
+                return respond('503 Service Unavailable',{'error':'Execution status could not be confirmed'})
         if path=='/api/capabilities' and method=='GET':
             return respond('200 OK',{'backup_create':self.execution is not None,'backup_overwrite':self.execution is not None,
                 'restore_execute':self.execution is not None,'snapshot_management':False,

@@ -1,16 +1,22 @@
+import {createSubmission} from './submission-controller.mjs';
 const fields=['name','size','device','inode','modified_ns'];
 export const archiveIdentity=row=>JSON.stringify(fields.map(key=>row[key]));
 const validArchive=row=>row&&typeof row.name==='string'&&/^TrueNASPlexConfig_\d{4}\.\d{2}\.\d{2}_\d{2}\.\d{2}\.\d{2}\.tar\.gz$/.test(row.name)&&
   fields.slice(1).every(key=>typeof row[key]==='string'&&/^(0|[1-9][0-9]{0,19})$/.test(row[key]));
 
-export function createBackupController(client,render,{schedule=setTimeout,cancel=clearTimeout}={}){
+export function createBackupController(client,render,{schedule=setTimeout,cancel=clearTimeout,makeId}={}){
   let entries=[],selected=new Set(),available=false,loading=false,busy=false,disposed=false,timer;
   let capabilities={},operation=null,plan=null,plex='UNKNOWN',error='',notice='';
   const lifecycle=new AbortController();
-  function canDelete(){return available&&capabilities.archive_delete===true&&operation&&
+  const submission=createSubmission((request,signal)=>client.startBackup(request,signal),
+    (id,signal)=>client.executionStatus(id,signal),()=>emit(),{kind:'BACKUP',...(makeId?{makeId}:{})});
+  function executionFree(){return !['QUEUED','RUNNING','RECOVERY_REQUIRED'].includes(operation?.execution?.state)&&!submission.view().blocked;}
+  function canCreate(){return available&&!loading&&!busy&&capabilities.backup_create===true&&plex==='RUNNING'&&plan&&executionFree()&&operation&&
+    ['IDLE','SUCCESS','FAILED'].includes(operation.operation?.phase)&&!operation.operation.snapshot_id&&operation.publication?.status==='NONE';}
+  function canDelete(){return executionFree()&&available&&capabilities.archive_delete===true&&operation&&
     ['IDLE','SUCCESS','FAILED'].includes(operation.operation?.phase)&&!operation.operation.snapshot_id&&operation.publication?.status==='NONE';}
   function emit(){if(!disposed)render({entries:entries.map(row=>({...row})),selected:[...selected],available,loading,busy,plex,error,notice,
-    operation:operation?structuredClone(operation):null,canDelete:Boolean(canDelete()),deletionEnabled:capabilities.archive_delete===true,plan:plan?structuredClone(plan):null});}
+    operation:operation?structuredClone(operation):null,submission:submission.view(),canCreate:Boolean(canCreate()),creationEnabled:capabilities.backup_create===true,overwriteEnabled:capabilities.backup_overwrite===true,canDelete:Boolean(canDelete()),deletionEnabled:capabilities.archive_delete===true,plan:plan?structuredClone(plan):null});}
   async function refresh(){
     if(disposed||loading||busy)return;
     cancel(timer);loading=true;emit();
@@ -33,12 +39,31 @@ export function createBackupController(client,render,{schedule=setTimeout,cancel
     }else{available=false;error=archives.reason?.message||'Archive list is unavailable';}
     plan=choice.status==='fulfilled'&&choice.value?.archive_count===entries.length&&
       (entries.length!==1||archiveIdentity(choice.value.existing_archive||{})===archiveIdentity(entries[0]))?choice.value:null;
+    submission.observe(operation?.execution);
     loading=false;emit();timer=schedule(refresh,3000);
   }
   function selectedArchives(){return entries.filter(row=>selected.has(row.name)).map(row=>({...row}));}
   emit();void refresh();
   return{
     refresh,
+    prepareBackup(){
+      if(!canCreate())return null;
+      return entries.length===1?{mode:'CHOICE',archive:{...entries[0]}}:{mode:'NEW'};
+    },
+    async startBackup(mode='NEW',confirmedArchive=null){
+      if(!canCreate())return false;
+      if(mode==='NEW'&&entries.length===1)return false;
+      if(mode!=='NEW'&&(!['ANOTHER','OVERWRITE'].includes(mode)||entries.length!==1||
+          archiveIdentity(confirmedArchive||{})!==archiveIdentity(entries[0])||
+          (mode==='OVERWRITE'&&capabilities.backup_overwrite!==true))){
+        error='Archive selection changed. Refresh and confirm again.';emit();return false;
+      }
+      cancel(timer);
+      const result=await submission.submit({mode,confirmed:true,...(mode==='NEW'?{}:{archive:{...confirmedArchive}})});
+      if(!disposed)void refresh();return result;
+    },
+    async retrySubmission(){const result=await submission.retry();if(!disposed)void refresh();return result;},
+    checkSubmission:()=>submission.check(),
     select(name,checked){
       if(disposed||loading||busy||!available||!entries.some(row=>row.name===name))return;
       if(checked)selected.add(name);else selected.delete(name);notice='';emit();
@@ -61,6 +86,6 @@ export function createBackupController(client,render,{schedule=setTimeout,cancel
       }catch(failure){if(!disposed){available=false;error=failure.message||'Deletion could not be confirmed';notice='DELETE_UNCONFIRMED';}return false;}
       finally{busy=false;emit();if(!disposed)void refresh();}
     },
-    dispose(){disposed=true;lifecycle.abort();cancel(timer);entries=[];selected.clear();},
+    dispose(){disposed=true;submission.dispose();lifecycle.abort();cancel(timer);entries=[];selected.clear();},
   };
 }

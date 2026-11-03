@@ -60,7 +60,7 @@ class ExecutionWorker:
 
     def gateway(self):
         return ExecutionGateway(self.state,self.destination,self.api,self,
-            receipt_lookup=self.journal.lookup,status_reader=self.journal.current)
+            receipt_lookup=self.journal.lookup,status_reader=self.journal.current,status_lookup=self.journal.status)
 
     def _admit(self, request):
         # Caller owns operation_lock. No network I/O inside SQLite transactions.

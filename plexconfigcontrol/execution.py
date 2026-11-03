@@ -73,7 +73,7 @@ class AcceptedOperation:
 
 
 class ExecutionGateway:
-    def __init__(self, state_directory, archive_directory, api, backend, *, receipt_lookup=None, status_reader=None):
+    def __init__(self, state_directory, archive_directory, api, backend, *, receipt_lookup=None, status_reader=None, status_lookup=None):
         self.state = Path(state_directory).resolve()
         self.destination = Path(archive_directory).resolve()
         if api is None or not callable(getattr(backend, 'submit', None)):
@@ -82,15 +82,25 @@ class ExecutionGateway:
             raise ValueError('Receipt lookup must be explicitly configured')
         if status_reader is not None and not callable(status_reader):
             raise ValueError('Execution status reader must be explicitly configured')
+        if status_lookup is not None and not callable(status_lookup):
+            raise ValueError('Execution status lookup must be explicitly configured')
+        self.status_lookup = status_lookup
         self.status_reader = status_reader
         self.receipt_lookup = receipt_lookup
         self.store = StateStore(self.state)
         self.api, self.backend = api, backend
 
-    def status(self):
-        if self.status_reader is None:
-            return None
-        data = self.status_reader()
+    def status(self, request_id=None):
+        if request_id is not None:
+            if not isinstance(request_id,str) or not re.fullmatch(r'[0-9a-f]{32}',request_id):
+                raise InvalidExecutionRequest('Valid operation request identity required')
+            if self.status_lookup is None:
+                raise SubmissionUnconfirmed('Execution lookup is not configured')
+            data=self.status_lookup(request_id)
+        else:
+            if self.status_reader is None:
+                return None
+            data=self.status_reader()
         if data is None:
             return None
         if (not isinstance(data,dict) or set(data) !=
@@ -102,6 +112,8 @@ class ExecutionGateway:
                 or any(not isinstance(data[key],str) or not re.fullmatch(r'[0-9]{1,20}',data[key])
                        for key in ('created_ns','updated_ns'))):
             raise SubmissionUnconfirmed('Execution status could not be verified')
+        if request_id is not None and data['request_id'] != request_id:
+            raise SubmissionUnconfirmed('Execution response identity mismatch')
         return dict(data)
 
     def _submit(self, request, kind):

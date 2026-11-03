@@ -33,14 +33,14 @@ test('sign-in and background validation send CSRF with same-origin cookies', asy
 });
 
 test('validation view does not contend for readiness lock while validating', async () => {
-  const {client,calls}=setup([[200,{operation:{phase:'VALIDATING'},progress:{stage:'READING_ARCHIVE'}}]]);
+  const {client,calls}=setup([[200,{operation:{phase:'VALIDATING'},progress:{stage:'READING_ARCHIVE'}}],[200,{restore_execute:false}]]);
   const view=await client.restoreView();
-  assert.equal(view.readiness,null); assert.equal(calls.length,1);
+  assert.equal(view.readiness,null); assert.equal(calls.length,2);assert.equal(calls[1].path,'/api/capabilities');
 });
 
 test('waiting view checks actual readiness without assuming stopped Plex', async () => {
   const {client,calls}=setup([[200,{operation:{phase:'WAITING_FOR_PLEX_STOP'}}],
-    [200,{ready:false,reason:'STOP_PLEX_MANUALLY'}]]);
+    [200,{ready:false,reason:'STOP_PLEX_MANUALLY'}],[200,{restore_execute:false}]]);
   const view=await client.restoreView();
   assert.equal(view.readiness.ready,false);
   assert.equal(calls[1].path,'/api/restore/readiness');
@@ -173,4 +173,10 @@ test('integration diagnostics use only an authenticated same-origin GET',async()
   await client.integration();assert.equal(calls[0].path,'/api/integration');
   assert.equal(calls[0].options.method,'GET');assert.equal(calls[0].options.credentials,'same-origin');
   assert.equal(calls[0].options.body,undefined);
+});
+
+test('an admitted Restore never contends for readiness while its worker owns the lock',async()=>{
+  const {client,calls}=setup([[200,{operation:{phase:'WAITING_FOR_PLEX_STOP'},execution:{state:'RUNNING'}}],[200,{restore_execute:true}]]);
+  const view=await client.restoreView();assert.equal(view.readiness,null);assert.equal(calls.length,2);
+  assert.equal(calls[1].path,'/api/capabilities');
 });

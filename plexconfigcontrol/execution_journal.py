@@ -155,6 +155,16 @@ class ExecutionJournal:
             if changed != 1:
                 raise OperationDenied('Execution claim is no longer current')
 
+    def status(self, request_id):
+        if not isinstance(request_id,str) or not re.fullmatch(r'[0-9a-f]{32}',request_id):
+            raise InvalidExecutionRequest('Valid operation request identity required')
+        with self._connect() as db:
+            row=db.execute('SELECT request_id,kind,state,created_ns,updated_ns FROM requests WHERE request_id=?',
+                           (request_id,)).fetchone()
+        if row is None:
+            return None
+        return {key:str(row[key]) if key.endswith('_ns') else row[key] for key in row.keys()}
+
     def current(self):
         with self._connect() as db:
             row = db.execute("SELECT request_id,kind,state,created_ns,updated_ns FROM requests "

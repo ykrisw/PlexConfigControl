@@ -1,3 +1,4 @@
+import {submissionText} from './submission-controller.mjs';
 import {restoreResult} from './operation-outcome.mjs';
 import {mountRecoveryView} from './recovery-view.mjs';
 import {bindRestoreControls} from './restore-panel.mjs';
@@ -20,13 +21,21 @@ export function mountRestoreView(root, client, {language='en'}={}) {
       <div data-operation-result class="pcc-notice" role="status" aria-live="polite" hidden></div>
       <div data-validation-progress hidden role="status" aria-live="polite"></div>
       <div data-validation-notice class="pcc-notice" hidden role="status" aria-live="polite"></div>
+      <div data-submission class="pcc-notice" role="status" aria-live="polite" hidden><p data-submission-text></p>
+        <button type="button" data-submission-check hidden></button><button type="button" data-submission-retry hidden></button></div>
+      <button type="button" class="pcc-primary" data-restore-execute hidden disabled>${tx('Restore Configuration','Przywróć konfigurację')}</button>
       <button type="button" data-restore-action="cancel" hidden>${tx('Cancel Restore Preparation','Anuluj przygotowanie przywracania')}</button>
     </section>
     <section data-recovery hidden></section>
     <section class="pcc-card pcc-archive-card"><div class="pcc-heading"><h2>${tx('Select Backup Archive','Wybierz archiwum kopii zapasowej')}</h2></div>
       <div data-archive-list role="group" aria-label="${tx('Backup archives','Archiwa kopii zapasowych')}"></div>
       <p data-archive-message role="status">${tx('Loading archives…','Wczytywanie archiwów…')}</p>
-    </section>`;
+    </section>
+    <dialog data-restore-dialog class="pcc-notification-dialog pcc-password-dialog" aria-label="${tx('Confirm Restore','Potwierdź przywracanie')}"><form data-restore-confirm-form>
+      <h3>${tx('Confirm Restore','Potwierdź przywracanie')}</h3><p>${tx('This will replace the current Plex configuration. Plex will remain stopped.','Ta operacja zastąpi bieżącą konfigurację Plex. Plex pozostanie zatrzymany.')}</p>
+      <p><strong data-confirm-archive></strong></p><label>${tx('Type RESTORE to confirm','Wpisz RESTORE, aby potwierdzić')}<input data-confirm-restore autocomplete="off" spellcheck="false"></label>
+      <div class="pcc-dialog-actions"><button type="button" data-restore-dialog-cancel>${tx('Cancel','Anuluj')}</button><button type="submit" data-restore-dialog-confirm disabled>${tx('Restore','Przywróć')}</button></div>
+    </form></dialog>`;
   const find = selector => root.querySelector(selector);
   const list = find('[data-archive-list]');
   const message = find('[data-archive-message]');
@@ -37,6 +46,10 @@ export function mountRestoreView(root, client, {language='en'}={}) {
   const status = find('[data-plex-state]');
   const recovery=mountRecoveryView(find('[data-recovery]'),client,{language});
   const lifecycle = new AbortController();
+  const dialog=find('[data-restore-dialog]'),confirmationInput=find('[data-confirm-restore]');
+  let confirmed=null,disposeControls;
+  find('[data-submission-check]').textContent=tx('Check Status','Sprawdź stan');
+  find('[data-submission-retry]').textContent=tx('Retry Same Request','Ponów to samo żądanie');
   let selected = null, loading = false, archiveAvailable=false, statusTimer, currentState;
 
   const render = state => {
@@ -47,6 +60,16 @@ export function mountRestoreView(root, client, {language='en'}={}) {
     validate.disabled = view.validateDisabled||loading||!archiveAvailable;
     cancel.hidden = !view.cancelVisible;
     cancel.disabled = view.cancelDisabled;
+    const candidate=disposeControls?.prepareExecution();
+    find('[data-restore-execute]').hidden=!(state.snapshot?.capabilities?.restore_execute===true&&state.snapshot?.operation?.operation?.kind==='RESTORE'&&view.waiting);
+    find('[data-restore-execute]').disabled=!candidate||loading||!archiveAvailable||dialog.open;
+    find('[data-restore-dialog-confirm]').disabled=!candidate||loading||!archiveAvailable||confirmationInput.value!=='RESTORE'||
+      !confirmed||confirmed.archive!==candidate.archive||confirmed.sha256!==candidate.sha256;
+    find('[data-restore-dialog-cancel]').disabled=state.submission?.busy===true;
+    find('[data-submission-text]').textContent=submissionText(state.submission,language);
+    find('[data-submission]').hidden=!find('[data-submission-text]').textContent||(state.submission?.phase==='RUNNING'&&Boolean(view.notice));
+    find('[data-submission-check]').hidden=!state.submission?.canCheck;
+    find('[data-submission-retry]').hidden=!state.submission?.canRetry;
     for (const input of list.querySelectorAll('input')) {
       input.disabled = view.selectionDisabled||loading||!archiveAvailable;
       input.checked = input.value === selected;
@@ -57,7 +80,22 @@ export function mountRestoreView(root, client, {language='en'}={}) {
     progress.hidden = !view.progressText;
     progress.textContent = view.progressText;
   };
-  const disposeControls = bindRestoreControls(root, client, render);
+  disposeControls = bindRestoreControls(root, client, render);
+  find('[data-restore-execute]').addEventListener('click',()=>{
+    const candidate=disposeControls.prepareExecution();if(!candidate||loading||!archiveAvailable)return;
+    confirmed=candidate;find('[data-confirm-archive]').textContent=candidate.archive;
+    confirmationInput.value='';dialog.showModal();render(currentState);confirmationInput.focus();
+  },{signal:lifecycle.signal});
+  confirmationInput.addEventListener('input',()=>{if(currentState)render(currentState);},{signal:lifecycle.signal});
+  find('[data-restore-dialog-cancel]').addEventListener('click',()=>dialog.close(),{signal:lifecycle.signal});
+  dialog.addEventListener('cancel',event=>{if(currentState?.submission?.busy)event.preventDefault();},{signal:lifecycle.signal});
+  dialog.addEventListener('close',()=>{confirmed=null;confirmationInput.value='';if(!lifecycle.signal.aborted&&currentState)render(currentState);},{signal:lifecycle.signal});
+  find('[data-restore-confirm-form]').addEventListener('submit',async event=>{
+    event.preventDefault();if(!confirmed||loading||!archiveAvailable)return;
+    await disposeControls.execute(confirmed,confirmationInput.value);if(!lifecycle.signal.aborted)dialog.close();
+  },{signal:lifecycle.signal});
+  find('[data-submission-check]').addEventListener('click',()=>void disposeControls.checkSubmission(),{signal:lifecycle.signal});
+  find('[data-submission-retry]').addEventListener('click',()=>void disposeControls.retrySubmission(),{signal:lifecycle.signal});
 
   const loadArchives = async () => {
     if (loading) return;
@@ -107,6 +145,7 @@ export function mountRestoreView(root, client, {language='en'}={}) {
   void loadArchives(); void updatePlex();
   return () => {
     lifecycle.abort(); clearTimeout(statusTimer); disposeControls(); recovery.dispose();
+    if(dialog.open)dialog.close();
     root.replaceChildren(); root.classList.remove('pcc-restore');
   };
 }

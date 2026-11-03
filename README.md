@@ -863,8 +863,8 @@ and fixed status URL; they never interpret acceptance as completion.
 `TestApplication` additionally rejects any Web instance configured with one and
 continues blocking host-write routes. No privilege, API credential, general root
 shell, default worker architecture or live host action is added. The approved UI
-layout is unchanged; controller/button execution wiring awaits the authorised
-backend and its acceptance tests. HTTP and browser-client tests here use an inert
+layout is preserved; execution controls require an explicitly configured backend
+and its host acceptance tests. HTTP and browser-client tests here use an inert
 submission stub; they do not exercise real asynchronous host execution.
 
 ### Durable admission and replay protection
@@ -937,6 +937,43 @@ SQLite stores using a fake scoped host API. They cover HTTP admission/status,
 background lock ownership, replay, scoped factories, Restore failure retention,
 startup/shutdown and stale success suppression. This runner has not been tested
 on the NAS, in an unprivileged installed container, or across an actual reboot.
-The approved host-integration/permission design, execution button wiring and
-final app installation remain to be completed. The restricted runtime still
+Host integration and its permission design and final app installation remain to
+be completed. The restricted runtime still
 rejects any execution backend and grants no new capabilities.
+
+
+### Confirmed browser Backup/Restore submissions
+
+The approved panel views now wire their existing buttons to fixed submission
+requests, gated by server capabilities and current state. Backup creates a dated
+copy directly for zero or multiple archives; exactly one opens a themed yellow
+notification dialog offering another copy or confirmed replacement. The dialog
+retains the displayed full archive identity (including exact decimal inode and
+nanosecond values) and rejects stale choices. Restore exposes execution only for
+the validated selected archive/digest, confirmed STOPPED Plex and an enabled
+backend. Its themed dialog requires literal RESTORE and rechecks the displayed
+selection before submission. Read-only installations keep creation disabled and
+execution hidden; no privileged runtime is activated by these UI changes.
+
+The shared submission controller retains an immutable payload and cryptographic
+request identity for an uncertain response. It never retries a POST automatically.
+Explicit Check Status reads the authenticated exact-request ledger lookup;
+explicit Retry Same Request resends the original payload/identity so durable
+backend deduplication applies. A missing admission at one instant remains
+unconfirmed because an earlier POST may still complete. Late responses cannot
+replace a newer request or downgrade confirmed completion. Leaving a view cancels
+browser reads, not server-owned work. No token or ownership hash is displayed.
+
+`GET /api/execution/status?request_id=<32 lowercase hex characters>` is available
+only with an explicitly configured execution service/status lookup. It returns a
+whitelisted matching execution record or found=false; malformed, duplicate or
+extra query fields are rejected. A matching record can be inspected even after a
+different job becomes the latest. The default restricted runtime blocks this
+route. English and Polish notices distinguish sending, accepted, running,
+uncertain, failed and recovery states without invented progress. New notification
+actions wrap on narrow screens. Layout, themes and status-dot styling are retained.
+
+Local Python/JavaScript tests cover these control flows and request boundaries.
+The new enabled dialogs and retry actions have not yet been exercised in native
+browsers or on the user's NAS; full browser/host/container acceptance is still
+required before enabling the deployed execution backend.

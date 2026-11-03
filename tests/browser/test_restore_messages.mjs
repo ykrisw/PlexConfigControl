@@ -19,7 +19,7 @@ test('lost or contradictory Plex state never claims stopped readiness',()=>{
   assert.match(restorePresentation(source,'pl').notice,/Nie potwierdzono/);
   source.snapshot.readiness={ready:true,reason:null,plex:{state:'STOPPED',available:true}};
   const view=restorePresentation(source,'pl');
-  assert.match(view.notice,/Plex zatrzymany/);assert.match(view.notice,/nie jest jeszcze podłączone/);
+  assert.match(view.notice,/Plex zatrzymany/);assert.match(view.notice,/jest wyłączone/);
   assert.equal(view.validateDisabled,true);
 });
 
