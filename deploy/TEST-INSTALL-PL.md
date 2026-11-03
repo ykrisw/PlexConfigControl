@@ -8,7 +8,7 @@ Nie podłączaj do niej konfiguracji Plex, urządzeń ZFS ani gniazda Dockera.
 
 W repozytorium GitHub otwórz **Actions → Build test installation → Run workflow**
 i wybierz gałąź **main**. Aktualna paczka instalacyjna jest przygotowywana tylko
-przy takim ręcznym uruchomieniu. Zwykłe aktualizacje kodu uruchamiają testy,
+przy takim ręcznym uruchomieniu lub wyraźnie oznaczonym żądaniu przygotowania paczki przez autora (`[test-installer]`). Zwykłe aktualizacje kodu uruchamiają testy,
 ale nie tworzą kolejnej instalki.
 
 Poczekaj na zakończenie testów obrazu i przeglądarek, a następnie pobierz z sekcji
@@ -157,3 +157,6 @@ Pozwala to sprawdzać wyłącznie konkretny snapshot aplikacji we wskazanym data
 Nie odblokowuje tworzenia, usuwania ani rollbacku snapshotów i nie steruje Plexem.
 Brak uprawnień lub problem z odczytem oznacza stan nieznany, a nie potwierdzenie
 usunięcia. To opcja wdrożeniowa; aplikacja nie tworzy sama uprawnień ani konta API.
+
+Plik `BUILD-INFO.txt` wskazuje dokładny commit źródłowy i tryb testowy.
+`SHA256SUMS` obejmuje obraz, obie instrukcje oraz informacje o wydaniu.

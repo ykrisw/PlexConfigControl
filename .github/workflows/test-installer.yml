@@ -52,16 +52,27 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - name: Package test installation
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[test-installer]'))
         run: |
           mkdir -p dist
           docker save plexconfigcontrol:test | gzip > dist/PlexConfigControl-test-image.tar.gz
           cp deploy/TEST-INSTALL.md dist/TEST-INSTALL.md
           cp deploy/TEST-INSTALL-PL.md dist/TEST-INSTALL-PL.md
+          python - <<'PYINFO'
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          Path('dist/BUILD-INFO.txt').write_text(
+              'PlexConfigControl — restricted test installation\n'
+              + 'Source commit: ' + os.environ['GITHUB_SHA'] + '\n'
+              + 'Built (UTC): ' + datetime.now(timezone.utc).isoformat() + '\n'
+              + 'Backup/Restore execution and host mutations are disabled.\n'
+              + 'Follow TEST-INSTALL-PL.md or TEST-INSTALL.md.\n', encoding='utf-8')
+          PYINFO
           cd dist
-          sha256sum PlexConfigControl-test-image.tar.gz > SHA256SUMS
+          sha256sum PlexConfigControl-test-image.tar.gz TEST-INSTALL.md TEST-INSTALL-PL.md BUILD-INFO.txt > SHA256SUMS
       - uses: actions/upload-artifact@v4
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[test-installer]'))
         with:
           name: PlexConfigControl-test-installation
           path: |
@@ -69,6 +80,7 @@ jobs:
             dist/TEST-INSTALL.md
             dist/TEST-INSTALL-PL.md
             dist/SHA256SUMS
+            dist/BUILD-INFO.txt
           compression-level: 0
           retention-days: 30
 

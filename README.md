@@ -715,3 +715,10 @@ response does not itself become an idle logout or claimed successful password ch
 Tests inject credential-change/session-insert races and database cleanup failures.
 Browser CI also checks revocation in a second isolated browser context. These
 checks use disposable local account state and never modify a NAS account/password.
+
+
+Installer packaging may also be explicitly requested by a main-branch push whose
+commit message includes `[test-installer]`. Normal pushes still run tests without
+producing another installer. Packages include BUILD-INFO.txt with the exact source
+commit and checksums for the image, guides and build information. Restricted test
+mode and disabled host execution remain unchanged.
