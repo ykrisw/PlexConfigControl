@@ -1,3 +1,4 @@
+import {mountRecoveryView} from './recovery-view.mjs';
 import {createBackupController} from './backup-controller.mjs';
 
 export function mountBackupView(root,client,{language='en',timezone='Europe/London'}={}){
@@ -8,6 +9,7 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
     <section class="pcc-card pcc-backup-action"><div class="pcc-heading"><h2 data-create-heading></h2><button type="button" data-refresh></button></div>
       <p data-description></p><button type="button" class="pcc-primary" data-create disabled></button>
       <p data-execution-note></p><p data-plan></p></section>
+    <section data-recovery hidden></section>
     <section class="pcc-card pcc-archives"><div class="pcc-heading"><h2 data-existing></h2><button type="button" data-delete disabled></button></div>
       <p data-access-note hidden></p><p class="pcc-notice" data-notice role="status" aria-live="polite" hidden></p><p data-empty role="status"></p><div class="pcc-scroll-list" data-archives></div></section>
     <section class="pcc-card pcc-important"><div class="pcc-heading"><h2 data-important></h2><span data-count></span></div><p data-important-text></p></section>
@@ -27,9 +29,10 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
   };
   for(const [selector,text]of Object.entries(labels))find(selector).textContent=text;
   const dateFormat=new Intl.DateTimeFormat(pl?'pl-PL':'en-GB',{dateStyle:'medium',timeZone:timezone});
+  const recovery=mountRecoveryView(find('[data-recovery]'),client,{language});
   const lifecycle=new AbortController();let state,confirmation=[],disposed=false;
   function render(value){
-    state=value;const status=find('[data-plex-state]');status.dataset.plexState=value.plex;
+    state=value;recovery.observe(value.operation);const status=find('[data-plex-state]');status.dataset.plexState=value.plex;
     status.textContent=pl?({RUNNING:'DZIAŁA',STOPPED:'ZATRZYMANY',UNKNOWN:'NIEZNANY'})[value.plex]:value.plex;
     find('[data-refresh]').disabled=value.loading||value.busy||dialog.open;
     find('[data-delete]').disabled=!value.canDelete||!value.selected.length||value.selected.length>1000||value.loading||value.busy;
@@ -75,5 +78,5 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
   dialog.addEventListener('close',()=>{confirmation=[];if(!disposed)render(state);},options);
   find('[data-cancel]').addEventListener('click',()=>dialog.close(),options);
   find('[data-confirm]').addEventListener('click',async()=>{await controller.remove(confirmation);if(!disposed)dialog.close();},options);
-  return()=>{disposed=true;lifecycle.abort();controller.dispose();if(dialog.open)dialog.close();root.replaceChildren();root.classList.remove('pcc-backup');};
+  return()=>{disposed=true;lifecycle.abort();controller.dispose();recovery.dispose();if(dialog.open)dialog.close();root.replaceChildren();root.classList.remove('pcc-backup');};
 }

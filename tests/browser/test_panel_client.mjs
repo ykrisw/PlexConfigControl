@@ -159,3 +159,11 @@ test('photo removal transmits explicit confirmation and the displayed revision',
   await client.removePhoto('a'.repeat(64));
   assert.deepEqual(JSON.parse(calls[0].options.body),{confirmed:true,revision:'a'.repeat(64)});
 });
+
+
+test('recovery status uses only an authenticated same-origin GET',async()=>{
+  const {client,calls}=setup([[200,{snapshot_state:'UNKNOWN',removal_supported:false}]]);
+  assert.equal((await client.recovery()).snapshot_state,'UNKNOWN');
+  assert.equal(calls[0].path,'/api/recovery');assert.equal(calls[0].options.method,'GET');
+  assert.equal(calls[0].options.body,undefined);assert.equal(calls[0].options.credentials,'same-origin');
+});

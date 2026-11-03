@@ -22,11 +22,13 @@ from .restore_validation import RestoreValidation
 from .archives import InvalidArchive
 from .operations import OperationDenied
 from .restore_readiness import restore_readiness
+from .recovery_status import recovery_status
 from .profile_photo import ProfilePhoto,InvalidPhoto,PhotoChanged,MAX_UPLOAD
 
 class Web:
-    def __init__(self,state_directory,archive_directory=None,truenas_api=None,*,archive_deletion_enabled=True,archive_logs_enabled=True):
+    def __init__(self,state_directory,archive_directory=None,truenas_api=None,*,archive_deletion_enabled=True,archive_logs_enabled=True,recovery_inspector=None):
         self.state_directory=state_directory
+        self.recovery_inspector=recovery_inspector
         self.operation_store=StateStore(state_directory)
         self.progress=Progress(state_directory)
         self.plex=PlexStatus(truenas_api) if truenas_api is not None else None
@@ -66,6 +68,8 @@ class Web:
                 '/assets/history-view.mjs':'history-view.mjs',
                 '/assets/settings-controller.mjs':'settings-controller.mjs',
                 '/assets/settings-view.mjs':'settings-view.mjs',
+                '/assets/recovery-view.mjs':'recovery-view.mjs',
+                '/assets/recovery-controller.mjs':'recovery-controller.mjs',
                 '/assets/backup-controller.mjs':'backup-controller.mjs',
                 '/assets/backup-view.mjs':'backup-view.mjs',
                 '/assets/approved-appearance.css':'approved-appearance.css'}
@@ -200,6 +204,13 @@ class Web:
             return respond('200 OK',{'operation':state,'progress':self.progress.read(),
                                     'publication':describe_publication(self.state_directory),
                                     'archive_discovery':self.discovery.status() if self.discovery else None})
+        if path=='/api/recovery' and method=='GET':
+            try:
+                return respond('200 OK',recovery_status(self.operation_store,self.recovery_inspector))
+            except OperationBusy:
+                return respond('409 Conflict',{'error':'Another operation or recovery must finish'})
+            except Exception:
+                return respond('503 Service Unavailable',{'error':'Recovery status could not be confirmed'})
         if path=='/api/status' and method=='GET':
             status=self.plex.read() if self.plex else {
                 'state':'UNKNOWN','available':False,'restore_allowed':False,'checked_at':None}

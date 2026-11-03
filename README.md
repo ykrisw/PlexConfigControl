@@ -330,3 +330,29 @@ report. Rollback independently verifies the Plex application identity as well as
 STOPPED state. Snapshot readers also reject malformed query entries before opening
 any source. Tests cover these cases with simulated APIs; recovery controls remain
 unconnected to the restricted web runtime pending verified host integration.
+
+
+## Read-only recovery status in Backup and Restore
+
+Both panels now mount the same recovery notice, visible only when operation
+state is RECOVERY_REQUIRED. The notice uses the active theme, notification border,
+English/Polish text and the recorded snapshot identity; it distinguishes PRESENT,
+ABSENT, UNKNOWN and no recorded snapshot. A retained Restore snapshot displays
+an explicit warning about losing the rollback point. No-snapshot recovery still
+warns that archive publication or temporary-file verification may be outstanding.
+
+Authenticated `GET /api/recovery` defaults to UNKNOWN for a recorded snapshot
+when no verified host inspector is configured. A deployment can inject only a
+read-only `Recovery.inspect` adapter. The endpoint always advertises removal
+unsupported and unavailable; there is no removal POST route or arbitrary host
+command interface. The restricted runtime permits this read but does not acquire
+snapshot permissions or infer snapshot absence from an unavailable connection.
+
+The UI has a refresh-status button, periodic reads while recovery is visible,
+request identity checks and disposal guards. Lost operation/status reads clear
+previous confirmed data; late replies cannot redraw a different snapshot or a
+logged-out panel. Normal panel layout is unchanged when recovery is not required.
+Tests cover authentication, unexpected adapter replies, missing host integration,
+controller races and simulated recovery intent inside disposable browser fixtures.
+Actual confirmed snapshot removal remains to be connected after host integration
+is authorized and verified; the informational view does not perform cleanup.

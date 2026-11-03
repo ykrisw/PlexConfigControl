@@ -87,3 +87,5 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
  .pcc-shell .pcc-event-row{gap:8px;padding:8px}
  .pcc-shell .pcc-event-status{font-size:11px;padding:3px 6px}
 }
+
+.pcc-shell [data-recovery-snapshot]{overflow-wrap:anywhere}

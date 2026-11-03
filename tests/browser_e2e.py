@@ -157,6 +157,27 @@ def main():
             history.locator('[data-clear]').click()
             expect(history.locator('dialog')).to_be_visible()
             history.locator('[data-cancel]').click()
+            # Synthetic retained intent only: no snapshot is created on a NAS.
+            docker('exec',name,'python','-c',
+                "from plexconfigcontrol.state import StateStore; from plexconfigcontrol.operations import Phase; "
+                "s=StateStore('/var/lib/plexconfigcontrol'); "
+                "ctx=s.transaction(); op=ctx.__enter__(); op.phase=Phase.RECOVERY_REQUIRED; "
+                "op.kind='BACKUP'; op.snapshot_id='test/config@pcc-backup-'+'a'*32; ctx.__exit__(None,None,None)")
+            for tab_name,panel in (('Backup',backup),('Restore',restore)):
+                page.get_by_role('tab',name=tab_name,exact=True).click()
+                recovery=panel.locator('[data-recovery]')
+                expect(recovery).to_be_visible()
+                expect(recovery.locator('[data-recovery-title]')).to_have_text('Recovery required')
+                expect(recovery.locator('[data-recovery-status]')).to_contain_text('could not be confirmed')
+                expect(recovery.locator('[data-recovery-limit]')).to_contain_text('removal is unavailable')
+                recovery.locator('[data-recovery-refresh]').click()
+                expect(recovery.locator('[data-recovery-status]')).to_contain_text('could not be confirmed')
+                assert recovery.locator('button').count()==1
+            docker('exec',name,'python','-c',
+                "from plexconfigcontrol.state import StateStore; from plexconfigcontrol.operations import Phase; "
+                "s=StateStore('/var/lib/plexconfigcontrol'); ctx=s.transaction(); op=ctx.__enter__(); "
+                "op.phase=Phase.FAILED; op.snapshot_id=None; ctx.__exit__(None,None,None)")
+            expect(restore.locator('[data-recovery]')).to_be_hidden()
             page.get_by_role('tab',name='Settings',exact=True).click()
             settings=page.locator('[data-panel=settings]')
             settings.locator('[data-theme-choice=Dark]').click()

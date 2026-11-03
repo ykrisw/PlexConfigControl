@@ -1,3 +1,4 @@
+import {mountRecoveryView} from './recovery-view.mjs';
 import {bindRestoreControls} from './restore-panel.mjs';
 import {restorePresentation,restoreError} from './restore-messages.mjs';
 
@@ -19,6 +20,7 @@ export function mountRestoreView(root, client, {language='en'}={}) {
       <div data-validation-notice class="pcc-notice" hidden role="status" aria-live="polite"></div>
       <button type="button" data-restore-action="cancel" hidden>${tx('Cancel Restore Preparation','Anuluj przygotowanie przywracania')}</button>
     </section>
+    <section data-recovery hidden></section>
     <section class="pcc-card pcc-archive-card"><div class="pcc-heading"><h2>${tx('Select Backup Archive','Wybierz archiwum kopii zapasowej')}</h2></div>
       <div data-archive-list role="group" aria-label="${tx('Backup archives','Archiwa kopii zapasowych')}"></div>
       <p data-archive-message role="status">${tx('Loading archives…','Wczytywanie archiwów…')}</p>
@@ -31,11 +33,12 @@ export function mountRestoreView(root, client, {language='en'}={}) {
   const validate = find('[data-restore-action="validate"]');
   const cancel = find('[data-restore-action="cancel"]');
   const status = find('[data-plex-state]');
+  const recovery=mountRecoveryView(find('[data-recovery]'),client,{language});
   const lifecycle = new AbortController();
   let selected = null, loading = false, archiveAvailable=false, statusTimer, currentState;
 
   const render = state => {
-    currentState = state;
+    currentState = state;recovery.observe(state.snapshot?.operation);
     selected = state.selected;
     const view=restorePresentation(state,language);
     validate.disabled = view.validateDisabled||loading||!archiveAvailable;
@@ -100,7 +103,7 @@ export function mountRestoreView(root, client, {language='en'}={}) {
   root.addEventListener('click', refreshArchives, {signal: lifecycle.signal});
   void loadArchives(); void updatePlex();
   return () => {
-    lifecycle.abort(); clearTimeout(statusTimer); disposeControls();
+    lifecycle.abort(); clearTimeout(statusTimer); disposeControls(); recovery.dispose();
     root.replaceChildren(); root.classList.remove('pcc-restore');
   };
 }

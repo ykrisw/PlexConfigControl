@@ -10,7 +10,7 @@ export function createBackupController(client,render,{schedule=setTimeout,cancel
   function canDelete(){return available&&capabilities.archive_delete===true&&operation&&
     ['IDLE','SUCCESS','FAILED'].includes(operation.operation?.phase)&&!operation.operation.snapshot_id&&operation.publication?.status==='NONE';}
   function emit(){if(!disposed)render({entries:entries.map(row=>({...row})),selected:[...selected],available,loading,busy,plex,error,notice,
-    canDelete:Boolean(canDelete()),deletionEnabled:capabilities.archive_delete===true,plan:plan?structuredClone(plan):null});}
+    operation:operation?structuredClone(operation):null,canDelete:Boolean(canDelete()),deletionEnabled:capabilities.archive_delete===true,plan:plan?structuredClone(plan):null});}
   async function refresh(){
     if(disposed||loading||busy)return;
     cancel(timer);loading=true;emit();

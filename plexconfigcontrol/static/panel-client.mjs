@@ -126,6 +126,7 @@ export class PanelClient {
   cancelRestore(signal) {
     return this.request('/api/restore/cancel', {body: {}, signal});
   }
+  recovery(signal) { return this.request('/api/recovery', {signal}); }
   operation(signal) { return this.request('/api/operation', {signal}); }
   archives(signal) { return this.request('/api/archives', {signal}); }
   status(signal) { return this.request('/api/status', {signal}); }

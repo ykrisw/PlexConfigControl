@@ -53,7 +53,7 @@ class ReadOnlyTrueNAS:
 class TestApplication:
     """Explicit route boundary even if future Web routes add host operations."""
     READS={'/api/session','/api/settings','/api/translations','/api/status',
-           '/api/operation','/api/archives','/api/history','/api/restore/readiness',
+           '/api/operation','/api/recovery','/api/archives','/api/history','/api/restore/readiness',
            '/api/capabilities','/api/backup/plan','/api/account/photo','/api/account/photo/status'}
     POSTS={'/api/login','/api/logout','/api/account/password','/api/settings',
            '/api/history/detail','/api/history/download','/api/history/clear',
