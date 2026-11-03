@@ -752,4 +752,8 @@ snapshot isolation and rollback of file contents, mode and an extra file. The
 initial diagnostic mishandled an empty successful snapshot-deletion response;
 independent queries confirmed deletion and subsequent dataset cleanup. These are
 environment checks, not full application Backup/Restore acceptance. The host smoke
-test above has not yet been run on the user's NAS.
+test reached application snapshot creation, persisted intent, read-only access and
+foreign-dataset rejection on the user's NAS. Deletion then exposed a second
+diagnostic adapter parsing issue: midclt returned nonempty, non-JSON text. The
+adapter now ignores mutation stdout and confirms state via strict JSON queries;
+full host smoke completion and cleanup of that second sandbox remain unconfirmed.

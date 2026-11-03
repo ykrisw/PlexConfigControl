@@ -1,4 +1,6 @@
 import subprocess
+import json
+import tempfile
 import unittest
 from unittest.mock import Mock
 
@@ -51,3 +53,62 @@ class HostAdapterTests(unittest.TestCase):
                         'TrueNAS/pcc-test-'+'a'*32+'/child'):
             with self.subTest(dataset=dataset), self.assertRaises(ValueError):
                 SandboxAPI(dataset)
+
+    def test_snapshot_remove_handles_python_scalar_then_confirms_absence(self):
+        from plexconfigcontrol.state import StateStore
+        from plexconfigcontrol.snapshots import Snapshots
+        dataset = 'TrueNAS/pcc-test-'+'a'*32
+        name = 'pcc-backup-'+'b'*32
+        identifier = dataset+'@'+name
+        for scalar in ('True\n', 'False\n', 'None\n', '', 'null\n'):
+            with self.subTest(output=scalar), tempfile.TemporaryDirectory() as root:
+                store = StateStore(root)
+                with store.transaction() as operation:
+                    operation.begin('BACKUP')
+                    operation.begin_backup()
+                    operation.record_snapshot_intent(dataset, name)
+                runner = Mock(side_effect=[
+                    subprocess.CompletedProcess([], 0, json.dumps([{'id':identifier}]), ''),
+                    subprocess.CompletedProcess([], 0, scalar, ''),
+                    subprocess.CompletedProcess([], 0, '[]', ''),
+                ])
+                api = SandboxAPI(dataset, runner)
+                api.owned_snapshots.add(identifier)
+                Snapshots(api, store, dataset).remove()
+                with store.transaction() as operation:
+                    self.assertIsNone(operation.snapshot_id)
+                self.assertEqual(runner.call_count, 3)
+
+    def test_successful_delete_output_does_not_clear_intent_if_query_still_finds_snapshot(self):
+        from plexconfigcontrol.state import StateStore
+        from plexconfigcontrol.snapshots import Snapshots, SnapshotError
+        dataset = 'TrueNAS/pcc-test-'+'a'*32
+        name = 'pcc-backup-'+'b'*32
+        identifier = dataset+'@'+name
+        with tempfile.TemporaryDirectory() as root:
+            store = StateStore(root)
+            with store.transaction() as operation:
+                operation.begin('BACKUP')
+                operation.begin_backup()
+                operation.record_snapshot_intent(dataset, name)
+            present = json.dumps([{'id':identifier}])
+            runner = Mock(side_effect=[
+                subprocess.CompletedProcess([], 0, present, ''),
+                subprocess.CompletedProcess([], 0, 'True\n', ''),
+                subprocess.CompletedProcess([], 0, present, ''),
+            ])
+            api = SandboxAPI(dataset, runner)
+            api.owned_snapshots.add(identifier)
+            with self.assertRaises(SnapshotError):
+                Snapshots(api, store, dataset).remove()
+            with store.transaction() as operation:
+                self.assertEqual(operation.snapshot_id, identifier)
+
+    def test_empty_or_python_scalar_query_is_not_a_json_absence_result(self):
+        dataset = 'TrueNAS/pcc-test-'+'a'*32
+        for output in ('', 'True\n', 'None\n'):
+            with self.subTest(output=output):
+                api = SandboxAPI(dataset, Mock(return_value=
+                    subprocess.CompletedProcess([], 0, output, '')))
+                with self.assertRaises(ValueError):
+                    api.call('pool.dataset.query', [['id', '=', dataset]])

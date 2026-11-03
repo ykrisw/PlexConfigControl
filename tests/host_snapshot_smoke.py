@@ -58,9 +58,13 @@ class SandboxAPI:
                              text=True, capture_output=True, timeout=90)
         if result.returncode:
             raise RuntimeError(method + ' failed: ' + result.stderr.strip())
-        # Void midclt methods can succeed with no output. Never infer absence
-        # from that: application modules perform an independent exact query.
-        return json.loads(result.stdout) if result.stdout.strip() else None
+        # midclt renders scalar results as Python text (e.g. True), and
+        # void results can be empty. Mutation output is not an absence proof.
+        # Callers independently query the exact dataset/snapshot afterwards.
+        # Keep read queries strict: empty or malformed output is never absence.
+        if method in ('app.query', 'pool.dataset.query', 'pool.snapshot.query'):
+            return json.loads(result.stdout)
+        return None
 
 
 def write(path, data, *, new=False):
