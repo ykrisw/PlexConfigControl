@@ -81,7 +81,7 @@ def main():
                 # Only this disposable browser accepts this fixture's generated
                 # certificate. The host-side health probe verifies it above.
                 context.new_cdp_session(page).send('Security.setIgnoreCertificateErrors',{'ignore':True})
-            open_fixture(page,base);page.locator('.pcc-login input').fill(password)
+            open_fixture(page,base,ready_selector='.pcc-login input');page.locator('.pcc-login input').fill(password)
             page.get_by_role('button',name='Sign In',exact=True).click()
             expect(page.locator('.pcc-nav')).to_be_visible()
             dashboard=page.locator('[data-panel=dashboard]')
@@ -337,7 +337,7 @@ def main():
             other_page=other_context.new_page();other_page.set_default_timeout(12000)
             if engine!='firefox':
                 other_context.new_cdp_session(other_page).send('Security.setIgnoreCertificateErrors',{'ignore':True})
-            open_fixture(other_page,base)
+            open_fixture(other_page,base,ready_selector='.pcc-login input')
             other_page.locator('.pcc-login input').fill(password)
             other_page.get_by_role('button',name='Sign In',exact=True).click()
             expect(other_page.locator('.pcc-nav')).to_be_visible()

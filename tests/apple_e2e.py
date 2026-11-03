@@ -170,7 +170,13 @@ def exercise(driver, fixture, output, *, mobile):
             heights.append(section.size['height'])
             for selector in ('[data-archives]','[data-archive-list]','[data-events]'):
                 for scroller in section.find_elements(By.CSS_SELECTOR,selector):
-                    assert driver.execute_script('return arguments[0].scrollHeight>arguments[0].clientHeight',scroller)
+                    # Language/theme changes remount views before their async
+                    # archive/history reads finish. A visible empty list is not
+                    # yet a valid scroll fixture. Keep the real geometry check.
+                    item='.pcc-event-row' if selector=='[data-events]' else '.pcc-archive-row'
+                    minimum=20 if selector=='[data-events]' else 14
+                    wait.until(lambda _:len(scroller.find_elements(By.CSS_SELECTOR,item))>=minimum)
+                    wait.until(lambda _:driver.execute_script('return arguments[0].scrollHeight>arguments[0].clientHeight',scroller))
                     driver.execute_script('arguments[0].scrollTop=arguments[0].scrollHeight',scroller)
                     assert driver.execute_script('return arguments[0].scrollTop>0',scroller)
                     driver.execute_script('arguments[0].scrollTop=0',scroller)

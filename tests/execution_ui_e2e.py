@@ -105,7 +105,7 @@ class FixtureAPI:
             module='backup-view' if self.panel=='backup' else 'restore-view'
             html=f'''<!doctype html><html lang="{self.language}"><head><meta name="viewport" content="width=device-width,initial-scale=1">
                 <link rel="stylesheet" href="/assets/panel-layout.css"><link rel="stylesheet" href="/assets/panel-app.css"></head>
-                <body><div class="pcc-shell" data-theme="{self.theme}"><main class="pcc-content"><section id="fixture" class="pcc-page" data-panel="{self.panel}" data-theme="{self.theme}"></section></main></div>
+                <body><div class="pcc-shell" data-theme="{self.theme}"><main class="pcc-main"><section id="fixture" class="pcc-page" data-panel="{self.panel}" data-theme="{self.theme}"></section></main></div>
                 <script type="module">import {{PanelClient}} from '/assets/panel-client.mjs';
                 import {{{mount}}} from '/assets/{module}.mjs';const client=new PanelClient();client.csrf='fixture-only-csrf';
                 window.disposeFixture={mount}(document.getElementById('fixture'),client,{{language:'{self.language}'}});</script></body></html>'''

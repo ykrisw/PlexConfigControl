@@ -1009,3 +1009,28 @@ download did not yield a valid archive. The previous revision's Linux browser
 workflow was queued when checked. Passing Python/JavaScript unit tests must not
 be reported as a native-browser pass; CI results for this suite are still needed.
 Installer packaging remains manual-only; these workflow changes add tests only.
+
+
+### Browser CI follow-up: bootstrap and loaded-list timing
+
+Inspection of run `41727527763` for commit
+`2445550da5c8935de52e9060e321f7a281063c31` found that the unit workflow passed;
+the existing Chromium, Linux Firefox, macOS Firefox and Android jobs/checks also
+passed. Edge failed before sign-in because initial JavaScript-module GETs had
+ERR_NETWORK_CHANGED; Safari macOS failed an immediate archive-list overflow
+assertion after language remount. Its failure HTML/screenshot subsequently
+contained 14 rows and a visible working scrollbar, identifying the unloaded-list
+race rather than evidence of a missing scrollbar. These are partial results,
+not an all-browser pass; the new execution-dialog suite was not reached by the
+failed Linux job.
+
+The local-fixture navigation helper now optionally waits for the login input and
+allows at most three root GET attempts only after a matching transient initial
+navigation/local asset failure. It refuses retries after any observed non-GET/HEAD
+request, for unrelated origin/API failures, or for product failures without that
+transient evidence. Both login-context bootstraps use this check; application
+POSTs are never retried. Apple tests now await the full archive/history fixture
+rows and actual overflow before testing scrollTop; they retain the overflow and
+scroll assertions. The intercepted execution-UI fixture now uses the real
+pcc-main geometry class. These changes have local regression/syntax checks;
+corrected Edge/Safari/native-dialog results still require a new CI run.
