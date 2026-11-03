@@ -89,7 +89,7 @@ class Backup:
                     # Persist staging identity before destination file creation.
                     def intent(stage):
                         if overwrite is None:
-                            publication_intent.record(self.state,stage,name)
+                            publication_intent.record(self.state,stage,name,result.sha256)
                         else:
                             publication_intent.record_replacement(
                                 self.state, stage, name, result.sha256,

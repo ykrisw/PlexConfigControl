@@ -49,6 +49,22 @@ class Progress:
             db.execute('UPDATE progress SET stage=?,done=?,total=?,updated=?,finished=? WHERE id=1',
                        (stage,done,total,now,now if terminal else None))
 
+    def resolve_cleanup(self):
+        """Keep the failed operation's original end time; never report success.
+
+        Caller holds the operation lock and has verified publication recovery.
+        Retrying after the durable state checkpoint is harmless.
+        """
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            row = db.execute('SELECT * FROM progress WHERE id=1').fetchone()
+            if row is None:
+                return
+            if (row['operation'] != 'BACKUP' or row['finished'] is None
+                    or row['stage'] not in ('FAILED', 'CLEANUP_REQUIRED')):
+                raise ValueError('Unexpected progress during publication recovery')
+            db.execute("UPDATE progress SET stage='FAILED' WHERE id=1")
+
     def read(self,now=None):
         now=time.time() if now is None else now
         with self.connect() as db:

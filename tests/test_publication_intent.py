@@ -64,3 +64,14 @@ class PublicationIntentTests(unittest.TestCase):
             (Path(d)/intent.MARKER).symlink_to(Path(d)/'missing')
             self.assertTrue(intent.pending(d))
             with self.assertRaises(FileExistsError): intent.record(d,STAGE,ARCHIVE)
+
+    def test_digest_is_private_durable_and_invalid_digest_creates_nothing(self):
+        with tempfile.TemporaryDirectory() as d:
+            for digest in ('x'*64, '', 123, 'a'*63, 'A'*64):
+                with self.assertRaises(ValueError): intent.record(d, STAGE, ARCHIVE, digest)
+            self.assertFalse(intent.pending(d))
+            intent.record(d, STAGE, ARCHIVE, 'a'*64)
+            self.assertEqual(intent.read(d), {'stage':STAGE,'archive':ARCHIVE,'sha256':'a'*64})
+            self.assertEqual(intent.describe(d)['status'], 'VERIFICATION_REQUIRED')
+            (Path(d)/intent.MARKER).write_text(STAGE+'\n'+ARCHIVE+'\nnot-a-digest\n')
+            self.assertEqual(intent.describe(d)['status'], 'RECORD_UNREADABLE')

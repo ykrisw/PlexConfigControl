@@ -8,16 +8,18 @@ from .archive_store import NAME
 MARKER = 'publication-intent.txt'
 REPLACEMENT_MARKER = 'replacement-intent.json'
 
-def record(directory, stage, archive):
+def record(directory, stage, archive, sha256=None):
     if not re.fullmatch(r'\.pcc-[0-9a-f]{32}\.tmp', stage) or not NAME.fullmatch(archive):
         raise ValueError('Invalid publication identity')
+    if sha256 is not None and (not isinstance(sha256, str) or not re.fullmatch(r'[0-9a-f]{64}', sha256)):
+        raise ValueError('Invalid publication digest')
     parent = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
         # Never truncate an outstanding record, including one from a failed run.
         fd = os.open(MARKER, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
                      0o600, dir_fd=parent)
         with os.fdopen(fd, 'w') as output:
-            output.write(stage + '\n' + archive + '\n')
+            output.write(stage + '\n' + archive + '\n' + (sha256 + '\n' if sha256 is not None else ''))
             output.flush()
             os.fsync(output.fileno())
         # The marker's directory entry must also survive before staging starts.
@@ -57,30 +59,38 @@ def describe(directory):
         except (OSError, ValueError, UnicodeError):
             return blocked
     try:
-        parent = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-        try:
-            try:
-                fd = os.open(MARKER, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
-                             dir_fd=parent)
-            except FileNotFoundError:
-                return {'pending': False, 'status': 'NONE',
-                        'archive': None, 'temporary_file': None}
-            with os.fdopen(fd, 'rb') as source:
-                info = os.fstat(source.fileno())
-                if not stat.S_ISREG(info.st_mode) or info.st_size > 512:
-                    return blocked
-                payload = source.read(513)
-        finally:
-            os.close(parent)
-        lines = payload.decode('ascii').splitlines()
-        if (len(payload) > 512 or len(lines) != 2 or
-                not re.fullmatch(r'\.pcc-[0-9a-f]{32}\.tmp', lines[0]) or
-                not NAME.fullmatch(lines[1])):
-            return blocked
+        item = read(directory)
         return {'pending': True, 'status': 'VERIFICATION_REQUIRED',
-                'archive': lines[1], 'temporary_file': lines[0]}
-    except (OSError, UnicodeError):
+                'archive': item['archive'], 'temporary_file': item['stage']}
+    except FileNotFoundError:
+        if os.path.lexists(os.path.join(directory, MARKER)):
+            return blocked
+        return {'pending': False, 'status': 'NONE',
+                'archive': None, 'temporary_file': None}
+    except (OSError, ValueError, UnicodeError):
         return blocked
+
+
+def read(directory):
+    """Accept old two-line records for diagnosis, without inventing a digest."""
+    parent = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        fd = os.open(MARKER, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
+        with os.fdopen(fd, 'rb') as source:
+            info = os.fstat(source.fileno())
+            if not stat.S_ISREG(info.st_mode) or info.st_size > 512:
+                raise ValueError('Invalid publication record file')
+            payload = source.read(513)
+    finally:
+        os.close(parent)
+    lines = payload.decode('ascii').splitlines()
+    if (len(payload) > 512 or len(lines) not in (2, 3)
+            or not re.fullmatch(r'\.pcc-[0-9a-f]{32}\.tmp', lines[0])
+            or not NAME.fullmatch(lines[1])
+            or (len(lines) == 3 and not re.fullmatch(r'[0-9a-f]{64}', lines[2]))):
+        raise ValueError('Invalid publication identity')
+    return {'stage': lines[0], 'archive': lines[1],
+            'sha256': lines[2] if len(lines) == 3 else None}
 
 
 def _validate_replacement(item):

@@ -76,7 +76,10 @@ class ArchiveStore:
             raise ValueError('Select archives and explicitly confirm deletion')
         if len({item.name for item in selected}) != len(selected):
             raise ValueError('Duplicate selection')
+        from .publication_intent import pending
         with operation_lock(self.state_directory):
+            if pending(self.state_directory):
+                raise OperationBusy('Archive publication requires recovery before deletion')
             with self.state.transaction() as operation:
                 if operation.snapshot_id or operation.phase not in (Phase.IDLE,Phase.SUCCESS,Phase.FAILED):
                     raise OperationBusy('Operation or recovery must finish before archive deletion')

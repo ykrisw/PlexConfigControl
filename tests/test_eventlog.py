@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from datetime import datetime, timezone
+from unittest.mock import patch
 from plexconfigcontrol.eventlog import EventLog
 
 STAMP = datetime(2026,11,3,4,15,35,tzinfo=timezone.utc)
@@ -31,3 +32,10 @@ class LogTests(unittest.TestCase):
             (root/'Logs').symlink_to(root/'real',target_is_directory=True)
             with self.assertRaises(OSError): EventLog(root/'Logs','Backup',STAMP)
             self.assertEqual(list((root/'real').iterdir()),[])
+
+    def test_directory_entry_must_be_durable_before_using_log(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch('plexconfigcontrol.eventlog.os.fsync', side_effect=OSError('disk')):
+                with self.assertRaises(OSError): EventLog(directory, 'Recovery', STAMP)
+            # The failed log is never silently overwritten on retry.
+            with self.assertRaises(FileExistsError): EventLog(directory, 'Recovery', STAMP)
