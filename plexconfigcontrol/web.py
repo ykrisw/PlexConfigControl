@@ -19,6 +19,7 @@ from .backup_plan import plan_backup
 from .restore_validation import RestoreValidation
 from .archives import InvalidArchive
 from .operations import OperationDenied
+from .restore_readiness import restore_readiness
 
 class Web:
     def __init__(self,state_directory,archive_directory=None,truenas_api=None):
@@ -26,6 +27,7 @@ class Web:
         self.operation_store=StateStore(state_directory)
         self.progress=Progress(state_directory)
         self.plex=PlexStatus(truenas_api) if truenas_api is not None else None
+        self.truenas_api=truenas_api
         self.archives=ArchiveStore(archive_directory,state_directory) if archive_directory else None
         self.account=Account(state_directory)
         self.sessions=Sessions(state_directory)
@@ -123,6 +125,12 @@ class Web:
             except OSError:
                 return respond('503 Service Unavailable',{'error':'Archive location is unavailable'})
             return respond('200 OK',plan)
+        if path=='/api/restore/readiness' and method=='GET':
+            try:
+                result=restore_readiness(self.operation_store,self.state_directory,self.truenas_api)
+            except OperationBusy:
+                return respond('409 Conflict',{'error':'Another operation is running'})
+            return respond('200 OK',result)
         if path in ('/api/restore/validate','/api/restore/cancel') and method=='POST':
             if self.archives is None:
                 return respond('503 Service Unavailable',{'error':'Archive location is not configured'})
