@@ -5,7 +5,8 @@ from pathlib import Path
 
 STAGES = {'PREPARING','CREATING_SNAPSHOT','CREATING_ARCHIVE','VERIFYING_ARCHIVE',
           'WAITING_FOR_PLEX_STOP','RESTORING','VERIFYING_RESTORE','ROLLING_BACK',
-          'REMOVING_SNAPSHOT','COMPLETED','FAILED','CLEANUP_REQUIRED'}
+          'REMOVING_SNAPSHOT','COMPLETED','FAILED','CLEANUP_REQUIRED',
+          'READING_ARCHIVE','CHECKING_GZIP','CANCELLED'}
 
 class Progress:
     def __init__(self,state_directory):
@@ -37,7 +38,7 @@ class Progress:
         if total is not None and (type(total) is not int or total<=0 or done>total):
             raise ValueError('Invalid total')
         now=time.time() if now is None else now
-        terminal=stage in ('COMPLETED','FAILED','CLEANUP_REQUIRED')
+        terminal=stage in ('COMPLETED','FAILED','CLEANUP_REQUIRED','CANCELLED')
         with self.connect() as db:
             db.execute('BEGIN IMMEDIATE')
             row=db.execute('SELECT * FROM progress WHERE id=1').fetchone()
