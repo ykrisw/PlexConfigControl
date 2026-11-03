@@ -1,0 +1,27 @@
+/* Shared geometry agreed for Dashboard, Backup, Restore, History and Settings. */
+.pcc-shell{--pcc-content-height:820px;--pcc-inset:18px;--pcc-gap:14px;--pcc-bg:#f1f3f8;--pcc-card:#fff;--pcc-ink:#172438;--pcc-line:#d4dfed;--pcc-selected:#f2f7fd;font:14px/1.5 Arial,sans-serif;background:var(--pcc-bg);color:var(--pcc-ink);border-radius:20px}
+.pcc-shell *{box-sizing:border-box}.pcc-shell [hidden]{display:none!important}
+.pcc-shell .pcc-header{background:#222932;color:#f4f6fa;border-radius:20px 20px 0 0}
+.pcc-shell .pcc-brand{display:flex;align-items:center;gap:12px;font-size:23px;font-weight:700;padding:18px 22px 12px}
+.pcc-shell .pcc-logo{width:20px;height:24px;color:#ffbf00;flex-shrink:0}
+.pcc-shell .pcc-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:0 20px}
+.pcc-shell .pcc-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:60px;border:0;border-bottom:3px solid transparent;background:none;color:#e5e9ef;font:600 14px Arial,sans-serif;cursor:pointer}
+.pcc-shell .pcc-nav button[aria-selected=true]{border-bottom-color:#56bcfa;color:#fff}
+.pcc-shell .pcc-nav svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5}
+.pcc-shell .pcc-main{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(var(--pcc-content-height),auto);padding:14px var(--pcc-inset) 18px}
+.pcc-shell .pcc-page{grid-area:1/1;min-width:0;display:flex;flex-direction:column;gap:var(--pcc-gap)}
+.pcc-shell .pcc-page>.pcc-card,.pcc-shell .pcc-page>.pcc-plex{margin:0;flex-shrink:0;background:var(--pcc-card);border-radius:15px;padding:18px}
+.pcc-shell .pcc-page>.pcc-plex{display:flex;justify-content:space-between;align-items:center;min-height:45px;padding:10px 18px}
+.pcc-shell .pcc-page>.pcc-fill{flex:1;min-height:0}
+/* The archive card grows in Backup; Important keeps its natural height. */
+.pcc-shell .pcc-page[data-panel=dashboard]>.pcc-account,
+.pcc-shell .pcc-page[data-panel=backup]>.pcc-archives,
+.pcc-shell .pcc-page[data-panel=restore]>.pcc-archive-card,
+.pcc-shell .pcc-page[data-panel=history]>.pcc-events,
+.pcc-shell .pcc-page[data-panel=settings]>.pcc-about{flex:1}
+.pcc-shell .pcc-account{display:flex;flex-direction:column;align-items:center}
+.pcc-shell .pcc-account-actions{align-self:stretch;margin-top:auto}
+.pcc-shell button:focus-visible{outline:3px solid #55b9f4;outline-offset:3px}
+.pcc-shell[data-theme=dark]{--pcc-bg:#151d28;--pcc-card:#222d3b;--pcc-ink:#f1f4f8;--pcc-line:#435268;--pcc-selected:#203b56}
+@media(prefers-color-scheme:dark){.pcc-shell[data-theme=system]{--pcc-bg:#151d28;--pcc-card:#222d3b;--pcc-ink:#f1f4f8;--pcc-line:#435268;--pcc-selected:#203b56}}
+@media(max-width:600px){.pcc-shell{--pcc-inset:12px}.pcc-shell .pcc-brand{font-size:20px}.pcc-shell .pcc-nav{padding:0 5px}.pcc-shell .pcc-nav button{font-size:12px}}
