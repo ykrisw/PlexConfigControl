@@ -30,6 +30,7 @@ class Operation:
     kind: str | None = None
     archive_identity: str | None = None
     snapshot_id: str | None = None
+    validation_details: dict | None = None
 
     def begin(self, kind: str) -> None:
         if kind not in ('BACKUP', 'RESTORE'):
@@ -38,6 +39,7 @@ class Operation:
             raise OperationDenied('Previous operation is unresolved')
         self.kind = kind
         self.archive_identity = None
+        self.validation_details = None
         self.phase = Phase.VALIDATING
 
     def archive_validated(self, identity: str) -> None:
