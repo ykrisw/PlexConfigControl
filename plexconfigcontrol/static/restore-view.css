@@ -1,11 +1,11 @@
-.pcc-restore{--pcc-bg:#f1f3f8;--pcc-card:#fff;--pcc-ink:#172438;--pcc-line:#d4dfed;--pcc-selected:#f2f7fd;--pcc-blue:#286eae;box-sizing:border-box;min-height:820px;padding:14px 18px 18px;display:flex;flex-direction:column;gap:14px;background:var(--pcc-bg);color:var(--pcc-ink);font:14px/1.5 Arial,sans-serif}
+.pcc-restore{--pcc-bg:#f1f3f8;--pcc-card:#fff;--pcc-ink:#000000;--pcc-line:#d4dfed;--pcc-selected:#f2f7fd;--pcc-blue:#286eae;box-sizing:border-box;min-height:820px;padding:14px 18px 18px;display:flex;flex-direction:column;gap:14px;background:var(--pcc-bg);color:var(--pcc-ink);font:14px/1.5 Arial,sans-serif}
 .pcc-restore *{box-sizing:border-box}.pcc-restore [hidden]{display:none!important}
 .pcc-restore .pcc-plex,.pcc-restore .pcc-card{background:var(--pcc-card);border-radius:15px;margin:0;padding:18px;flex-shrink:0}
 .pcc-restore .pcc-plex{display:flex;justify-content:space-between;align-items:center;min-height:44px;padding:10px 18px}
 .pcc-restore .pcc-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;margin-bottom:12px}
 .pcc-restore h2{font-size:16px;margin:0;font-weight:600}.pcc-restore p{margin:10px 0 14px}
 .pcc-restore button{font:600 14px Arial,sans-serif;color:var(--pcc-ink);background:var(--pcc-card);border:1px solid var(--pcc-line);border-radius:8px;padding:11px 15px;cursor:pointer}
-.pcc-restore button:disabled{cursor:default;opacity:.55}.pcc-restore button:focus-visible,.pcc-restore input:focus-visible{outline:3px solid #55b9f4;outline-offset:3px}
+.pcc-restore button:disabled{cursor:not-allowed;opacity:1}.pcc-restore button:focus-visible,.pcc-restore input:focus-visible{outline:3px solid #55b9f4;outline-offset:3px}
 .pcc-restore .pcc-primary{width:100%;min-height:55px;background:var(--pcc-blue);color:#fff;border-color:var(--pcc-blue);font-size:17px}
 .pcc-restore .pcc-archive-card{min-height:375px;flex:1}.pcc-restore .pcc-archive-row{display:flex;align-items:center;gap:14px;min-height:54px;padding:8px 14px;margin-bottom:8px;border:1px solid var(--pcc-line);border-radius:9px;cursor:pointer}
 .pcc-restore .pcc-archive-row.pcc-selected{background:var(--pcc-selected);border-color:#9bc7ff}.pcc-restore .pcc-archive-row span{min-width:0}.pcc-restore .pcc-archive-row strong{display:block;font-size:13px;overflow-wrap:anywhere}.pcc-restore small{display:block;font-size:13px}.pcc-restore input{width:18px;height:18px;flex-shrink:0;accent-color:#158843}
