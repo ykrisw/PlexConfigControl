@@ -57,6 +57,10 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(marker.read_text(),'keep');self.assertEqual(list(archives.iterdir()),[marker])
             self.assertEqual(self.request(app,'/healthz')[0],'200 OK')
             self.assertEqual(self.request(app,'/api/history')[0],'401 Unauthorized')
+            token,_=app.web.sessions.create()
+            code,_,data=self.request(app,'/api/capabilities',cookie='pcc_session='+token)
+            self.assertEqual(code,'200 OK');self.assertFalse(json.loads(data)['archive_delete'])
+            self.assertEqual(self.request(app,'/api/backup/plan',cookie='pcc_session='+token)[0],'200 OK')
 
     def test_missing_or_invalid_bootstrap_never_creates_usable_account(self):
         with tempfile.TemporaryDirectory() as d:

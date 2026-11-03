@@ -28,7 +28,7 @@ specification in `design/README.md`. Shared production styles import
 
 - Real TrueNAS WebSocket authentication and verified TLS transport.
 - Container access to snapshots and tested file ownership/ACL/xattr preservation.
-- Backup view connected to the server.
+- Snapshot-backed Backup execution connected to the web API.
 - Profile photo support and complete UI translations of errors.
 - Single-existing-archive overwrite workflow and crash-safe publication recovery.
 - TrueNAS installation test and final Apps password/secret form.
@@ -71,9 +71,9 @@ restore readiness, password changes and explicit logout.
 
 The WSGI application now serves a development entry page at `/`, loading
 `panel-app.mjs`. It restores the existing session or shows password-only sign-in,
-then mounts the approved shell, Dashboard, Restore, History and Settings views. No preview archives
-or events are included. Backup shows an explicit integration
-placeholders; they are not usable panels yet. Mount behind HTTPS: session cookies
+then mounts the approved shell and all five views. No preview archives
+or events are included. Backup shows real archives and planning; execution
+remains unavailable. Mount behind HTTPS: session cookies
 remain Secure. The installation must initialize the account beforehand.
 
 Dashboard uses actual Plex status reads, returning to UNKNOWN after failed reads.
@@ -105,7 +105,7 @@ Use `pcc-card pcc-account` in Dashboard, `pcc-card pcc-archives` in Backup,
 `pcc-card pcc-events` in History and `pcc-card pcc-about` in Settings for the
 cards whose lower edges should expand to the bottom. Backup's Important card
 keeps its natural height below the expanded archive list. These are shared
-layout hooks; Backup content still needs integration.
+layout hooks; Backup execution still needs integration.
 
 `restore-view.mjs` exports `mountRestoreView(section, client)` and binds the
 actual archive list, selection, validation, progress, readiness, cancellation
@@ -140,6 +140,23 @@ events. Existing history databases migrate transactionally, preserving live IDs
 and contents. This prevents stale browser selections from targeting later events.
 
 ## Storage contract
+
+Backup now lists real archives with selection, scrolling, Plex state and current
+archive-count planning. Zero or at least two copies plan a new dated archive;
+exactly one requires the overwrite/new-copy choice, including after deletion
+back to one. Creating/overwriting remains disabled until the execution API and
+host integration are connected. Deletion uses server-advertised capabilities,
+operation gating, a filename confirmation list and exact archive identities.
+The restricted test runtime advertises deletion disabled and also blocks its
+route. Failed/partial deletion responses are never retried automatically; lists
+refresh and retain an uncertainty warning. External SMB writers remain outside
+the operation lock; archive deletion is not a filesystem compare-and-swap.
+
+Archive identity fields in `/api/archives` and `/api/backup/plan` are decimal
+strings, including nanosecond modification times and inode numbers. This avoids
+JavaScript Number rounding. The deletion route accepts those exact strings and
+retains integer compatibility for non-browser clients. Presentation may convert
+size/date values, but confirmation always sends the original exact strings.
 
 Settings theme buttons persist Light/Dark/System through the authenticated API;
 appearance changes only after server confirmation. First installation stays

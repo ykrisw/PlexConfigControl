@@ -42,6 +42,19 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 .pcc-shell .pcc-event-status[data-status=SUCCESS]{background:light-dark(#e0f5e9,#173e2d)}
 .pcc-shell .pcc-event-status[data-status=FAILED]{background:light-dark(#fde8e8,#4b272e)}
 .pcc-shell .pcc-event-status[data-status=WARNING]{background:light-dark(#fff0ca,#4e4024)}
+.pcc-shell .pcc-backup .pcc-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;margin-bottom:12px}
+.pcc-shell .pcc-backup h2{font-size:16px;font-weight:600;margin:0}
+.pcc-shell .pcc-backup button{font:600 13px Arial,sans-serif;padding:10px 14px;border:1px solid var(--pcc-line);border-radius:8px;background:var(--pcc-bg);color:var(--pcc-ink);cursor:pointer}
+.pcc-shell .pcc-backup button:disabled{cursor:not-allowed;opacity:1}
+.pcc-shell .pcc-backup .pcc-primary{width:100%;min-height:55px;background:#2a70af;color:#fff;border:0;font-size:17px}
+.pcc-shell .pcc-backup .pcc-archive-row{display:flex;align-items:center;gap:13px;min-height:54px;border:1px solid var(--pcc-line);border-radius:9px;padding:8px 14px;background:var(--pcc-card);cursor:pointer}
+.pcc-shell .pcc-backup .pcc-archive-row.pcc-selected{background:var(--pcc-selected);border-color:#8ebaf0}
+.pcc-shell .pcc-backup .pcc-archive-row>span{min-width:0}
+.pcc-shell .pcc-backup .pcc-archive-row strong{display:block;font-size:13px;overflow-wrap:anywhere}
+.pcc-shell .pcc-backup .pcc-archive-row small{display:block;font-size:13px}
+.pcc-shell .pcc-backup [data-confirm-files]{padding-left:20px;max-height:240px;overflow-y:auto;overflow-wrap:anywhere}
+.pcc-shell .pcc-backup [data-count]{border-radius:20px;background:var(--pcc-selected);padding:3px 10px;font-size:12px}
+@media(max-width:600px){.pcc-shell .pcc-backup .pcc-heading{flex-wrap:wrap}.pcc-shell .pcc-backup .pcc-archive-row{gap:9px;padding:8px}}
 .pcc-shell .pcc-language{display:flex;align-items:center;justify-content:space-between;gap:14px}
 .pcc-shell .pcc-language select,.pcc-shell .pcc-theme-buttons button{font:600 14px Arial,sans-serif;background:var(--pcc-bg);color:var(--pcc-ink);border:1px solid var(--pcc-line);border-radius:8px;padding:10px 14px;min-height:40px}
 .pcc-shell .pcc-appearance{padding:24px!important}

@@ -1,0 +1,66 @@
+const fields=['name','size','device','inode','modified_ns'];
+export const archiveIdentity=row=>JSON.stringify(fields.map(key=>row[key]));
+const validArchive=row=>row&&typeof row.name==='string'&&/^TrueNASPlexConfig_\d{4}\.\d{2}\.\d{2}_\d{2}\.\d{2}\.\d{2}\.tar\.gz$/.test(row.name)&&
+  fields.slice(1).every(key=>typeof row[key]==='string'&&/^(0|[1-9][0-9]{0,19})$/.test(row[key]));
+
+export function createBackupController(client,render,{schedule=setTimeout,cancel=clearTimeout}={}){
+  let entries=[],selected=new Set(),available=false,loading=false,busy=false,disposed=false,timer;
+  let capabilities={},operation=null,plan=null,plex='UNKNOWN',error='',notice='';
+  const lifecycle=new AbortController();
+  function canDelete(){return available&&capabilities.archive_delete===true&&operation&&
+    ['IDLE','SUCCESS','FAILED'].includes(operation.operation?.phase)&&!operation.operation.snapshot_id&&operation.publication?.status==='NONE';}
+  function emit(){if(!disposed)render({entries:entries.map(row=>({...row})),selected:[...selected],available,loading,busy,plex,error,notice,
+    canDelete:Boolean(canDelete()),deletionEnabled:capabilities.archive_delete===true,plan:plan?structuredClone(plan):null});}
+  async function refresh(){
+    if(disposed||loading||busy)return;
+    cancel(timer);loading=true;emit();
+    const results=await Promise.allSettled([
+      client.archives(lifecycle.signal),client.capabilities(lifecycle.signal),client.operation(lifecycle.signal),
+      client.backupPlan(lifecycle.signal),client.status(lifecycle.signal),
+    ]);
+    if(disposed)return;
+    const [archives,caps,op,choice,status]=results;
+    plex=status.status==='fulfilled'&&status.value?.available!==false&&['RUNNING','STOPPED'].includes(status.value?.state)?status.value.state:'UNKNOWN';
+    capabilities=caps.status==='fulfilled'&&caps.value&&typeof caps.value==='object'?caps.value:{};
+    operation=op.status==='fulfilled'?op.value:null;
+    if(archives.status==='fulfilled'&&Array.isArray(archives.value)&&archives.value.every(validArchive)){
+      const next=archives.value;
+      selected=new Set([...selected].filter(name=>{
+        const before=entries.find(row=>row.name===name),after=next.find(row=>row.name===name);
+        return before&&after&&archiveIdentity(before)===archiveIdentity(after);
+      }));
+      entries=next;available=true;error='';
+    }else{available=false;error=archives.reason?.message||'Archive list is unavailable';}
+    plan=choice.status==='fulfilled'&&choice.value?.archive_count===entries.length&&
+      (entries.length!==1||archiveIdentity(choice.value.existing_archive||{})===archiveIdentity(entries[0]))?choice.value:null;
+    loading=false;emit();timer=schedule(refresh,3000);
+  }
+  function selectedArchives(){return entries.filter(row=>selected.has(row.name)).map(row=>({...row}));}
+  emit();void refresh();
+  return{
+    refresh,
+    select(name,checked){
+      if(disposed||loading||busy||!available||!entries.some(row=>row.name===name))return;
+      if(checked)selected.add(name);else selected.delete(name);notice='';emit();
+    },
+    selection:selectedArchives,
+    async remove(confirmed){
+      if(disposed||loading||busy||!canDelete())return false;
+      const current=selectedArchives();
+      if(!Array.isArray(confirmed)||!confirmed.length||confirmed.length>1000||
+        JSON.stringify(confirmed.map(archiveIdentity).sort())!==JSON.stringify(current.map(archiveIdentity).sort())){
+        error='Archive selection changed. Refresh and confirm again.';emit();return false;
+      }
+      busy=true;error='';notice='';cancel(timer);emit();
+      try{
+        const result=await client.deleteArchives(confirmed.map(row=>({...row})),lifecycle.signal);
+        if(disposed)return false;
+        if(!Array.isArray(result.deleted)||JSON.stringify([...result.deleted].sort())!==JSON.stringify(current.map(row=>row.name).sort()))throw Error('Deletion could not be confirmed');
+        const removed=new Set(result.deleted);entries=entries.filter(row=>!removed.has(row.name));selected.clear();plan=null;
+        notice='DELETED';return true;
+      }catch(failure){if(!disposed){available=false;error=failure.message||'Deletion could not be confirmed';notice='DELETE_UNCONFIRMED';}return false;}
+      finally{busy=false;emit();if(!disposed)void refresh();}
+    },
+    dispose(){disposed=true;lifecycle.abort();cancel(timer);entries=[];selected.clear();},
+  };
+}

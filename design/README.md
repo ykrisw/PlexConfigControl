@@ -32,4 +32,5 @@ verification of every operation shown in the preview. Dashboard account actions
 and Plex status are connected; profile photo management remains pending.
 History is connected to web-history records and their stored log-text exports.
 Settings theme/language choices are connected to persistent preferences.
-Backup content integration is still incomplete.
+Backup listing/planning and capability-gated confirmed deletion are connected;
+backup creation/overwrite execution is still incomplete and disabled.

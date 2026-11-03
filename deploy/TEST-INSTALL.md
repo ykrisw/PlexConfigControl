@@ -14,8 +14,9 @@ The default branch source ZIP is not the installation image.
 - Optional archive selection/validation with a read-only archive host-path mount.
 
 Backup creation, config restoration, snapshot operations and archive deletion are
-blocked by the test runtime. Backup UI is still a placeholder. Settings is connected
-in builds after the first test image; the first image still has its placeholder.
+blocked by the test runtime. Later builds show Backup archives/planning but keep
+creation and deletion disabled. Settings is connected in builds after the first
+test image; the first image still has its Backup/Settings placeholders.
 History downloads export stored event text, not full permanent operation files.
 No Docker socket, ZFS device, host shell, live Plex config or Plex container mounts
 are needed or permitted by this test configuration. Do not change Plex ACLs.

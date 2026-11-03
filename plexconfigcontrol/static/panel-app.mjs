@@ -4,6 +4,7 @@ import {mountDashboardView} from './dashboard-view.mjs';
 import {mountRestoreView} from './restore-view.mjs';
 import {mountHistoryView} from './history-view.mjs';
 import {mountSettingsView} from './settings-view.mjs';
+import {mountBackupView} from './backup-view.mjs';
 
 export function mountPanelApp(root) {
   let epoch = 0, cleanup = () => {}, stopped = false;
@@ -45,6 +46,7 @@ export function mountPanelApp(root) {
     const shell = mountPanelShell(root, {theme: prefs.theme, onNavigate(key, section) {
       if (viewDisposers.has(key)) return;
       if (key === 'dashboard') viewDisposers.set(key, mountDashboardView(section, client, {language: prefs.language, onSignedOut: signedOut}));
+      else if (key === 'backup') viewDisposers.set(key,mountBackupView(section,client,{language:prefs.language,timezone:prefs.timezone}));
       else if (key === 'restore') viewDisposers.set(key, mountRestoreView(section, client));
       else if (key === 'history') viewDisposers.set(key, mountHistoryView(section, client, {language:prefs.language,timezone:prefs.timezone}));
       else if (key === 'settings') viewDisposers.set(key,mountSettingsView(section,client,{preferences:prefs,onChanged(next){

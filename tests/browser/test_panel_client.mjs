@@ -126,3 +126,12 @@ test('manual theme/language settings use authenticated CSRF-protected writes',as
   assert.equal(calls[0].options.headers['X-CSRF-Token'],'token');
   assert.deepEqual(JSON.parse(calls[0].options.body),{theme:'Dark',language:'pl'});
 });
+
+test('archive deletion confirmation keeps large identity numbers as exact strings',async()=>{
+  const archive={name:'TrueNASPlexConfig_2026.11.03_04.15.35.tar.gz',size:'123',device:'1',inode:'9223372036854775931',modified_ns:'1793664000000000123'};
+  const {client,calls}=setup([[200,{deleted:[archive.name]}]]);client.csrf='token';
+  await client.deleteArchives([archive]);
+  assert.equal(calls[0].path,'/api/archives/delete');
+  assert.equal(calls[0].options.headers['X-CSRF-Token'],'token');
+  assert.deepEqual(JSON.parse(calls[0].options.body),{archives:[archive],confirmed:true});
+});

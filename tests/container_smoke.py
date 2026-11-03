@@ -61,6 +61,8 @@ def main():
             status,headers,data=request('/api/login','POST',{'password':password})
             assert status==200
             session=headers['Set-Cookie'].split(';')[0];csrf=json.loads(data)['csrf']
+            capabilities=json.loads(request('/api/capabilities',session=session)[2])
+            assert all(capabilities[key] is False for key in ('backup_create','backup_overwrite','restore_execute','snapshot_management','archive_delete'))
             assert json.loads(request('/api/status',session=session)[2])['state']=='UNKNOWN'
             for path in ('/api/backup/start','/api/restore/execute','/api/archives/delete','/api/snapshots/delete'):
                 assert request(path,'POST',{},session,csrf)[0]==403

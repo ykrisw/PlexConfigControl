@@ -92,6 +92,11 @@ export class PanelClient {
 
   settings(signal) { return this.request('/api/settings', {signal}); }
   updateSettings(changes,signal) { return this.request('/api/settings', {body:changes,signal}); }
+  capabilities(signal) { return this.request('/api/capabilities', {signal}); }
+  backupPlan(signal) { return this.request('/api/backup/plan', {signal}); }
+  deleteArchives(archives,signal) {
+    return this.request('/api/archives/delete',{body:{archives,confirmed:true},signal});
+  }
   history(signal) { return this.request('/api/history', {signal}); }
   clearHistory(ids, signal) {
     return this.request('/api/history/clear', {body: {ids, confirmed: true}, signal});

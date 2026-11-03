@@ -23,7 +23,7 @@ from .operations import OperationDenied
 from .restore_readiness import restore_readiness
 
 class Web:
-    def __init__(self,state_directory,archive_directory=None,truenas_api=None):
+    def __init__(self,state_directory,archive_directory=None,truenas_api=None,*,archive_deletion_enabled=True):
         self.state_directory=state_directory
         self.operation_store=StateStore(state_directory)
         self.progress=Progress(state_directory)
@@ -34,6 +34,7 @@ class Web:
         self.sessions=Sessions(state_directory)
         self.settings=Settings(state_directory)
         self.history=History(state_directory)
+        self.archive_deletion_enabled=archive_deletion_enabled
 
     def __call__(self,environ,start_response):
         headers=[('Content-Type','application/json; charset=utf-8'),
@@ -58,6 +59,8 @@ class Web:
                 '/assets/history-view.mjs':'history-view.mjs',
                 '/assets/settings-controller.mjs':'settings-controller.mjs',
                 '/assets/settings-view.mjs':'settings-view.mjs',
+                '/assets/backup-controller.mjs':'backup-controller.mjs',
+                '/assets/backup-view.mjs':'backup-view.mjs',
                 '/assets/approved-appearance.css':'approved-appearance.css'}
         if method=='GET' and path=='/':
             body=files('plexconfigcontrol').joinpath('static/index.html').read_bytes()
@@ -119,6 +122,11 @@ class Web:
             if csrf is None:
                 return respond('401 Unauthorized',{'error':'Sign in required'})
             return respond('200 OK',{'authenticated':True,'csrf':csrf})
+        if path=='/api/capabilities' and method=='GET':
+            return respond('200 OK',{'backup_create':False,'backup_overwrite':False,
+                'restore_execute':False,'snapshot_management':False,
+                'archive_delete':self.archives is not None and self.archive_deletion_enabled,
+                'archive_validation':self.archives is not None})
         if path=='/api/account/password' and method=='POST':
             current=data.get('current_password')
             new=data.get('new_password')
@@ -161,6 +169,8 @@ class Web:
                 return respond('409 Conflict',{'error':'Another operation or recovery must finish'})
             except OSError:
                 return respond('503 Service Unavailable',{'error':'Archive location is unavailable'})
+            if plan['existing_archive'] is not None:
+                plan['existing_archive']=archive_wire(plan['existing_archive'])
             return respond('200 OK',plan)
         if path=='/api/restore/readiness' and method=='GET':
             try:
@@ -199,10 +209,12 @@ class Web:
             if self.archives is None:
                 return respond('503 Service Unavailable',{'error':'Archive location is not configured'})
             try:
-                return respond('200 OK',[asdict(item) for item in self.archives.list()])
+                return respond('200 OK',[archive_wire(asdict(item)) for item in self.archives.list()])
             except OSError:
                 return respond('503 Service Unavailable',{'error':'Archive location is unavailable'})
         if path=='/api/archives/delete' and method=='POST':
+            if not self.archive_deletion_enabled:
+                return respond('403 Forbidden',{'error':'Archive deletion is disabled in this installation'})
             if self.archives is None:
                 return respond('503 Service Unavailable',{'error':'Archive location is not configured'})
             selected=data.get('archives')
@@ -214,11 +226,10 @@ class Web:
                 for item in selected:
                     if not isinstance(item,dict) or set(item)!=set(Archive.__dataclass_fields__):
                         raise ValueError('Invalid identity')
-                    if not isinstance(item['name'],str) or any(
-                            type(item[k]) is not int or item[k]<0
-                            for k in ('size','device','inode','modified_ns')):
+                    if not isinstance(item['name'],str):
                         raise ValueError('Invalid identity')
-                    items.append(Archive(**item))
+                    items.append(Archive(name=item['name'],**{
+                        key:archive_integer(item[key]) for key in ('size','device','inode','modified_ns')}))
                 removed=self.archives.delete(items,confirmed=True)
             except (ValueError,TypeError):
                 return respond('400 Bad Request',{'error':'Invalid archive selection'})
@@ -264,3 +275,19 @@ class Web:
             self.history.clear(ids)
             return respond('200 OK',{'cleared':ids})
         return respond('404 Not Found',{'error':'Not found'})
+
+
+def archive_wire(item):
+    # Nanosecond timestamps and ZFS inode IDs exceed JavaScript's exact integer
+    # range. Transfer identities as decimal strings so confirmation round-trips.
+    return {key:value if key=='name' else str(value) for key,value in item.items()}
+
+
+def archive_integer(value):
+    if type(value) is int and 0<=value<2**64:
+        return value  # Retain compatibility with non-browser clients.
+    if (isinstance(value,str) and 1<=len(value)<=20 and value.isascii()
+            and value.isdecimal() and (value=='0' or not value.startswith('0'))
+            and int(value)<2**64):
+        return int(value)
+    raise ValueError('Invalid archive identity number')

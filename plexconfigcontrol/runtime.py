@@ -53,7 +53,8 @@ class ReadOnlyTrueNAS:
 class TestApplication:
     """Explicit route boundary even if future Web routes add host operations."""
     READS={'/api/session','/api/settings','/api/translations','/api/status',
-           '/api/operation','/api/archives','/api/history','/api/restore/readiness'}
+           '/api/operation','/api/archives','/api/history','/api/restore/readiness',
+           '/api/capabilities','/api/backup/plan'}
     POSTS={'/api/login','/api/logout','/api/account/password','/api/settings',
            '/api/history/detail','/api/history/download','/api/history/clear',
            '/api/restore/validate','/api/restore/cancel'}
@@ -79,7 +80,7 @@ def prepare(config,verifier=None):
     if config.truenas_url:
         api=ReadOnlyTrueNAS(build_client(config.truenas_url,config.api_username,
              read_secret(config.api_key_file),config.ca_file,timeout=10))
-    web=Web(config.state,archive_directory=config.archives,truenas_api=api)
+    web=Web(config.state,archive_directory=config.archives,truenas_api=api,archive_deletion_enabled=False)
     with operation_lock(config.state):
         with web.account.connect() as db:
             existing=db.execute('SELECT id FROM account WHERE id=1').fetchone()
