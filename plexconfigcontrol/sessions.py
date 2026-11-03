@@ -50,6 +50,13 @@ class Sessions:
             row=db.execute('SELECT csrf FROM sessions WHERE digest=?',(digest,)).fetchone()
         return bool(row and secrets.compare_digest(row[0],submitted))
 
+    def csrf_for(self,token):
+        digest=self.digest(token)
+        if digest is None: return None
+        with self.connect() as db:
+            row=db.execute('SELECT csrf FROM sessions WHERE digest=?',(digest,)).fetchone()
+        return row[0] if row else None
+
     def logout(self,token):
         with self.connect() as db:
             db.execute('DELETE FROM sessions WHERE digest=?',(self.digest(token),))
