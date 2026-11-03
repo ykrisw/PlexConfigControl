@@ -132,8 +132,13 @@ class Web:
                 if path=='/api/restore/cancel':
                     service.cancel()
                     return respond('200 OK',{'cancelled':True})
-                # Synchronous validation: production HTTP timeouts and the UI
-                # must accommodate large archives; no background job is claimed.
+                if data.get('background') is True:
+                    service.start_background(data.get('archive'))
+                    return respond('202 Accepted',{'accepted':True,
+                        'status_url':'/api/operation'})
+                if 'background' in data and data['background'] is not False:
+                    return respond('400 Bad Request',{'error':'Invalid background option'})
+                # Retained for local diagnostics; the UI should use background.
                 result=service.validate(data.get('archive'))
                 return respond('200 OK',result)
             except (OperationBusy,OperationDenied):
