@@ -2,9 +2,8 @@
 
 PlexConfigControl is an application for manual Plex configuration backups and
 restores, designed for installation as a **TrueNAS SCALE App**, with persistent
-iXVolume storage for its own settings and state. The current development target
-is **TrueNAS SCALE 25.10.7**. Installers for other platforms may be developed in
-future versions; they are not currently available.
+iXVolume storage for its own settings and state. Installers for other platforms
+may be developed in future versions; they are not currently available.
 
 **Restricted test installation available; not ready for production data.**
 
