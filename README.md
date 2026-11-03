@@ -36,12 +36,21 @@ Requires Python 3.11 or later and GNU tar on Linux.
 ```sh
 python -m unittest discover -s tests -v
 python -m compileall -q plexconfigcontrol
-node --test tests/browser/test_panel_client.mjs
+node --test tests/browser/*.mjs
 ```
 
 The browser API module is served at `/assets/panel-client.mjs`. It supports
 session login, CSRF-protected background validation, operation polling and
 restore readiness. It does not yet render or bind the approved interface.
+
+`/assets/restore-panel.mjs` exports `bindRestoreControls(root, client, render)`.
+The Restore markup can bind radios named `restore-archive` and buttons with
+`data-restore-action="validate"`, `"cancel"` or `"refresh"`. The render callback
+receives the current selection, busy flag, server snapshot and error; write
+server strings using `textContent`. Calling the returned disposer stops browser
+polling and listeners without cancelling the server operation. No archive is
+selected automatically. Full HTML, styling and the final restore action remain
+to be connected.
 
 ## Storage contract
 
