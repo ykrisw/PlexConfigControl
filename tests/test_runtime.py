@@ -106,3 +106,30 @@ class RuntimeTests(unittest.TestCase):
             original=cert.read_bytes();key.unlink()
             with self.assertRaises(OSError): ensure_tls(d,'192.168.1.120')
             self.assertEqual(cert.read_bytes(),original)
+
+    def test_restart_keeps_publication_block_and_authenticated_diagnostics(self):
+        from plexconfigcontrol.publication_intent import record, MARKER
+        from plexconfigcontrol.operations import Phase
+        with tempfile.TemporaryDirectory() as directory:
+            state=Path(directory)/'state'
+            config=Configuration(state,'localhost')
+            app,_,_=prepare(config,self.verifier)
+            token,csrf=app.web.sessions.create();cookie='pcc_session='+token
+            archive='TrueNASPlexConfig_2026.11.03_12.00.00.tar.gz'
+            record(state,'.pcc-'+'a'*32+'.tmp',archive,'b'*64)
+            original=(state/MARKER).read_bytes()
+            with app.web.operation_store.transaction() as operation:
+                operation.kind='BACKUP';operation.phase=Phase.FAILED
+            # Reinitialize the real restricted runtime over the same ixVolume.
+            app,_,_=prepare(config)
+            code,_,body=self.request(app,'/api/recovery',cookie=cookie)
+            self.assertEqual(code,'200 OK');data=json.loads(body)
+            self.assertEqual(data['phase'],'RECOVERY_REQUIRED')
+            self.assertEqual(data['publication']['archive'],archive)
+            self.assertFalse(data['publication_resolution_supported'])
+            self.assertEqual(self.request(app,'/api/recovery','POST',{},cookie,csrf)[0],'403 Forbidden')
+            code,_,body=self.request(app,'/api/operation',cookie=cookie)
+            self.assertEqual(code,'200 OK')
+            self.assertEqual(json.loads(body)['publication'],data['publication'])
+            self.assertEqual((state/MARKER).read_bytes(),original)
+            self.assertFalse(any(event['status']=='SUCCESS' for event in app.web.history.list()))

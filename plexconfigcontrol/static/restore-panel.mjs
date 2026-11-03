@@ -10,7 +10,7 @@ export class RestoreController {
   emit() { if (!this.disposed) this.render({...this.state}); }
   select(name) {
     const phase=this.state.snapshot?.operation?.operation?.phase;
-    if (this.disposed || this.state.busy || ['VALIDATING','RUNNING','RECOVERY_REQUIRED','WAITING_FOR_PLEX_STOP','READY'].includes(phase)) return;
+    if (this.disposed || this.state.busy || this.state.snapshot?.operation?.publication?.pending===true || ['VALIDATING','RUNNING','RECOVERY_REQUIRED','WAITING_FOR_PLEX_STOP','READY'].includes(phase)) return;
     this.state.selected = name || null;
     this.state.error = null;
     this.emit();
@@ -40,7 +40,7 @@ export class RestoreController {
   }
   async validate() {
     const phase=this.state.snapshot?.operation?.operation?.phase;
-    if (this.disposed || this.state.busy || !this.state.selected || ['VALIDATING','RUNNING','RECOVERY_REQUIRED','WAITING_FOR_PLEX_STOP','READY'].includes(phase)) return;
+    if (this.disposed || this.state.busy || this.state.snapshot?.operation?.publication?.pending===true || !this.state.selected || ['VALIDATING','RUNNING','RECOVERY_REQUIRED','WAITING_FOR_PLEX_STOP','READY'].includes(phase)) return;
     this.refreshSerial++;
     this.state.busy = true;
     this.state.error = null;
@@ -59,7 +59,7 @@ export class RestoreController {
   }
   async cancel() {
     const operation=this.state.snapshot?.operation?.operation;
-    if (this.disposed || this.state.busy || operation?.kind!=='RESTORE' || !['WAITING_FOR_PLEX_STOP','READY'].includes(operation.phase)) return;
+    if (this.disposed || this.state.busy || this.state.snapshot?.operation?.publication?.pending===true || operation?.kind!=='RESTORE' || !['WAITING_FOR_PLEX_STOP','READY'].includes(operation.phase)) return;
     this.refreshSerial++;
     this.state.busy = true;
     this.emit();

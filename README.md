@@ -464,3 +464,22 @@ that ambiguous state needs manual investigation. External SMB writers cannot be
 serialized by the app lock; do not modify the files during inspection/confirmation.
 The restricted web test installation has no route enabling this coordinator.
 Tests use synthetic local archives and injected disk failures, not live TrueNAS.
+
+
+## Publication diagnostics in Backup and Restore
+
+The authenticated read-only `/api/recovery` response now includes the sanitized
+publication record alongside snapshot status. It reports only recognized archive
+and temporary filenames; unreadable records expose no raw contents or paths.
+Names are operation intent, not a claim that any named file exists or is valid.
+Polling does not hash, extract, delete or promote an archive. If operation identity
+or the publication record changes during snapshot inspection, the reply is
+rejected and the client must refresh rather than display a stale confirmation.
+
+Backup and Restore display these details inside the existing themed notification
+with the yellow border, in English or Polish. Failed reads clear previous details.
+A pending publication also blocks Restore selection/validation at a FAILED
+checkpoint; a browser reload or runtime restart cannot dismiss the pending work.
+The core confirmed reconciliation coordinator is still not exposed through a web
+mutation route: `publication_resolution_supported` remains false. The view offers
+only Refresh status. This does not enable live Backup/Restore execution.

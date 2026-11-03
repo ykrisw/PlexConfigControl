@@ -30,12 +30,13 @@ export function restorePresentation(state,language='en'){
   const pl=language==='pl',tx=(en,polish)=>pl?polish:en;
   const operation=state.snapshot?.operation?.operation,phase=operation?.phase;
   const restore=operation?.kind==='RESTORE';
-  const waiting=restore&&['WAITING_FOR_PLEX_STOP','READY'].includes(phase);
-  const active=['VALIDATING','RUNNING','RECOVERY_REQUIRED'].includes(phase);
+  const unresolved=state.snapshot?.operation?.publication?.pending===true;
+  const waiting=!unresolved&&restore&&['WAITING_FOR_PLEX_STOP','READY'].includes(phase);
+  const active=unresolved||['VALIDATING','RUNNING','RECOVERY_REQUIRED'].includes(phase);
   const details=restore?operation.validation_details:null;
   let notice=restoreError(state.error,language);
   if(!notice&&['FAILED','INTERRUPTED'].includes(details?.status))notice=restoreError(details.reason,language);
-  if(!notice&&phase==='RECOVERY_REQUIRED')notice=tx('Recovery or cleanup must be completed before continuing.','Przed kontynuowaniem trzeba zakończyć odzyskiwanie lub sprzątanie.');
+  if(!notice&&(unresolved||phase==='RECOVERY_REQUIRED'))notice=tx('Recovery or cleanup must be completed before continuing.','Przed kontynuowaniem trzeba zakończyć odzyskiwanie lub sprzątanie.');
   const readiness=state.snapshot?.readiness;
   if(!notice&&waiting){
     const reasons={

@@ -1,10 +1,23 @@
 """Read-only web representation; no mutation capability is granted here."""
+from .locking import operation_lock, OperationBusy
+from .publication_intent import describe
+
+
 def recovery_status(store, inspector=None):
-    with store.transaction() as operation:
-        identifier, phase, kind = operation.snapshot_id, operation.phase.value, operation.kind
+    def read_identity():
+        # Consistent app-owned state/marker pair. Never hold this lock while an
+        # injected Recovery.inspect acquires its own lock for an API read.
+        with operation_lock(store.directory):
+            with store.transaction() as operation:
+                identity = (operation.snapshot_id, operation.phase.value, operation.kind)
+            return identity, describe(store.directory)
+
+    identity, publication = read_identity()
+    identifier, phase, kind = identity
     result = {'phase':phase, 'kind':kind, 'snapshot_id':identifier,
               'snapshot_state':'UNKNOWN' if identifier else 'NONE',
               'removal_available':False, 'removal_supported':False,
+              'publication':publication, 'publication_resolution_supported':False,
               'confirmation_required':True,
               'reason':'RECOVERY_INSPECTION_UNAVAILABLE' if identifier else 'NO_RETAINED_SNAPSHOT',
               'loses_restore_recovery_point':bool(identifier) and kind=='RESTORE'}
@@ -18,4 +31,6 @@ def recovery_status(store, inspector=None):
                 and checked.get('snapshot_state') in ('PRESENT','ABSENT','UNKNOWN')):
             result['snapshot_state']=checked['snapshot_state']
             result['reason']=checked.get('reason')
+    if read_identity() != (identity, publication):
+        raise OperationBusy('Recovery changed during inspection; refresh status')
     return result

@@ -186,6 +186,41 @@ def main():
                 "s=StateStore('/var/lib/plexconfigcontrol'); ctx=s.transaction(); op=ctx.__enter__(); "
                 "op.phase=Phase.FAILED; op.snapshot_id=None; ctx.__exit__(None,None,None)")
             expect(restore.locator('[data-recovery]')).to_be_hidden()
+            # A FAILED checkpoint with a durable publication marker still blocks
+            # new work. Reload must show only diagnostic names, never validity.
+            recovery_archive='TrueNASPlexConfig_2026.10.13_10.30.00.tar.gz'
+            recovery_old='TrueNASPlexConfig_2026.10.12_10.30.00.tar.gz'
+            docker('exec',name,'python','-c',
+                "from plexconfigcontrol.publication_intent import record_replacement; "
+                "record_replacement('/var/lib/plexconfigcontrol','.pcc-'+'a'*32+'.tmp',"
+                +repr(recovery_archive)+",'b'*64,"+repr(recovery_old)+","
+                "dict(device=0,inode=0,size=0,modified_ns=0,changed_ns=0))")
+            page.reload();expect(page.locator('.pcc-nav')).to_be_visible()
+            page.set_viewport_size({'width':360,'height':900})
+            for tab_name,panel_key in (('Backup','backup'),('Restore','restore')):
+                page.get_by_role('tab',name=tab_name,exact=True).click()
+                panel=page.locator(f'[data-panel={panel_key}]')
+                recovery=panel.locator('[data-recovery]')
+                expect(recovery.locator('[data-recovery-publication]')).to_be_visible()
+                expect(recovery.locator('[data-publication-archive]')).to_contain_text(recovery_archive)
+                expect(recovery.locator('[data-publication-older]')).to_contain_text(recovery_old)
+                expect(recovery.locator('[data-publication-stage]')).to_contain_text('presence not checked')
+                expect(recovery.locator('[data-publication-warning]')).to_contain_text('not proof')
+                assert recovery.locator('button').count()==1
+                if panel_key=='backup':
+                    expect(panel.locator('[data-create]')).to_be_disabled()
+                    expect(panel.locator('[data-delete]')).to_be_disabled()
+                else:
+                    expect(panel.locator('[data-restore-action=validate]')).to_be_disabled()
+                    expect(panel.locator('input[name=restore-archive]').first).to_be_disabled()
+                assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth')
+                page.screenshot(path=str(output/f'recovery-publication-{panel_key}.png'),full_page=True)
+            # Only the disposable CI fixture is reset; there is no web mutation.
+            docker('exec',name,'python','-c',
+                "from plexconfigcontrol.publication_intent import clear_replacement; "
+                "clear_replacement('/var/lib/plexconfigcontrol')")
+            expect(page.locator('[data-panel=restore] [data-recovery]')).to_be_hidden()
+            page.set_viewport_size({'width':1440,'height':1080})
             page.get_by_role('tab',name='Settings',exact=True).click()
             settings=page.locator('[data-panel=settings]')
             settings.locator('[data-theme-choice=Dark]').click()

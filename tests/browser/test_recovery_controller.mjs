@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRecoveryController} from '../../plexconfigcontrol/static/recovery-controller.mjs';
 const snapshot='test/config@pcc-backup-'+'a'.repeat(32);
-const operation=(id=snapshot)=>({operation:{phase:'RECOVERY_REQUIRED',kind:'BACKUP',snapshot_id:id},publication:{pending:false}});
-const result=(state='PRESENT',id=snapshot)=>({phase:'RECOVERY_REQUIRED',snapshot_id:id,snapshot_state:state,removal_supported:false,removal_available:false});
+const none=()=>({pending:false,status:'NONE',archive:null,temporary_file:null});
+const operation=(id=snapshot,record=none(),phase='RECOVERY_REQUIRED')=>({operation:{phase,kind:'BACKUP',snapshot_id:id},publication:record});
+const result=(state='PRESENT',id=snapshot,record=none(),phase='RECOVERY_REQUIRED')=>({phase,kind:'BACKUP',snapshot_id:id,snapshot_state:state,removal_supported:false,removal_available:false,publication:record,publication_resolution_supported:false});
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 function setup(client){
   const states=[],timers=[];
@@ -67,4 +68,54 @@ test('missing operation state invalidates an in-flight reply and a later valid p
   assert.equal(view.states.at(-1).data,null);assert.equal(view.states.at(-1).error,true);
   view.controller.observe(operation());releases[1](result());await flush();
   assert.equal(view.states.at(-1).data.snapshot_state,'PRESENT');view.controller.dispose();
+});
+
+const archive='TrueNASPlexConfig_2026.11.03_12.00.00.tar.gz';
+const stage='.pcc-'+'a'.repeat(32)+'.tmp';
+const pending=()=>({pending:true,status:'VERIFICATION_REQUIRED',archive,temporary_file:stage});
+
+test('publication details remain visible for a FAILED checkpoint and never grant resolution',async()=>{
+  const record=pending(),view=setup({recovery:async()=>result('NONE',null,record,'FAILED')});
+  view.controller.observe(operation(null,record,'FAILED'));await flush();
+  assert.equal(view.states.at(-1).visible,true);
+  assert.equal(view.states.at(-1).data.publication.archive,archive);
+  assert.equal(view.states.at(-1).data.publication_resolution_supported,false);
+  view.controller.dispose();
+});
+
+test('a changed publication record invalidates an in-flight response without a snapshot',async()=>{
+  const replies=[],old=pending(),next={...pending(),temporary_file:'.pcc-'+'b'.repeat(32)+'.tmp'};
+  const view=setup({recovery:()=>new Promise(resolve=>replies.push(resolve))});
+  view.controller.observe(operation(null,old));view.controller.observe(operation(null,next));
+  replies[1](result('NONE',null,next));await flush();replies[0](result('NONE',null,old));await flush();
+  assert.equal(view.states.at(-1).data.publication.temporary_file,next.temporary_file);
+  view.controller.dispose();
+});
+
+test('foreign or malformed publication replies and mutation capabilities are rejected',async()=>{
+  for(const reply of [result('NONE',null,{...pending(),archive:'secret/path'}),
+                      result('NONE',null,none()),
+                      {...result('NONE',null,pending()),publication_resolution_supported:true},
+                      {...result('NONE',null,pending()),kind:'RESTORE'}]){
+    const view=setup({recovery:async()=>reply});view.controller.observe(operation(null,pending()));await flush();
+    assert.equal(view.states.at(-1).data,null);assert.equal(view.states.at(-1).error,true);view.controller.dispose();
+  }
+});
+
+test('unreadable marker is shown without exposing its contents and network failure clears details',async()=>{
+  const record={pending:true,status:'RECORD_UNREADABLE',archive:null,temporary_file:null};
+  let calls=0;const view=setup({recovery:async()=>{if(++calls===1)return result('NONE',null,record);throw Error('private secret');}});
+  view.controller.observe(operation(null,record));await flush();
+  assert.equal(view.states.at(-1).data.publication.status,'RECORD_UNREADABLE');
+  await view.controller.refresh();assert.equal(view.states.at(-1).data,null);assert.equal(view.states.at(-1).error,true);
+  view.controller.dispose();
+});
+
+test('ordinary active publication is not mislabeled interrupted and missing metadata cannot confirm recovery',async()=>{
+  let calls=0;const view=setup({recovery:async()=>{calls++;return result();}});
+  view.controller.observe(operation(null,pending(),'RUNNING'));await flush();
+  assert.equal(view.states.at(-1).visible,false);assert.equal(calls,0);
+  view.controller.observe({...operation(null),publication:undefined});await flush();
+  assert.equal(view.states.at(-1).visible,true);assert.equal(view.states.at(-1).error,true);assert.equal(calls,0);
+  view.controller.dispose();
 });

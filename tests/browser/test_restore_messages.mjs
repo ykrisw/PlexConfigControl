@@ -37,3 +37,13 @@ test('hashing progress displays actual bytes and elapsed time, never invented pe
   assert.match(view.progressText,/12 s/);assert.doesNotMatch(view.progressText,/%/);
   assert.equal(view.selectionDisabled,true);assert.equal(view.cancelVisible,false);
 });
+
+
+test('pending publication blocks restore controls even at FAILED or READY checkpoints',()=>{
+  for(const phase of ['FAILED','READY']){
+    const source=state(phase);source.snapshot.operation.publication={pending:true};
+    const view=restorePresentation(source,'pl');
+    assert.equal(view.validateDisabled,true);assert.equal(view.selectionDisabled,true);
+    assert.equal(view.cancelVisible,false);assert.match(view.notice,/odzyskiwanie/);
+  }
+});

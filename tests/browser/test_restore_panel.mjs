@@ -70,3 +70,16 @@ test('waiting restore rejects selection changes and duplicate validation; remove
   controller.reconcileSelection(['other']);assert.equal(controller.state.selected,null);
   controller.dispose();controller.select('chosen');await controller.validate();assert.equal(posts,0);
 });
+
+
+test('pending publication prevents selection validation and cancellation requests',async()=>{
+  let posts=0;
+  const controller=new RestoreController({validateArchive:async()=>posts++,cancelRestore:async()=>posts++},()=>{});
+  controller.state.selected='chosen';
+  for(const phase of ['FAILED','READY']){
+    controller.state.snapshot={operation:{operation:{phase,kind:'RESTORE'},publication:{pending:true}}};
+    controller.select('other');await controller.validate();await controller.cancel();
+    assert.equal(controller.state.selected,'chosen');assert.equal(posts,0);
+  }
+  controller.dispose();
+});
