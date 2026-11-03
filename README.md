@@ -309,3 +309,24 @@ exports the History event, queues its permanent log in the app ixVolume and
 explicitly reports permanent_logs_enabled=false. It does not bypass that mount or
 write logs elsewhere on the NAS. A writable configured deployment is required
 to flush those records into Plex Config/Logs. Actual SMB/TrueNAS tests are pending.
+
+## Snapshot recovery preflight
+
+The recovery coordinator inspects only the exact recorded, dataset-scoped
+snapshot. It reports PRESENT, ABSENT or UNKNOWN from a fresh read-only query,
+never from a guessed interpretation of a missing/malformed response. Active
+operations keep inspection/removal unavailable under the shared operation lock.
+Transport exception payloads are not exposed in the inspection result.
+
+A lost deletion reply can leave recorded intent for an already absent snapshot.
+A fresh ABSENT result allows a new explicit confirmation to reconcile that exact
+intent without sending another deletion. The original failed operation remains
+RECOVERY_REQUIRED until other cleanup is verified. For a retained Restore
+snapshot the inspection explicitly identifies loss of the rollback recovery point.
+
+Snapshot existence/absence checks reject wrong identities, multiple results and
+malformed result types. Unknown state cannot clear intent or permit a success
+report. Rollback independently verifies the Plex application identity as well as
+STOPPED state. Snapshot readers also reject malformed query entries before opening
+any source. Tests cover these cases with simulated APIs; recovery controls remain
+unconnected to the restricted web runtime pending verified host integration.

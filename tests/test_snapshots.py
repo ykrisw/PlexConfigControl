@@ -40,3 +40,25 @@ class SnapshotTests(unittest.TestCase):
             store,api,snap=self.prepare(d,'RESTORE'); snap.create()
             with self.assertRaises(SnapshotError): snap.rollback()
             self.assertFalse(any(m=='pool.snapshot.rollback' for m,_ in api.calls))
+
+    def test_rollback_requires_plex_identity_not_just_a_stopped_filtered_response(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            store,api,snapshots=self.prepare(directory,'RESTORE')
+            identifier=snapshots.create();original=api.call
+            def wrong_app(method,*args):
+                if method=='app.query': return [{'name':'other-app','state':'STOPPED'}]
+                return original(method,*args)
+            with patch.object(api,'call',side_effect=wrong_app):
+                with self.assertRaises(SnapshotError): snapshots.rollback()
+            self.assertFalse(any(method=='pool.snapshot.rollback' for method,args in api.calls))
+            with store.transaction() as operation: self.assertEqual(operation.snapshot_id,identifier)
+
+    def test_scope_check_rejects_non_string_and_other_dataset_without_api_calls(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store,api,snapshots=self.prepare(directory)
+            for identifier in (None,False,123,'other/config@pcc-backup-'+'a'*32,
+                               'test/config@not-owned','test/config@pcc-backup-'+'a'*32+'/extra'):
+                with self.subTest(identifier=identifier):
+                    with self.assertRaises(SnapshotError): snapshots.exists(identifier)
+            self.assertEqual(api.calls,[])

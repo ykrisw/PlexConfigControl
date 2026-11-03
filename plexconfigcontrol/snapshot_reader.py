@@ -29,7 +29,7 @@ class SnapshotReader:
         if not stat.S_ISDIR(info.st_mode) or (info.st_dev,info.st_ino)!=self.identity:
             raise SnapshotReadError('Configuration mount identity changed')
         rows=self.api.call('pool.snapshot.query',[['id','=',identifier]])
-        if not isinstance(rows,list) or len(rows)!=1 or rows[0].get('id')!=identifier:
+        if not isinstance(rows,list) or len(rows)!=1 or not isinstance(rows[0],dict) or rows[0].get('id')!=identifier:
             raise SnapshotReadError('Snapshot existence was not confirmed')
         flags=os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW
         handles=[]

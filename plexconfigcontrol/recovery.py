@@ -13,12 +13,33 @@ class Recovery:
         self.dataset = dataset
 
     def inspect(self):
-        with self.store.transaction() as operation:
-            return {'phase': operation.phase.value,
-                    'kind': operation.kind,
-                    'snapshot_id': operation.snapshot_id,
-                    'removal_available': bool(operation.snapshot_id)
-                    and operation.phase == Phase.RECOVERY_REQUIRED}
+        """Read-only, exact-identity preflight for the confirmation dialog.
+
+        ABSENT still requires confirmation to reconcile retained intent after
+        a lost deletion reply or removal in TrueNAS. UNKNOWN never enables an
+        action and never exposes arbitrary transport errors to the browser.
+        Inspection performs no cleanup, Plex control or snapshot mutations.
+        """
+        with operation_lock(self.state_directory):
+            with self.store.transaction() as operation:
+                phase, kind, identifier = operation.phase, operation.kind, operation.snapshot_id
+            result = {'phase': phase.value, 'kind': kind, 'snapshot_id': identifier,
+                      'snapshot_state': 'NONE', 'removal_available': False,
+                      'confirmation_required': True, 'reason': 'NO_RETAINED_SNAPSHOT',
+                      'loses_restore_recovery_point': kind == 'RESTORE' and bool(identifier)}
+            if not identifier:
+                return result
+            if phase != Phase.RECOVERY_REQUIRED:
+                result.update(snapshot_state='NOT_CHECKED', reason='OPERATION_NOT_IN_RECOVERY')
+                return result
+            try:
+                exists = Snapshots(self.api, self.store, self.dataset).exists(identifier)
+            except Exception:
+                result.update(snapshot_state='UNKNOWN', reason='SNAPSHOT_STATE_UNAVAILABLE')
+                return result
+            result.update(snapshot_state='PRESENT' if exists else 'ABSENT',
+                          removal_available=True, reason=None)
+            return result
 
     def remove_snapshot(self, expected_snapshot, confirmed=False):
         """Web route must authenticate user and validate CSRF before calling.

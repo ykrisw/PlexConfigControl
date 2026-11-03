@@ -5,19 +5,20 @@ transport authentication, TLS and durable coordinator integration are separate.
 """
 import re
 import uuid
+from .plex import PlexStatus
 
 class SnapshotError(RuntimeError):
     pass
 
 class Snapshots:
     def __init__(self, api, store, dataset):
-        if not dataset or '@' in dataset or any(p in ('', '.', '..') for p in dataset.split('/')):
+        if not isinstance(dataset,str) or not dataset or '@' in dataset or any(c.isspace() for c in dataset) or any(p in ('', '.', '..') for p in dataset.split('/')):
             raise ValueError('Invalid dataset')
         self.api, self.store, self.dataset = api, store, dataset
 
     def _check(self, identifier):
         prefix = self.dataset + '@'
-        if not identifier.startswith(prefix) or not re.fullmatch(r'pcc-(backup|restore)-[0-9a-f]{32}', identifier[len(prefix):]):
+        if not isinstance(identifier,str) or not identifier.startswith(prefix) or not re.fullmatch(r'pcc-(backup|restore)-[0-9a-f]{32}', identifier[len(prefix):]):
             raise SnapshotError('Snapshot is outside the configured scope')
 
     def create(self):
@@ -38,7 +39,14 @@ class Snapshots:
 
     def exists(self, identifier):
         self._check(identifier)
-        return bool(self.api.call('pool.snapshot.query', [['id', '=', identifier]]))
+        rows = self.api.call('pool.snapshot.query', [['id', '=', identifier]])
+        # A malformed response is neither proof of existence nor of absence.
+        # In particular None/{} must never clear a retained snapshot intent.
+        if not isinstance(rows,list) or len(rows)>1:
+            raise SnapshotError('Snapshot query response could not be verified')
+        if rows and (not isinstance(rows[0],dict) or rows[0].get('id')!=identifier):
+            raise SnapshotError('Snapshot query identity could not be verified')
+        return len(rows)==1
 
     def remove(self):
         # Caller must hold the operation-wide lock, and require web confirmation
@@ -64,8 +72,7 @@ class Snapshots:
         if not identifier:
             raise SnapshotError('No recovery snapshot')
         self._check(identifier)
-        apps = self.api.call('app.query', [['name', '=', 'plex']])
-        if len(apps) != 1 or apps[0].get('state') != 'STOPPED':
+        if PlexStatus(self.api).read()['state'] != 'STOPPED':
             raise SnapshotError('Plex must be confirmed STOPPED before rollback')
         if not self.exists(identifier):
             raise SnapshotError('Recovery snapshot is missing')

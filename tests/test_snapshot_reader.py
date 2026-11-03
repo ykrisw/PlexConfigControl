@@ -36,3 +36,14 @@ class ReaderTests(unittest.TestCase):
             with patch('plexconfigcontrol.snapshot_reader.os.statvfs',return_value=SimpleNamespace(f_flag=0)):
                 with self.assertRaises(SnapshotReadError):
                     with reader('test/config@'+NAME): pass
+
+    def test_malformed_snapshot_results_never_expose_a_source_directory(self):
+        from unittest.mock import Mock
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'.zfs/snapshot'/NAME).mkdir(parents=True);info=root.stat()
+            for answer in (None,{},[None],[False],[{'id':'other/config@'+NAME}]):
+                api=Mock();api.call.return_value=answer
+                reader=SnapshotReader(root,'test/config',info.st_dev,info.st_ino,api)
+                with self.subTest(answer=answer):
+                    with self.assertRaises(SnapshotReadError):
+                        with reader('test/config@'+NAME): self.fail('No source may be exposed')
