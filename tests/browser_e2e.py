@@ -140,6 +140,7 @@ def main():
                     page.get_by_role('tab',name=title,exact=True).click()
                     assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),f'{title} overflows at {width}px'
                     assert page.locator('.pcc-nav').evaluate("e=>[...e.querySelectorAll('button')].every(b=>{const s=b.querySelector('span').getBoundingClientRect(),r=b.getBoundingClientRect();return s.left>=r.left-1&&s.right<=r.right+1;})"),f'Tab labels overlap at {width}px'
+                    assert page.locator('.pcc-nav').evaluate("e=>{const y=[...e.querySelectorAll('button svg')].map(s=>s.getBoundingClientRect().top);return Math.max(...y)-Math.min(...y)<2;}"),f'Navigation icons are uneven at {width}px'
                 page.screenshot(path=str(output/f'mobile-{width}.png'),full_page=True)
             page.set_viewport_size({'width':1440,'height':1080})
             page.get_by_role('tab',name='Pulpit',exact=True).click()

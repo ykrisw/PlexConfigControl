@@ -4,6 +4,9 @@ This is a test build, not a complete backup/restore product. Only use an artifac
 from a successful **Build test installation** run. It includes the Docker image,
 this guide and SHA256SUMS. Artifacts expire after 30 days; a build can recreate one.
 The default branch source ZIP is not the installation image.
+Use a successful run that includes **Test real browser interface**. Earlier
+artifacts can fail at sign-in due to a native browser fetch invocation defect
+that server-only smoke tests did not detect.
 
 ## What this build can test
 

@@ -11,6 +11,9 @@ zakończone zielonym wynikiem wykonanie i pobierz z sekcji **Artifacts** paczkę
 **PlexConfigControl-test-installation**. Pobieranie może wymagać zalogowania do
 GitHuba. Paczka zawiera obraz kontenera, instrukcje i sumę SHA256. Zwykły ZIP
 ze źródłami repozytorium nie jest instalką. Paczka wygasa po 30 dniach.
+Wybierz wykonanie zawierające zakończony powodzeniem krok **Test real browser
+interface**. Wcześniejsze paczki mogły blokować logowanie z powodu błędu
+wywołania funkcji fetch w przeglądarce, którego testy samego serwera nie wykryły.
 
 ## 1. Wczytaj obraz
 

@@ -134,7 +134,19 @@ view until the host adapters are fully integrated and verified. A disposer
 removes listeners and browser polling without cancelling server work.
 
 The inline conversation preview remains illustrative; it is not an installed
-application. Browser rendering of the packaged views still requires visual QA.
+application. The build workflow now checks the real packaged interface in
+Chromium: authentication, five tabs, theme/language changes, profile upload and
+removal, archive prevalidation, history downloads and account password/logout.
+It captures Light/Dark screenshots plus narrow 320/360px screens and checks
+shared panel heights, horizontal overflow and navigation alignment. Only
+disposable Docker state and synthetic CI archives/history are used, never a NAS.
+Screenshots are uploaded separately as `PlexConfigControl-browser-screenshots`.
+The browser uses a temporary self-signed-certificate exception only for its local
+CI context; the HTTPS health probe still verifies the generated certificate.
+
+Real-browser checks found and fixed an Illegal invocation at sign-in: native
+Window fetch must retain its receiver. Earlier image artifacts predate this fix;
+use a build that passes the real-browser check rather than an earlier package.
 
 ### Connected History view
 
