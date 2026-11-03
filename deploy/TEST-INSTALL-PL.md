@@ -146,3 +146,11 @@ importu czeka więc w kolejce w ixVolume na zapis do `Plex Config/Logs`; program
 nie zapisuje go w przypadkowym miejscu ani nie zmienia uprawnień. Pełna instalacja
 z poprawnie skonfigurowanym zapisem będzie zapisywała tam pliki
 `ArchiveImport_YYYY.MM.DD_HH.MM.SS_<unikalny-identyfikator>.log`.
+
+
+Opcjonalny odczyt stanu pozostawionego snapshotu można skonfigurować przez
+`PCC_PLEX_CONFIG_DATASET` wraz z istniejącym połączeniem TrueNAS tylko do odczytu.
+Pozwala to sprawdzać wyłącznie konkretny snapshot aplikacji we wskazanym datasecie.
+Nie odblokowuje tworzenia, usuwania ani rollbacku snapshotów i nie steruje Plexem.
+Brak uprawnień lub problem z odczytem oznacza stan nieznany, a nie potwierdzenie
+usunięcia. To opcja wdrożeniowa; aplikacja nie tworzy sama uprawnień ani konta API.

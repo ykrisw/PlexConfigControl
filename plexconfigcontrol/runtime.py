@@ -10,6 +10,8 @@ from .startup import reconcile_startup
 from .tls import ensure_tls
 from .transport import build_client
 from .web import Web
+from .snapshots import Snapshots, SnapshotError
+from .recovery import Recovery
 
 
 @dataclass(frozen=True)
@@ -22,6 +24,14 @@ class Configuration:
     api_username: str = ''
     api_key_file: str = ''
     ca_file: str | None = None
+    snapshot_dataset: str | None = None
+
+    def __post_init__(self):
+        if self.snapshot_dataset is not None:
+            if not all((self.truenas_url,self.api_username,self.api_key_file)):
+                raise ValueError('Snapshot inspection requires a configured read-only TrueNAS connection')
+            # Construction validates scope and performs no API/state access.
+            Snapshots(None,None,self.snapshot_dataset)
 
     @classmethod
     def from_environment(cls,environment=None):
@@ -39,15 +49,29 @@ class Configuration:
         url=env.get('PCC_TRUENAS_URL',''); user=env.get('PCC_API_USERNAME',''); key=env.get('PCC_API_KEY_FILE','')
         if any((url,user,key)) and not all((url,user,key)):
             raise ValueError('Incomplete read-only TrueNAS connection')
-        return cls(state,host,port,Path(archives) if archives else None,url,user,key,env.get('PCC_CA_FILE'))
+        return cls(state,host,port,Path(archives) if archives else None,url,user,key,env.get('PCC_CA_FILE'),env.get('PCC_PLEX_CONFIG_DATASET') or None)
 
 
 class ReadOnlyTrueNAS:
-    def __init__(self,client): self.client=client
+    def __init__(self,client,snapshot_dataset=None):
+        self.client=client
+        self.snapshot_scope=Snapshots(None,None,snapshot_dataset) if snapshot_dataset is not None else None
+
     def call(self,method,*params):
-        if method!='app.query': raise PermissionError('Only application status reads are enabled')
-        # Ignore caller filters: this test runtime can inspect only Plex.
-        return self.client.call('app.query',[['name','=','plex']],{'select':['name','state']})
+        if method=='app.query':
+            # Ignore caller filters: this runtime can inspect only Plex.
+            return self.client.call('app.query',[['name','=','plex']],{'select':['name','state']})
+        if method=='pool.snapshot.query' and self.snapshot_scope is not None and len(params)==1:
+            filters=params[0]
+            if (isinstance(filters,list) and len(filters)==1 and isinstance(filters[0],list)
+                    and len(filters[0])==3 and filters[0][:2]==['id','=']):
+                identifier=filters[0][2]
+                try:
+                    self.snapshot_scope._check(identifier)
+                except SnapshotError:
+                    raise PermissionError('Snapshot query is outside configured read-only scope') from None
+                return self.client.call('pool.snapshot.query',[['id','=',identifier]])
+        raise PermissionError('Only Plex status and explicitly scoped snapshot reads are enabled')
 
 
 class TestApplication:
@@ -79,8 +103,12 @@ def prepare(config,verifier=None):
     api=None
     if config.truenas_url:
         api=ReadOnlyTrueNAS(build_client(config.truenas_url,config.api_username,
-             read_secret(config.api_key_file),config.ca_file,timeout=10))
+             read_secret(config.api_key_file),config.ca_file,timeout=10),config.snapshot_dataset)
     web=Web(config.state,archive_directory=config.archives,truenas_api=api,archive_deletion_enabled=False,archive_logs_enabled=False)
+    if config.snapshot_dataset is not None:
+        if api is None:
+            raise ValueError('Snapshot inspection connection is unavailable')
+        web.recovery_inspector=Recovery(api,web.operation_store,web.history,config.state,config.snapshot_dataset).inspect
     with operation_lock(config.state):
         with web.account.connect() as db:
             existing=db.execute('SELECT id FROM account WHERE id=1').fetchone()

@@ -138,3 +138,11 @@ test build. TrueNAS controls its Remove ixVolumes/Images options.
 - https://www.truenas.com/docs/scale/25.10/scaleuireference/apps/installcustomappscreens/
 - https://apps.truenas.com/managing-apps/installing-custom-apps/
 - https://gunicorn.org/reference/settings/
+
+
+For optional recovery snapshot status, `PCC_PLEX_CONFIG_DATASET` may be supplied
+alongside the existing read-only TrueNAS connection. It scopes exact application
+snapshot queries to that dataset and does not grant any snapshot mutation or Plex
+control capability. Leave it unset until the read-only account and its metadata
+permissions are configured and verified. An unavailable or unauthorized read
+continues to show UNKNOWN; no snapshot is inferred absent.
