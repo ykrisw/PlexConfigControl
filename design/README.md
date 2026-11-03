@@ -30,4 +30,5 @@ panel layout and standalone Restore view.
 Approval of this appearance does not establish implementation or end-to-end
 verification of every operation shown in the preview. Dashboard account actions
 and Plex status are connected; profile photo management remains pending.
-Backup, History and Settings content integration is still incomplete.
+History is connected to web-history records and their stored log-text exports.
+Backup and Settings content integration is still incomplete.

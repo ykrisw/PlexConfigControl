@@ -2,6 +2,7 @@ import {PanelClient} from './panel-client.mjs';
 import {mountPanelShell} from './panel-shell.mjs';
 import {mountDashboardView} from './dashboard-view.mjs';
 import {mountRestoreView} from './restore-view.mjs';
+import {mountHistoryView} from './history-view.mjs';
 
 export function mountPanelApp(root) {
   let epoch = 0, cleanup = () => {}, stopped = false;
@@ -44,6 +45,7 @@ export function mountPanelApp(root) {
       if (viewDisposers.has(key)) return;
       if (key === 'dashboard') viewDisposers.set(key, mountDashboardView(section, client, {language: prefs.language, onSignedOut: signedOut}));
       else if (key === 'restore') viewDisposers.set(key, mountRestoreView(section, client));
+      else if (key === 'history') viewDisposers.set(key, mountHistoryView(section, client, {language:prefs.language,timezone:prefs.timezone}));
       else {
         const card = root.ownerDocument.createElement('section'); card.className = 'pcc-card pcc-fill';
         const text = root.ownerDocument.createElement('p');

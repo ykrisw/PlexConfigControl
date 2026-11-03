@@ -54,6 +54,8 @@ class Web:
                 '/assets/panel-app.mjs':'panel-app.mjs',
                 '/assets/dashboard-controller.mjs':'dashboard-controller.mjs',
                 '/assets/dashboard-view.mjs':'dashboard-view.mjs',
+                '/assets/history-controller.mjs':'history-controller.mjs',
+                '/assets/history-view.mjs':'history-view.mjs',
                 '/assets/approved-appearance.css':'approved-appearance.css'}
         if method=='GET' and path=='/':
             body=files('plexconfigcontrol').joinpath('static/index.html').read_bytes()

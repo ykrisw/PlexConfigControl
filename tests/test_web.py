@@ -4,6 +4,7 @@ import json
 import tempfile
 import threading
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 from wsgiref.simple_server import make_server, WSGIRequestHandler
 from plexconfigcontrol.web import Web
@@ -13,6 +14,33 @@ class Quiet(WSGIRequestHandler):
     def log_message(self,*args): pass
 
 class WebTests(unittest.TestCase):
+    def test_history_clear_requires_confirmation_and_preserves_permanent_logs(self):
+        with tempfile.TemporaryDirectory() as d:
+            app=Web(Path(d)/'ixVolume')
+            logs=Path(d)/'Plex Config'/'Logs'; logs.mkdir(parents=True)
+            permanent=logs/'Backup_2026.11.03_04.15.35.log';permanent.write_text('permanent')
+            selected=app.history.add('BACKUP','SUCCESS','web event log')
+            retained=app.history.add('RESTORE','FAILED','retained')
+            token,csrf=app.sessions.create()
+            def request(path,data):
+                payload=json.dumps(data).encode();response=[]
+                body=b''.join(app({'REQUEST_METHOD':'POST','PATH_INFO':path,
+                    'HTTP_COOKIE':'pcc_session='+token,'HTTP_X_CSRF_TOKEN':csrf,
+                    'CONTENT_TYPE':'application/json','CONTENT_LENGTH':str(len(payload)),
+                    'wsgi.input':io.BytesIO(payload)},
+                    lambda status,headers:response.append((status,dict(headers)))))
+                return response[0],body
+            (status,_),_=request('/api/history/clear',{'ids':[selected]})
+            self.assertEqual(status,'400 Bad Request');self.assertIsNotNone(app.history.detail(selected))
+            (status,headers),body=request('/api/history/download',{'ids':[selected]})
+            self.assertEqual(status,'200 OK');self.assertEqual(body,b'web event log')
+            self.assertIn('Event_',headers['Content-Disposition'])
+            (status,_),_=request('/api/history/clear',{'ids':[selected],'confirmed':True})
+            self.assertEqual(status,'200 OK');self.assertIsNone(app.history.detail(selected))
+            self.assertIsNotNone(app.history.detail(retained))
+            self.assertEqual(permanent.read_text(),'permanent')
+            self.assertEqual(list(logs.iterdir()),[permanent])
+
     @patch('plexconfigcontrol.auth.ITERATIONS',1000)
     def test_password_change_revokes_every_session_after_confirmation(self):
         with tempfile.TemporaryDirectory() as d:
@@ -45,7 +73,8 @@ class WebTests(unittest.TestCase):
             app=Web(d)
             for name in ('panel-layout.css','panel-shell.mjs','restore-view.css','restore-view.mjs',
                          'approved-appearance.css','panel-app.css','panel-app.mjs',
-                         'dashboard-controller.mjs','dashboard-view.mjs'):
+                         'dashboard-controller.mjs','dashboard-view.mjs',
+                         'history-controller.mjs','history-view.mjs'):
                 responses=[]
                 body=b''.join(app({'REQUEST_METHOD':'GET','PATH_INFO':'/assets/'+name},
                     lambda status,headers:responses.append((status,dict(headers)))))

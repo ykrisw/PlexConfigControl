@@ -78,3 +78,43 @@ test('rejected password change preserves the current session; malformed logout i
   await assert.rejects(client.logout(),ApiError);
   assert.equal(client.csrf,'valid');
 });
+
+test('history download uses CSRF and preserves binary ZIP bytes and the server filename',async()=>{
+  let request;
+  const bytes=new Uint8Array([80,75,3,4,0,255]);
+  const client=new PanelClient({fetcher:async(path,options)=>{
+    request={path,options};
+    return {ok:true,status:200,headers:new Headers({'Content-Type':'application/zip',
+      'Content-Disposition':'attachment; filename="PlexConfigControl_Logs.zip"'}),blob:async()=>new Blob([bytes])};
+  }});
+  client.csrf='token';const result=await client.downloadHistory([7,8]);
+  assert.equal(request.path,'/api/history/download');
+  assert.equal(request.options.headers['X-CSRF-Token'],'token');
+  assert.deepEqual(JSON.parse(request.options.body),{ids:[7,8]});
+  assert.equal(result.filename,'PlexConfigControl_Logs.zip');
+  assert.deepEqual(new Uint8Array(await result.blob.arrayBuffer()),bytes);
+});
+
+test('expired history download ends the session and never treats JSON errors as files',async()=>{
+  const {client}=setup([[401,{error:'Sign in required'}]]);
+  let expired=0;client.csrf='old';client.onSessionExpired=()=>expired++;
+  await assert.rejects(client.downloadHistory([1]),ApiError);
+  assert.equal(expired,1);assert.equal(client.csrf,null);
+});
+
+test('history deletion sends explicit confirmation separately from downloading',async()=>{
+  const {client,calls}=setup([[200,{cleared:[5]}]]);client.csrf='token';
+  await client.clearHistory([5]);
+  assert.equal(calls[0].path,'/api/history/clear');
+  assert.deepEqual(JSON.parse(calls[0].options.body),{ids:[5],confirmed:true});
+});
+
+test('download rejects unsafe server filenames before reading file contents',async()=>{
+  let reads=0;
+  const client=new PanelClient({fetcher:async()=>({ok:true,status:200,
+    headers:new Headers({'Content-Type':'text/plain','Content-Disposition':'attachment; filename="../../config.log"'}),
+    blob:async()=>{reads++;return new Blob(['unsafe']);},
+  })});
+  client.csrf='token';
+  await assert.rejects(client.downloadHistory([1]),ApiError);assert.equal(reads,0);
+});

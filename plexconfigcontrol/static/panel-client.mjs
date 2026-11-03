@@ -14,14 +14,14 @@ export class PanelClient {
     this.csrf = null;
   }
 
-  async request(path, {body, signal, login = false} = {}) {
+  async request(path, {body, signal, login = false, download = false} = {}) {
     const controller = new AbortController();
     const abort = () => controller.abort();
     if (signal?.aborted) abort();
     signal?.addEventListener('abort', abort, {once: true});
     const timer = setTimeout(abort, 15000);
     try {
-      const headers = {Accept: 'application/json'};
+      const headers = {Accept: download ? 'application/zip, text/plain, application/json' : 'application/json'};
       if (body !== undefined) {
         headers['Content-Type'] = 'application/json';
         if (login) headers['X-PCC-Request'] = '1';
@@ -36,15 +36,26 @@ export class PanelClient {
         signal: controller.signal,
         ...(body === undefined ? {} : {body: JSON.stringify(body)}),
       });
-      const result = await response.json();
       if (!response.ok) {
         if (response.status === 401 && !login) {
           this.csrf = null;
           this.onSessionExpired();
         }
+        const result = await response.json();
         throw new ApiError(response.status, result);
       }
-      return result;
+      if (download) {
+        const disposition = response.headers.get('Content-Disposition') || '';
+        const match = /^attachment; filename="(Event_[1-9][0-9]*\.log|PlexConfigControl_Logs\.zip)"$/.exec(disposition);
+        const type = (response.headers.get('Content-Type') || '').split(';')[0];
+        if (!match || !['application/zip', 'text/plain'].includes(type)) {
+          throw new ApiError(502, {error: 'Invalid log download response'});
+        }
+        const blob = await response.blob();
+        if (blob.size > 34 * 1024 * 1024) throw new ApiError(502, {error: 'Log download is too large'});
+        return {filename: match[1], blob};
+      }
+      return await response.json();
     } finally {
       clearTimeout(timer);
       signal?.removeEventListener('abort', abort);
@@ -80,6 +91,13 @@ export class PanelClient {
   }
 
   settings(signal) { return this.request('/api/settings', {signal}); }
+  history(signal) { return this.request('/api/history', {signal}); }
+  clearHistory(ids, signal) {
+    return this.request('/api/history/clear', {body: {ids, confirmed: true}, signal});
+  }
+  downloadHistory(ids, signal) {
+    return this.request('/api/history/download', {body: {ids}, signal, download: true});
+  }
 
   async restoreSession() {
     this.csrf = null;

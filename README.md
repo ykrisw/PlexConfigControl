@@ -22,7 +22,7 @@ specification in `design/README.md`. Shared production styles import
 
 - Real TrueNAS WebSocket authentication and verified TLS transport.
 - Container access to snapshots and tested file ownership/ACL/xattr preservation.
-- Backup, History and Settings views connected to the server.
+- Backup and Settings views connected to the server.
 - Profile photo support and complete UI translations of errors.
 - Single-existing-archive overwrite workflow and crash-safe publication recovery.
 - Production HTTP/HTTPS server, certificate setup and TrueNAS installation form.
@@ -49,8 +49,8 @@ restore readiness, password changes and explicit logout.
 
 The WSGI application now serves a development entry page at `/`, loading
 `panel-app.mjs`. It restores the existing session or shows password-only sign-in,
-then mounts the approved shell, Dashboard and Restore views. No preview archives
-or events are included. Backup, History and Settings show explicit integration
+then mounts the approved shell, Dashboard, Restore and History views. No preview archives
+or events are included. Backup and Settings show explicit integration
 placeholders; they are not usable panels yet. Mount behind HTTPS: session cookies
 remain Secure. The installation must initialize the account beforehand.
 
@@ -83,7 +83,7 @@ Use `pcc-card pcc-account` in Dashboard, `pcc-card pcc-archives` in Backup,
 `pcc-card pcc-events` in History and `pcc-card pcc-about` in Settings for the
 cards whose lower edges should expand to the bottom. Backup's Important card
 keeps its natural height below the expanded archive list. These are shared
-layout hooks; Backup, History and Settings content still needs integration.
+layout hooks; Backup and Settings content still needs integration.
 
 `restore-view.mjs` exports `mountRestoreView(section, client)` and binds the
 actual archive list, selection, validation, progress, readiness, cancellation
@@ -95,6 +95,27 @@ removes listeners and browser polling without cancelling server work.
 
 The inline conversation preview remains illustrative; it is not an installed
 application. Browser rendering of the packaged views still requires visual QA.
+
+### Connected History view
+
+`history-view.mjs` mounts real history records with counters, All/Backup/Restore
+filters, multiple selection, timestamps in the saved timezone, and a scrolling
+list. A confirmation dialog identifies the selected record count before clearing
+only those web-history records. Changing filters clears the selection. Refreshes
+preserve surviving selections and remove missing ones; stale confirmations and
+unconfirmed deletion responses cannot trigger automatic retries.
+
+Download Logs exports the log text stored with the selected web-history events:
+one `Event_ID.log` or an in-memory ZIP for multiple events. This does not read or
+modify original permanent operational log files; exporting their complete content
+will need a separately verified association between events and those files.
+No temporary downloads are written on the NAS. Downloads and history clearing
+require the authenticated session and CSRF token. The browser revokes temporary
+download URLs after use or disposal. Selected downloads are limited to 1000 events.
+
+History IDs now use SQLite AUTOINCREMENT, so deleted IDs are not assigned to new
+events. Existing history databases migrate transactionally, preserving live IDs
+and contents. This prevents stale browser selections from targeting later events.
 
 ## Storage contract
 

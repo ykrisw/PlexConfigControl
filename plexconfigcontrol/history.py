@@ -10,10 +10,20 @@ class History:
         directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.path = directory / 'history.sqlite3'
         with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
             db.execute('PRAGMA secure_delete=ON')
-            db.execute('CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY, '
+            existing = db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='events'").fetchone()
+            # Never reuse deleted identities: a stale browser selection must not
+            # delete or download a different event added after a history clear.
+            migrate = existing is not None and 'AUTOINCREMENT' not in existing[0].upper()
+            if migrate:
+                db.execute('ALTER TABLE events RENAME TO events_before_identity_migration')
+            db.execute('CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY AUTOINCREMENT, '
                        'created TEXT NOT NULL, kind TEXT NOT NULL, status TEXT NOT NULL, '
                        'archive TEXT, log TEXT NOT NULL)')
+            if migrate:
+                db.execute('INSERT INTO events SELECT * FROM events_before_identity_migration')
+                db.execute('DROP TABLE events_before_identity_migration')
         self.path.chmod(0o600)
 
     def connect(self):
