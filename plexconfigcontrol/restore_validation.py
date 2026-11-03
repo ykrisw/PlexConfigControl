@@ -3,7 +3,7 @@ import os
 import stat
 import threading
 from pathlib import Path
-from .archive_store import NAME
+from .archive_store import NAME, file_identity
 from .archives import validate_archive, InvalidArchive
 from .locking import operation_lock
 from .operations import Phase, OperationDenied
@@ -85,8 +85,11 @@ class RestoreValidation:
                 try:
                     if not stat.S_ISREG(os.fstat(fd).st_mode):
                         raise InvalidArchive('Archive must be a regular file')
+                    identity=file_identity(os.fstat(fd))
                     result=validate_archive(None, source_fd=fd,
                         progress_callback=lambda stage,done: self.progress.update(stage,done=done))
+                    if file_identity(os.fstat(fd))!=identity:
+                        raise InvalidArchive('Archive changed during validation')
                 finally:
                     os.close(fd)
             finally:
@@ -94,7 +97,8 @@ class RestoreValidation:
             with self.store.transaction() as operation:
                 operation.archive_validated(result.sha256)
                 operation.validation_details={'archive':name,'status':'VALID','reason':None,
-                    'sha256':result.sha256,'files':result.files,'bytes_read':result.bytes_read}
+                    'sha256':result.sha256,'files':result.files,'bytes_read':result.bytes_read,
+                    'file_identity':identity}
             self.progress.update('WAITING_FOR_PLEX_STOP')
             self.history.add('ARCHIVE_VALIDATION','SUCCESS',
                              'Archive contents verified; waiting for manual Plex stop.',name)
