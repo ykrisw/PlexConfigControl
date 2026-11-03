@@ -83,6 +83,8 @@ export class PanelClient {
     return this.request('/api/restore/cancel', {body: {}, signal});
   }
   operation(signal) { return this.request('/api/operation', {signal}); }
+  archives(signal) { return this.request('/api/archives', {signal}); }
+  status(signal) { return this.request('/api/status', {signal}); }
   readiness(signal) { return this.request('/api/restore/readiness', {signal}); }
 
   async restoreView(signal) {
