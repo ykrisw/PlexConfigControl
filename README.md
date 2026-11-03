@@ -382,3 +382,36 @@ for Edge, Android device emulation and Android-system tests.
 These checks exercise the web client. A physical Android phone, vendor-specific
 browser/file pickers, native downloads and Android keyboard behavior still need
 manual device verification; emulator success is not a blanket compatibility claim.
+
+
+## Apple-platform verification
+
+`tests/apple_e2e.py` uses Selenium with the installed Safari.app and Apple's
+safaridriver on a disposable macOS runner, or the installed stock Firefox.app
+and geckodriver. Safari is not substituted with Playwright WebKit. Separate
+matrix entries create disposable iPhone/iPad simulators from installed Xcode
+runtimes and use Safari's iOS WebDriver support with an explicit simulator UUID.
+Physical devices and a non-CI host are not eligible for these tests.
+
+The fixture serves the same restricted WSGI application over locally verified
+HTTPS with real temporary account/history/archive state. Docker, ZFS, live Plex
+and a user NAS are not involved. Safari trusts only the fixture certificate in
+the isolated runner/simulator; the exact host certificate trust entry and only
+the simulator created by this run are removed afterward. The CI log records the
+actual OS, browser and simulator runtime/hardware; tests do not assume the
+runner matches a user's macOS/iOS version.
+
+Coverage includes sign-in, session restoration, five panels, archive import and
+selection, validation/manual-stop gating, profile photo upload/removal, History
+confirmation/clearing and log response bytes, permanent-log preservation,
+English/Polish, Light/Dark preferences, scrolling/overflow, password change and
+logout. File upload uses the web input handler; log-byte checks use the actual
+authenticated API. Native photo pickers, Save/Files dialogs and physical touch/
+keyboard behavior are not thereby certified.
+
+Firefox for iOS/iPadOS is a separate App Store application, not this macOS
+Firefox binary and not Safari. It is not installed or tested in these jobs.
+Manual checks on a physical iPhone/iPad remain necessary for that application,
+for native OS dialogs and for the user's specific OS/browser versions. A failed
+or unavailable simulator/driver run must be reported as such, never relabeled
+as a passed WebKit/device-emulation test.
