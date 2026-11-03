@@ -1,3 +1,4 @@
+@import url('/assets/approved-appearance.css');
 /* Shared geometry agreed for Dashboard, Backup, Restore, History and Settings. */
 .pcc-shell{--pcc-content-height:820px;--pcc-inset:18px;--pcc-gap:14px;--pcc-bg:#f1f3f8;--pcc-card:#fff;--pcc-ink:#000000;--pcc-line:#d4dfed;--pcc-selected:#f2f7fd;font:14px/1.5 Arial,sans-serif;background:var(--pcc-bg);color:var(--pcc-ink);border-radius:20px}
 .pcc-shell *{box-sizing:border-box}.pcc-shell [hidden]{display:none!important}
