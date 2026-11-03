@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 dependencies = ["websocket-client>=1.9,<2"]
 
 [project.optional-dependencies]
-server = ["gunicorn==25.2.0", "cryptography==50.0.2", "tzdata>=2026.1"]
+server = ["gunicorn==25.2.0", "cryptography==50.0.2", "tzdata>=2026.1", "Pillow==13.0.0"]
 
 [tool.setuptools.packages.find]
 include = ["plexconfigcontrol*"]

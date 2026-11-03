@@ -14,7 +14,7 @@ export class PanelClient {
     this.csrf = null;
   }
 
-  async request(path, {body, signal, login = false, download = false} = {}) {
+  async request(path, {body, raw, signal, login = false, download = false} = {}) {
     const controller = new AbortController();
     const abort = () => controller.abort();
     if (signal?.aborted) abort();
@@ -22,8 +22,10 @@ export class PanelClient {
     const timer = setTimeout(abort, 15000);
     try {
       const headers = {Accept: download ? 'application/zip, text/plain, application/json' : 'application/json'};
-      if (body !== undefined) {
-        headers['Content-Type'] = 'application/json';
+      if(body!==undefined&&raw!==undefined)throw new ApiError(400,{error:'Choose one request body'});
+      const writing=body!==undefined||raw!==undefined;
+      if (writing) {
+        headers['Content-Type'] = raw!==undefined?'application/octet-stream':'application/json';
         if (login) headers['X-PCC-Request'] = '1';
         else {
           if (!this.csrf) throw new ApiError(403, {error: 'Sign in again before making changes'});
@@ -31,10 +33,10 @@ export class PanelClient {
         }
       }
       const response = await this.fetcher(path, {
-        method: body === undefined ? 'GET' : 'POST', headers,
+        method: writing ? 'POST' : 'GET', headers,
         credentials: 'same-origin', cache: 'no-store', redirect: 'error',
         signal: controller.signal,
-        ...(body === undefined ? {} : {body: JSON.stringify(body)}),
+        ...(writing ? {body:raw!==undefined?raw:JSON.stringify(body)} : {}),
       });
       if (!response.ok) {
         if (response.status === 401 && !login) {
@@ -91,6 +93,9 @@ export class PanelClient {
   }
 
   settings(signal) { return this.request('/api/settings', {signal}); }
+  photoStatus(signal) { return this.request('/api/account/photo/status',{signal}); }
+  uploadPhoto(file,signal) { return this.request('/api/account/photo',{raw:file,signal}); }
+  removePhoto(revision,signal) { return this.request('/api/account/photo/remove',{body:{confirmed:true,revision},signal}); }
   updateSettings(changes,signal) { return this.request('/api/settings', {body:changes,signal}); }
   capabilities(signal) { return this.request('/api/capabilities', {signal}); }
   backupPlan(signal) { return this.request('/api/backup/plan', {signal}); }

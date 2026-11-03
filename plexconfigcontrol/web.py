@@ -21,6 +21,7 @@ from .restore_validation import RestoreValidation
 from .archives import InvalidArchive
 from .operations import OperationDenied
 from .restore_readiness import restore_readiness
+from .profile_photo import ProfilePhoto,InvalidPhoto,PhotoChanged,MAX_UPLOAD
 
 class Web:
     def __init__(self,state_directory,archive_directory=None,truenas_api=None,*,archive_deletion_enabled=True):
@@ -35,6 +36,7 @@ class Web:
         self.settings=Settings(state_directory)
         self.history=History(state_directory)
         self.archive_deletion_enabled=archive_deletion_enabled
+        self.photo=ProfilePhoto(state_directory)
 
     def __call__(self,environ,start_response):
         headers=[('Content-Type','application/json; charset=utf-8'),
@@ -56,6 +58,7 @@ class Web:
                 '/assets/panel-app.mjs':'panel-app.mjs',
                 '/assets/dashboard-controller.mjs':'dashboard-controller.mjs',
                 '/assets/dashboard-view.mjs':'dashboard-view.mjs',
+                '/assets/photo-controller.mjs':'photo-controller.mjs',
                 '/assets/history-controller.mjs':'history-controller.mjs',
                 '/assets/history-view.mjs':'history-view.mjs',
                 '/assets/settings-controller.mjs':'settings-controller.mjs',
@@ -84,7 +87,8 @@ class Web:
         except CookieError: return respond('400 Bad Request',{'error':'Invalid cookie'})
         token=cookie['pcc_session'].value if 'pcc_session' in cookie else None
         data={}
-        if method=='POST':
+        photo_upload=path=='/api/account/photo' and method=='POST'
+        if method=='POST' and not photo_upload:
             if not environ.get('CONTENT_TYPE','').split(';')[0]=='application/json':
                 return respond('415 Unsupported Media Type',{'error':'JSON required'})
             try:
@@ -118,6 +122,41 @@ class Web:
             return respond('401 Unauthorized',{'error':'Sign in required'})
         if method=='POST' and not self.sessions.check_csrf(token,environ.get('HTTP_X_CSRF_TOKEN')):
             return respond('403 Forbidden',{'error':'Invalid CSRF token'})
+        if path=='/api/account/photo/status' and method=='GET':
+            try: return respond('200 OK',self.photo.status())
+            except OSError: return respond('503 Service Unavailable',{'error':'Profile photo storage is unavailable'})
+        if path=='/api/account/photo' and method=='GET':
+            try: image=self.photo.read()
+            except OSError: return respond('503 Service Unavailable',{'error':'Profile photo storage is unavailable'})
+            if image is None: return respond('404 Not Found',{'error':'No profile photo'})
+            start_response('200 OK',[('Content-Type','image/png'),('Content-Length',str(len(image))),
+                ('Cache-Control','private, no-store'),('X-Content-Type-Options','nosniff')])
+            return [image]
+        if photo_upload:
+            if environ.get('CONTENT_TYPE','').split(';')[0]!='application/octet-stream':
+                return respond('415 Unsupported Media Type',{'error':'Upload the image file directly'})
+            try:
+                length=int(environ.get('CONTENT_LENGTH') or 0)
+                if not 0<length<=MAX_UPLOAD: return respond('413 Content Too Large',{'error':'Choose a JPEG or PNG photo up to 5 MiB'})
+            except ValueError:
+                return respond('400 Bad Request',{'error':'Invalid upload length'})
+            payload=environ['wsgi.input'].read(length)
+            if len(payload)!=length: return respond('400 Bad Request',{'error':'Incomplete photo upload'})
+            try: result=self.photo.upload(payload)
+            except InvalidPhoto as error: return respond('422 Unprocessable Entity',{'error':str(error)})
+            except OSError: return respond('503 Service Unavailable',{'error':'Profile photo storage is unavailable'})
+            self.history.add('PROFILE_PHOTO','SUCCESS','Profile photo updated.')
+            return respond('200 OK',result)
+        if path=='/api/account/photo/remove' and method=='POST':
+            if data.get('confirmed') is not True: return respond('400 Bad Request',{'error':'Confirm profile photo removal'})
+            revision=data.get('revision')
+            if not isinstance(revision,str) or len(revision)!=64 or any(c not in '0123456789abcdef' for c in revision):
+                return respond('400 Bad Request',{'error':'Confirm the displayed profile photo'})
+            try: result=self.photo.remove(confirmed=True,expected_revision=revision)
+            except PhotoChanged as error: return respond('409 Conflict',{'error':str(error)})
+            except OSError: return respond('503 Service Unavailable',{'error':'Profile photo storage is unavailable'})
+            self.history.add('PROFILE_PHOTO','SUCCESS','Profile photo removed.')
+            return respond('200 OK',result)
         if path=='/api/session' and method=='GET':
             csrf=self.sessions.csrf_for(token)
             if csrf is None:

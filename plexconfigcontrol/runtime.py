@@ -54,10 +54,10 @@ class TestApplication:
     """Explicit route boundary even if future Web routes add host operations."""
     READS={'/api/session','/api/settings','/api/translations','/api/status',
            '/api/operation','/api/archives','/api/history','/api/restore/readiness',
-           '/api/capabilities','/api/backup/plan'}
+           '/api/capabilities','/api/backup/plan','/api/account/photo','/api/account/photo/status'}
     POSTS={'/api/login','/api/logout','/api/account/password','/api/settings',
            '/api/history/detail','/api/history/download','/api/history/clear',
-           '/api/restore/validate','/api/restore/cancel'}
+           '/api/restore/validate','/api/restore/cancel','/api/account/photo','/api/account/photo/remove'}
     def __init__(self,web): self.web=web
     def __call__(self,environ,start_response):
         method=environ.get('REQUEST_METHOD','GET'); path=environ.get('PATH_INFO','/')

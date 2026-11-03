@@ -84,6 +84,8 @@ pozostaje w iXVolume i nie zmienia się po restarcie aplikacji.
 1. Logowanie wybranym hasłem i wygląd Dashboard.
 2. Change Password: po zmianie następuje wylogowanie wszystkich sesji.
 3. History: zdarzenia, zaznaczanie, filtry, pobieranie i potwierdzenie usuwania.
+   W nowszych paczkach sprawdź też dodanie, zastąpienie i usunięcie zdjęcia konta
+   oraz jego zachowanie po restarcie. Pierwsza paczka nie zawiera tej funkcji.
 4. Restart wyłącznie tej aplikacji przez Apps: hasło, sesja, historia i certyfikat
    powinny pozostać zachowane.
 

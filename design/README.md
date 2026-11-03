@@ -29,7 +29,8 @@ panel layout and standalone Restore view.
 
 Approval of this appearance does not establish implementation or end-to-end
 verification of every operation shown in the preview. Dashboard account actions
-and Plex status are connected; profile photo management remains pending.
+and Plex status are connected; profile photos support upload/replacement/removal
+in the ixVolume with controls on the avatar's lower edge.
 History is connected to web-history records and their stored log-text exports.
 Settings theme/language choices are connected to persistent preferences.
 Backup listing/planning and capability-gated confirmed deletion are connected;

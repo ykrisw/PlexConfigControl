@@ -135,3 +135,17 @@ test('archive deletion confirmation keeps large identity numbers as exact string
   assert.equal(calls[0].options.headers['X-CSRF-Token'],'token');
   assert.deepEqual(JSON.parse(calls[0].options.body),{archives:[archive],confirmed:true});
 });
+
+test('photo upload sends raw image bytes with CSRF and never a filename or JSON wrapper',async()=>{
+  const {client,calls}=setup([[200,{present:true,revision:'a'.repeat(64)}]]);client.csrf='token';
+  const image=new Blob(['image bytes'],{type:'image/png'});await client.uploadPhoto(image);
+  assert.equal(calls[0].path,'/api/account/photo');assert.equal(calls[0].options.body,image);
+  assert.equal(calls[0].options.headers['Content-Type'],'application/octet-stream');
+  assert.equal(calls[0].options.headers['X-CSRF-Token'],'token');
+});
+
+test('photo removal transmits explicit confirmation and the displayed revision',async()=>{
+  const {client,calls}=setup([[200,{present:false,revision:null}]]);client.csrf='token';
+  await client.removePhoto('a'.repeat(64));
+  assert.deepEqual(JSON.parse(calls[0].options.body),{confirmed:true,revision:'a'.repeat(64)});
+});

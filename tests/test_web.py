@@ -76,7 +76,7 @@ class WebTests(unittest.TestCase):
                          'dashboard-controller.mjs','dashboard-view.mjs',
                          'history-controller.mjs','history-view.mjs',
                          'settings-controller.mjs','settings-view.mjs',
-                         'backup-controller.mjs','backup-view.mjs','restore-messages.mjs'):
+                         'backup-controller.mjs','backup-view.mjs','restore-messages.mjs','photo-controller.mjs'):
                 responses=[]
                 body=b''.join(app({'REQUEST_METHOD':'GET','PATH_INFO':'/assets/'+name},
                     lambda status,headers:responses.append((status,dict(headers)))))

@@ -29,7 +29,7 @@ specification in `design/README.md`. Shared production styles import
 - Real TrueNAS WebSocket authentication and verified TLS transport.
 - Container access to snapshots and tested file ownership/ACL/xattr preservation.
 - Snapshot-backed Backup execution connected to the web API.
-- Profile photo support and complete UI translations of errors.
+- Complete UI translations of errors.
 - Single-existing-archive overwrite workflow and crash-safe publication recovery.
 - TrueNAS installation test and final Apps password/secret form.
 - Complete restore verification and rollback verification adapters.
@@ -83,7 +83,16 @@ sign-in only after server confirmation. Leaving the application disposes polling
 There is no timer that signs users out for inactivity. Saved theme and language
 preferences are loaded at sign-in; Dashboard labels support English and Polish,
 while sign-in messages and uncommon server errors still need full translation.
-Profile photo upload/removal is not implemented yet.
+Profile photo upload/replacement and confirmed removal are connected. Controls
+appear at the lower edge of the avatar on hover or keyboard focus; touch devices
+keep them accessible. JPEG/PNG uploads are authenticated and CSRF-protected, at
+most 5 MiB and 20 megapixels, and normalize to a pixel-only 512px PNG without
+EXIF/GPS metadata. Only `profile-photo.png` in application state is published.
+Atomic replacement preserves the previous image on failure. Restart cleanup is
+limited to the exact owned `profile-photo.pending` file. Confirmed deletion checks
+the displayed image revision to avoid deleting a replacement from another session.
+Private image reads require login; original filenames/paths are never stored or
+used as filesystem paths. The first downloadable test image predates this feature.
 
 `/assets/restore-panel.mjs` exports `bindRestoreControls(root, client, render)`.
 The Restore markup can bind radios named `restore-archive` and buttons with

@@ -96,6 +96,8 @@ this test runtime intentionally does not silently replace its saved certificate.
 2. Check Dashboard layout and Change Password; changing the password signs all
    sessions out. Log back in with the new password.
 3. Check History, filters, selecting entries, downloading and confirmed clearing.
+   In newer builds, also test profile-photo upload/replacement, restart persistence
+   and confirmed removal. The first image does not include this feature.
 4. Restart only this test app through TrueNAS Apps. Check the password, session,
    history and TLS certificate survive.
 5. Plex state is **UNKNOWN** until a verified read-only connection is configured.
