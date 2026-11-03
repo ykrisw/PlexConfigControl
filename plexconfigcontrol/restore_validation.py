@@ -4,7 +4,7 @@ import stat
 import threading
 from pathlib import Path
 from .archive_store import NAME
-from .archives import validate_archive
+from .archives import validate_archive, InvalidArchive
 from .locking import operation_lock
 from .operations import Phase, OperationDenied
 from .publication_intent import pending
@@ -26,6 +26,7 @@ class RestoreValidation:
                 raise OperationDenied('Unresolved archive publication requires recovery')
             with self.store.transaction() as operation:
                 operation.begin('RESTORE')
+                operation.validation_details={'archive':name,'status':'VALIDATING','reason':None}
             return self._validate_locked(name)
 
     def start_background(self, name):
@@ -44,6 +45,7 @@ class RestoreValidation:
                 raise OperationDenied('Unresolved archive publication requires recovery')
             with self.store.transaction() as operation:
                 operation.begin('RESTORE')
+                operation.validation_details={'archive':name,'status':'VALIDATING','reason':None}
             reserved=True
             self.progress.start('RESTORE')
             def work():
@@ -63,6 +65,8 @@ class RestoreValidation:
                 if reserved:
                     with self.store.transaction() as operation:
                         operation.phase=Phase.FAILED
+                        operation.validation_details={'archive':name,'status':'FAILED',
+                            'reason':'Validation could not be started'}
                     try: self.progress.update('FAILED')
                     except ValueError: pass
             finally:
@@ -80,7 +84,7 @@ class RestoreValidation:
                 fd=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=directory)
                 try:
                     if not stat.S_ISREG(os.fstat(fd).st_mode):
-                        raise ValueError('Archive must be a regular file')
+                        raise InvalidArchive('Archive must be a regular file')
                     result=validate_archive(None, source_fd=fd,
                         progress_callback=lambda stage,done: self.progress.update(stage,done=done))
                 finally:
@@ -89,19 +93,27 @@ class RestoreValidation:
                 os.close(directory)
             with self.store.transaction() as operation:
                 operation.archive_validated(result.sha256)
+                operation.validation_details={'archive':name,'status':'VALID','reason':None,
+                    'sha256':result.sha256,'files':result.files,'bytes_read':result.bytes_read}
             self.progress.update('WAITING_FOR_PLEX_STOP')
             self.history.add('ARCHIVE_VALIDATION','SUCCESS',
                              'Archive contents verified; waiting for manual Plex stop.',name)
             return {'archive':name,'sha256':result.sha256,'files':result.files,
                     'bytes_read':result.bytes_read,'phase':'WAITING_FOR_PLEX_STOP'}
-        except Exception:
+        except Exception as error:
+            # Only archive-validator messages are safe to show verbatim. OS
+            # exceptions can contain host paths; unexpected errors can contain secrets.
+            reason=(str(error) if isinstance(error,InvalidArchive) else
+                    'Archive is unavailable or unreadable' if isinstance(error,OSError) else
+                    'Archive validation could not be completed')
             try: self.progress.update('FAILED')
             except ValueError: pass
             with self.store.transaction() as operation:
                 if operation.phase==Phase.VALIDATING:
                     operation.phase=Phase.FAILED
+                operation.validation_details={'archive':name,'status':'FAILED','reason':reason}
             self.history.add('ARCHIVE_VALIDATION','FAILED',
-                             'Archive validation failed. Plex configuration was not modified.',name)
+                             reason+'. Plex configuration was not modified.',name)
             raise
 
     def cancel(self):
@@ -113,5 +125,6 @@ class RestoreValidation:
                 operation.phase=Phase.IDLE
                 operation.kind=None
                 operation.archive_identity=None
+                operation.validation_details=None
             try: self.progress.update('CANCELLED')
             except ValueError: pass
