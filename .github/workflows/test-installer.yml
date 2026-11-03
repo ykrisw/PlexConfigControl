@@ -27,6 +27,19 @@ jobs:
         run: docker build --tag plexconfigcontrol:test .
       - name: Test image over HTTPS and restart
         run: python tests/container_smoke.py
+      - name: Install disposable browser-test tools
+        run: |
+          python -m pip install '.[browser-tests]'
+          python -m playwright install --with-deps chromium
+      - name: Test real browser interface
+        run: python tests/browser_e2e.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PlexConfigControl-browser-screenshots
+          path: dist/browser-screenshots/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Package test installation
         run: |
           mkdir -p dist
@@ -38,6 +51,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: PlexConfigControl-test-installation
-          path: dist/
+          path: |
+            dist/PlexConfigControl-test-image.tar.gz
+            dist/TEST-INSTALL.md
+            dist/TEST-INSTALL-PL.md
+            dist/SHA256SUMS
           compression-level: 0
           retention-days: 30
