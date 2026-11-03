@@ -12,6 +12,7 @@ import tempfile
 import time
 import urllib.request
 import uuid
+from contextlib import ExitStack
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -19,6 +20,7 @@ from PIL import Image
 from playwright.sync_api import sync_playwright, expect
 from browser_e2e import fixtures
 from container_smoke import docker
+from android_transport import fixture_tunnel
 from plexconfigcontrol.installation import password_verifier
 
 
@@ -48,7 +50,7 @@ def android_endpoint():
             with opener.open('http://127.0.0.1:9222/json/version',timeout=2) as response:
                 data=json.load(response)
                 print('Android Chrome version:',data['Browser'])
-                return 'http://127.0.0.1:9222'
+                return 'http://127.0.0.1:9222', adb
         except OSError:
             time.sleep(.5)
     raise RuntimeError('Android Chrome remote debugging did not become ready')
@@ -150,13 +152,13 @@ def main():
         raise ValueError('PCC_MOBILE_MODE must be emulated or android')
     output=Path('dist/browser-screenshots')/('android-system' if mode=='android' else 'android-emulated')
     output.mkdir(parents=True,exist_ok=True)
-    endpoint=android_endpoint() if mode=='android' else None
+    endpoint,adb=android_endpoint() if mode=='android' else (None,None)
     name='pcc-mobile-'+uuid.uuid4().hex[:12];volume=name+'-state'
     password='ci-touch-only-password';environment=dict(os.environ,PCC_BOOTSTRAP_VERIFIER=password_verifier(password))
     docker('volume','create',volume)
     page=None;browser=None;playwright=None;errors=[];network_errors=[]
     try:
-        with tempfile.TemporaryDirectory() as temporary:
+        with tempfile.TemporaryDirectory() as temporary, ExitStack() as transport:
             playwright=sync_playwright().start()
             temporary=Path(temporary);archives=temporary/'archives';fixtures(archives)
             docker('run','-d','--name',name,'--read-only','--cap-drop=ALL','--security-opt=no-new-privileges:true',
@@ -198,8 +200,10 @@ def main():
             # Only this disposable browser ignores its own synthetic CI cert.
             # The separate host-side health probe above verifies TLS normally.
             cdp.send('Security.setIgnoreCertificateErrors',{'ignore':True})
-            host='10.0.2.2' if mode=='android' else '127.0.0.1'
-            page.goto(f'https://{host}:{port}')
+            # ADB loopback transport avoids depending on emulator Wi-Fi startup.
+            # The tunnel is scoped to this fixture and removed even on failure.
+            url=transport.enter_context(fixture_tunnel(adb,port)) if mode=='android' else f'https://127.0.0.1:{port}'
+            page.goto(url)
             exercise(page,cdp,output,password,emulated=mode=='emulated')
             assert not errors,errors
             print(f'Mobile checks passed ({mode}); UA: '+page.evaluate('navigator.userAgent'))

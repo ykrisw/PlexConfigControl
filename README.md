@@ -1003,11 +1003,10 @@ the corresponding simulated completion. Screenshots (including failures) are
 collected by the existing browser artifact step. The suite does not claim real
 backup integrity or recovery, TLS/auth checks, Safari or physical-device coverage.
 
-The new suite was syntax-checked locally. Native browser execution remains
-unconfirmed: this workspace lacks browser executables and its attempted Chromium
-download did not yield a valid archive. The previous revision's Linux browser
-workflow was queued when checked. Passing Python/JavaScript unit tests must not
-be reported as a native-browser pass; CI results for this suite are still needed.
+The new suite passed in actual Chromium, Firefox and Microsoft Edge on the
+Linux CI runner in run `41729090939` for commit
+`d55d54bf7e812f5b3583f478fdde86139d30f019`. These are intercepted-API UI
+tests, not live NAS execution or native Apple/mobile execution-dialog tests.
 Installer packaging remains manual-only; these workflow changes add tests only.
 
 
@@ -1032,5 +1031,15 @@ transient evidence. Both login-context bootstraps use this check; application
 POSTs are never retried. Apple tests now await the full archive/history fixture
 rows and actual overflow before testing scrollTop; they retain the overflow and
 scroll assertions. The intercepted execution-UI fixture now uses the real
-pcc-main geometry class. These changes have local regression/syntax checks;
-corrected Edge/Safari/native-dialog results still require a new CI run.
+pcc-main geometry class. Run `41729090939` confirmed the corrected Linux browser
+checks, all three execution-dialog browser suites, macOS Firefox/Safari and
+Safari in iOS/iPadOS simulators. The separate application unit workflow also
+passed. This is not physical-device or full-deployment acceptance.
+
+The Android-system job failed before sign-in with ERR_INTERNET_DISCONNECTED
+when Chrome navigated to the emulator gateway. Its fixture now uses an ADB
+reverse tunnel to the same host-loopback HTTPS port, retaining the explicit
+CI-only/emulator-only checks. The mapping uses --no-rebind and is removed on
+normal exit or test failure; no application request is retried. Host-side health
+checks still validate the synthetic certificate normally. The revised Android
+transport has local regression checks but still requires a new emulator CI pass.
