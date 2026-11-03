@@ -15,7 +15,11 @@ def reconcile_startup(store, progress, history, state_directory):
     with operation_lock(state_directory):
         with store.transaction() as operation:
             phase=operation.phase
-            interrupted=(phase in (Phase.VALIDATING,Phase.RUNNING) or
+            previous=describe_outcome(operation.outcome,operation.kind)
+            executing_restore=(operation.kind=='RESTORE' and previous is not None
+                               and previous['code']=='RESTORE_IN_PROGRESS'
+                               and phase in (Phase.WAITING_FOR_PLEX_STOP,Phase.READY))
+            interrupted=(phase in (Phase.VALIDATING,Phase.RUNNING) or executing_restore or
                          (pending(state_directory) and phase != Phase.RECOVERY_REQUIRED))
             snapshot=operation.snapshot_id
             if not interrupted:
@@ -24,10 +28,10 @@ def reconcile_startup(store, progress, history, state_directory):
             # destination staging file. Never silently allow another operation.
             operation.phase=Phase.RECOVERY_REQUIRED
             kind=operation.kind
-            if kind=='BACKUP':
-                previous=describe_outcome(operation.outcome)
-                operation.outcome={'code':'BACKUP_INTERRUPTED',
-                                   'archive':previous['archive'] if previous else None}
+            if kind in ('BACKUP','RESTORE'):
+                archive=previous['archive'] if previous else (operation.validation_details or {}).get('archive')
+                candidate={'code':kind+'_INTERRUPTED','archive':archive}
+                operation.outcome=describe_outcome(candidate,kind) or {'code':kind+'_INTERRUPTED','archive':None}
             if kind=='RESTORE' and phase==Phase.VALIDATING and operation.validation_details:
                 operation.validation_details={
                     'archive':operation.validation_details.get('archive'),

@@ -32,6 +32,8 @@ class Restore:
             with self.store.transaction() as op:
                 if op.kind!='RESTORE' or op.phase not in (Phase.WAITING_FOR_PLEX_STOP,Phase.READY):
                     raise OperationDenied('Validate archive first')
+                if op.outcome is not None:
+                    raise OperationDenied('Previous Restore execution requires recovery')
                 digest=op.archive_identity
                 details=op.validation_details or {}
                 if (op.snapshot_id or not digest or details.get('status')!='VALID'
@@ -46,6 +48,8 @@ class Restore:
             modified=False; committed=False
             with EventLog(self.destination/'Logs','Restore',datetime.now(timezone.utc)) as log:
                 try:
+                    with self.store.transaction() as op:
+                        op.outcome={'code':'RESTORE_IN_PROGRESS','archive':name}
                     self.progress.start('RESTORE')
                     with stage_archive(self.destination/name,self.state,digest) as staged:
                         self.database_check(staged)
@@ -78,13 +82,15 @@ class Restore:
                     self.progress.update('REMOVING_SNAPSHOT')
                     snapshots.remove()
                     committed=True
-                    with self.store.transaction() as op: op.finish(True)
                     self.progress.update('COMPLETED')
                     log.write('Restore succeeded. Emergency snapshot absence confirmed. Plex remains stopped.')
                     self.history.add('RESTORE','SUCCESS',log.finish(),name)
+                    with self.store.transaction() as op:
+                        op.finish(True)
+                        op.outcome={'code':'RESTORE_COMPLETED','archive':name}
                 except Exception:
                     with self.store.transaction() as op: identifier=op.snapshot_id
-                    rollback_message=''
+                    rollback_message='';rollback_verified=False
                     if modified and identifier and not committed:
                         # A progress-database failure must not prevent rollback.
                         try: self.progress.update('ROLLING_BACK')
@@ -93,6 +99,7 @@ class Restore:
                             snapshots.rollback()
                             if self.verify_rollback(identifier) is not True:
                                 raise RuntimeError('Rollback verification failed')
+                            rollback_verified=True
                             rollback_message='Rollback verified. Emergency snapshot retained. '
                         except Exception:
                             rollback_message='Rollback could not be verified. Emergency snapshot intent retained; presence requires verification. '
@@ -101,6 +108,11 @@ class Restore:
                     cleanup_required=bool(identifier or modified or workspace_pending)
                     with self.store.transaction() as op:
                         op.phase=Phase.RECOVERY_REQUIRED if cleanup_required else Phase.FAILED
+                        code=('RESTORE_VERIFIED_REPORTING_FAILED' if committed else
+                              'RESTORE_ROLLBACK_VERIFIED' if rollback_verified else
+                              'RESTORE_FAILED_UNCHANGED' if not modified else
+                              'RESTORE_RECOVERY_UNCONFIRMED')
+                        op.outcome={'code':code,'archive':name}
                     try: self.progress.fail_closed(cleanup_required)
                     except Exception: pass
                     message=rollback_message+'Restore failed. Plex was not started by this application. '

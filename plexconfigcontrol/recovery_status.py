@@ -11,7 +11,7 @@ def recovery_status(store, inspector=None):
         with operation_lock(store.directory):
             with store.transaction() as operation:
                 identity = (operation.snapshot_id, operation.phase.value, operation.kind,
-                            describe_outcome(operation.outcome) if operation.kind=='BACKUP' else None)
+                            describe_outcome(operation.outcome,operation.kind) if operation.kind in ('BACKUP','RESTORE') else None)
             return identity, describe(store.directory)
 
     identity, publication = read_identity()

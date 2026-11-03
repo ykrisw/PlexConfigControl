@@ -1,3 +1,4 @@
+import {normalizeOutcome} from './operation-outcome.mjs';
 const polish={
   'Regular archive file required':'Archiwum musi być zwykłym plikiem.',
   'Archive must be a regular file':'Archiwum musi być zwykłym plikiem.',
@@ -31,11 +32,13 @@ export function restorePresentation(state,language='en'){
   const operation=state.snapshot?.operation?.operation,phase=operation?.phase;
   const restore=operation?.kind==='RESTORE';
   const unresolved=state.snapshot?.operation?.publication?.pending===true;
-  const waiting=!unresolved&&restore&&['WAITING_FOR_PLEX_STOP','READY'].includes(phase);
-  const active=unresolved||['VALIDATING','RUNNING','RECOVERY_REQUIRED'].includes(phase);
+  const executing=restore&&normalizeOutcome(operation.outcome)?.code==='RESTORE_IN_PROGRESS';
+  const waiting=!executing&&!unresolved&&restore&&['WAITING_FOR_PLEX_STOP','READY'].includes(phase);
+  const active=executing||unresolved||['VALIDATING','RUNNING','RECOVERY_REQUIRED'].includes(phase);
   const details=restore?operation.validation_details:null;
   let notice=restoreError(state.error,language);
   if(!notice&&['FAILED','INTERRUPTED'].includes(details?.status))notice=restoreError(details.reason,language);
+  if(!notice&&executing)notice=tx('Restore is in progress. Plex will not be started by this panel.','Restore jest w toku. Panel nie uruchomi Plex.');
   if(!notice&&(unresolved||phase==='RECOVERY_REQUIRED'))notice=tx('Recovery or cleanup must be completed before continuing.','Przed kontynuowaniem trzeba zakończyć odzyskiwanie lub sprzątanie.');
   const readiness=state.snapshot?.readiness;
   if(!notice&&waiting){
@@ -57,6 +60,16 @@ export function restorePresentation(state,language='en'){
     const done=Number.isFinite(progress.done)&&progress.done>=0?progress.done:0;
     const elapsed=Number.isFinite(progress.elapsed_seconds)&&progress.elapsed_seconds>=0?Math.floor(progress.elapsed_seconds):0;
     progressText=`${stages[progress.stage]||tx('Archive validation','Weryfikacja archiwum')} · ${done.toLocaleString(pl?'pl-PL':'en-GB')} ${tx('bytes read','odczytanych bajtów')} · ${elapsed} s`;
+  }
+  if(executing&&progress?.operation==='RESTORE'&&progress.active===true){
+    const stages={PREPARING:tx('Preparing Restore','Przygotowanie Restore'),
+      CREATING_SNAPSHOT:tx('Creating emergency snapshot','Tworzenie awaryjnego snapshotu'),
+      RESTORING:tx('Restoring configuration','Przywracanie konfiguracji'),
+      VERIFYING_RESTORE:tx('Verifying restored configuration','Weryfikacja przywróconej konfiguracji'),
+      ROLLING_BACK:tx('Recovering previous configuration','Odzyskiwanie poprzedniej konfiguracji'),
+      REMOVING_SNAPSHOT:tx('Removing emergency snapshot','Usuwanie awaryjnego snapshotu')};
+    const elapsed=Number.isFinite(progress.elapsed_seconds)&&progress.elapsed_seconds>=0?Math.floor(progress.elapsed_seconds):0;
+    progressText=`${stages[progress.stage]||tx('Restore in progress','Restore w toku')} · ${elapsed} s`;
   }
   return {notice,progressText,waiting,active,
     validateDisabled:!state.selected||state.busy||!operation||waiting||active,

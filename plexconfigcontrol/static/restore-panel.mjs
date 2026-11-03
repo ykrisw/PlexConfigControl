@@ -59,7 +59,7 @@ export class RestoreController {
   }
   async cancel() {
     const operation=this.state.snapshot?.operation?.operation;
-    if (this.disposed || this.state.busy || this.state.snapshot?.operation?.publication?.pending===true || operation?.kind!=='RESTORE' || !['WAITING_FOR_PLEX_STOP','READY'].includes(operation.phase)) return;
+    if (this.disposed || this.state.busy || operation?.outcome!=null || this.state.snapshot?.operation?.publication?.pending===true || operation?.kind!=='RESTORE' || !['WAITING_FOR_PLEX_STOP','READY'].includes(operation.phase)) return;
     this.refreshSerial++;
     this.state.busy = true;
     this.emit();

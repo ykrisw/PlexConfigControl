@@ -123,7 +123,7 @@ class RestoreValidation:
     def cancel(self):
         with operation_lock(self.state_directory):
             with self.store.transaction() as operation:
-                if (operation.kind!='RESTORE' or operation.snapshot_id
+                if (operation.kind!='RESTORE' or operation.snapshot_id or operation.outcome is not None
                         or operation.phase not in (Phase.WAITING_FOR_PLEX_STOP,Phase.READY)):
                     raise OperationDenied('Cannot cancel an active restore')
                 operation.phase=Phase.IDLE

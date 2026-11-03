@@ -203,7 +203,7 @@ class Web:
         if path=='/api/operation' and method=='GET':
             with self.operation_store.transaction() as operation:
                 state=operation_dict(operation)
-                state['outcome']=describe_outcome(operation.outcome) if operation.kind=='BACKUP' else None
+                state['outcome']=describe_outcome(operation.outcome,operation.kind) if operation.kind in ('BACKUP','RESTORE') else None
             return respond('200 OK',{'operation':state,'progress':self.progress.read(),
                                     'publication':describe_publication(self.state_directory),
                                     'archive_discovery':self.discovery.status() if self.discovery else None})

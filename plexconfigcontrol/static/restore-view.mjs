@@ -1,3 +1,4 @@
+import {restoreResult} from './operation-outcome.mjs';
 import {mountRecoveryView} from './recovery-view.mjs';
 import {bindRestoreControls} from './restore-panel.mjs';
 import {restorePresentation,restoreError} from './restore-messages.mjs';
@@ -16,6 +17,7 @@ export function mountRestoreView(root, client, {language='en'}={}) {
         <button type="button" data-restore-action="refresh">↻ ${tx('Refresh','Odśwież')}</button></div>
       <p>${tx('Select an archive and start validation before continuing.','Wybierz archiwum i rozpocznij weryfikację przed kontynuowaniem.')}</p>
       <button type="button" class="pcc-primary" data-restore-action="validate" disabled>${tx('Validate Archive','Zweryfikuj archiwum')}</button>
+      <div data-operation-result class="pcc-notice" role="status" aria-live="polite" hidden></div>
       <div data-validation-progress hidden role="status" aria-live="polite"></div>
       <div data-validation-notice class="pcc-notice" hidden role="status" aria-live="polite"></div>
       <button type="button" data-restore-action="cancel" hidden>${tx('Cancel Restore Preparation','Anuluj przygotowanie przywracania')}</button>
@@ -39,6 +41,7 @@ export function mountRestoreView(root, client, {language='en'}={}) {
 
   const render = state => {
     currentState = state;recovery.observe(state.snapshot?.operation);
+    const result=find('[data-operation-result]');result.textContent=restoreResult(state.snapshot?.operation,language);result.hidden=!result.textContent;
     selected = state.selected;
     const view=restorePresentation(state,language);
     validate.disabled = view.validateDisabled||loading||!archiveAvailable;

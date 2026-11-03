@@ -19,7 +19,10 @@ def restore_readiness(store, state_directory, api, archive_directory=None):
                 isinstance(archive,str) and NAME.fullmatch(archive) is not None and
                 bool(operation.archive_identity) and
                 operation.archive_identity==details.get('sha256'))
-            unresolved=bool(operation.snapshot_id) or pending(state_directory)
+            execution_pending=(operation.kind=='RESTORE' and operation.outcome is not None
+                               and operation.phase in (Phase.WAITING_FOR_PLEX_STOP,Phase.READY))
+            unresolved=(operation.phase==Phase.RECOVERY_REQUIRED or execution_pending
+                        or bool(operation.snapshot_id) or pending(state_directory))
             if unresolved:
                 reason='RECOVERY_REQUIRED'
             elif not validated:

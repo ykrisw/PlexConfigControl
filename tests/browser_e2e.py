@@ -236,6 +236,33 @@ def main():
             page.reload();expect(page.locator('.pcc-nav')).to_be_visible()
             page.get_by_role('tab',name='Backup',exact=True).click()
             expect(page.locator('[data-panel=backup] [data-operation-result]')).to_contain_text('Backup failed')
+            # Synthetic historical rollback result: do not infer current snapshot
+            # presence or create any snapshot/Restore on a host.
+            docker('exec',name,'python','-c',
+                "from plexconfigcontrol.state import StateStore; from plexconfigcontrol.operations import Phase; "
+                "s=StateStore('/var/lib/plexconfigcontrol'); ctx=s.transaction(); op=ctx.__enter__(); "
+                "op.kind='RESTORE'; op.phase=Phase.RECOVERY_REQUIRED; op.snapshot_id='test/config@pcc-restore-'+'c'*32; "
+                "op.outcome={'code':'RESTORE_ROLLBACK_VERIFIED','archive':"+repr(recovery_archive)+"}; ctx.__exit__(None,None,None)")
+            page.get_by_role('tab',name='Restore',exact=True).click()
+            restore_recovery=page.locator('[data-panel=restore] [data-recovery]')
+            expect(restore_recovery.locator('[data-recovery-outcome]')).to_contain_text('Restore remains FAILED')
+            expect(restore_recovery.locator('[data-recovery-status]')).to_contain_text('could not be confirmed')
+            page.screenshot(path=str(output/'restore-rollback-verified.png'),full_page=True)
+            page.reload();expect(page.locator('.pcc-nav')).to_be_visible()
+            page.get_by_role('tab',name='Restore',exact=True).click()
+            expect(restore_recovery.locator('[data-recovery-outcome]')).to_contain_text('Restore remains FAILED')
+            docker('exec',name,'python','-c',
+                "from plexconfigcontrol.state import StateStore; s=StateStore('/var/lib/plexconfigcontrol'); "
+                "ctx=s.transaction(); op=ctx.__enter__(); "
+                "op.outcome={'code':'RESTORE_RECOVERY_UNCONFIRMED','archive':"+repr(recovery_archive)+"}; ctx.__exit__(None,None,None)")
+            expect(restore_recovery.locator('[data-recovery-outcome]')).to_contain_text('Recovery could not be verified')
+            page.screenshot(path=str(output/'restore-recovery-unconfirmed.png'),full_page=True)
+            docker('exec',name,'python','-c',
+                "from plexconfigcontrol.state import StateStore; from plexconfigcontrol.operations import Phase; "
+                "s=StateStore('/var/lib/plexconfigcontrol'); ctx=s.transaction(); op=ctx.__enter__(); "
+                "op.kind='BACKUP'; op.phase=Phase.FAILED; op.snapshot_id=None; "
+                "op.outcome={'code':'BACKUP_FAILED','archive':"+repr(recovery_archive)+"}; ctx.__exit__(None,None,None)")
+            expect(restore_recovery).to_be_hidden()
             page.set_viewport_size({'width':1440,'height':1080})
             page.get_by_role('tab',name='Settings',exact=True).click()
             settings=page.locator('[data-panel=settings]')

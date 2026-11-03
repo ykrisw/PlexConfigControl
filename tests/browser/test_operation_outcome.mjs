@@ -53,3 +53,33 @@ test('interrupted historical results cannot be reused as active or successful co
   assert.equal(backupResult({...snapshot(),operation:{...snapshot().operation,outcome:data.outcome}}),'');
   assert.equal(recoveryOutcome({...data,phase:'RUNNING'}),'');
 });
+
+test('Restore success requires consistent completion and never reports current Plex state',async()=>{
+  const {restoreResult}=await import('../../plexconfigcontrol/static/operation-outcome.mjs');
+  const base=snapshot();base.operation.kind='RESTORE';base.operation.outcome=outcome('RESTORE_COMPLETED');base.progress.operation='RESTORE';
+  assert.match(restoreResult(base),/Last Restore completed successfully/);
+  assert.match(restoreResult(base,'pl'),/Plex nie został uruchomiony automatycznie/);
+  assert.doesNotMatch(restoreResult(base),/Plex is stopped/);
+  for(const mutate of [s=>s.operation.phase='RECOVERY_REQUIRED',s=>s.operation.snapshot_id='retained',
+    s=>s.progress.active=true,s=>s.progress.stage='CLEANUP_REQUIRED',s=>s.progress.operation='BACKUP',
+    s=>s.publication.pending=true,s=>s.operation.outcome=outcome('BACKUP_COMPLETED')]){
+    const value=structuredClone(base);mutate(value);assert.equal(restoreResult(value),'');
+  }
+});
+
+test('verified rollback remains failed and is distinct from uncertain recovery and reporting failure',()=>{
+  const data=code=>({kind:'RESTORE',phase:'RECOVERY_REQUIRED',outcome:outcome(code)});
+  assert.match(recoveryOutcome(data('RESTORE_ROLLBACK_VERIFIED')),/Restore remains FAILED/);
+  assert.match(recoveryOutcome(data('RESTORE_RECOVERY_UNCONFIRMED')),/Recovery could not be verified/);
+  assert.match(recoveryOutcome(data('RESTORE_VERIFIED_REPORTING_FAILED')),/final reporting failed/);
+  assert.match(recoveryOutcome(data('RESTORE_INTERRUPTED'),'pl'),/Restore zostało przerwane/);
+  assert.equal(recoveryOutcome({...data('RESTORE_ROLLBACK_VERIFIED'),kind:'BACKUP'}),'');
+});
+
+test('Restore failure before writes never becomes successful or verified rollback',async()=>{
+  const {restoreResult}=await import('../../plexconfigcontrol/static/operation-outcome.mjs');
+  const value=snapshot();value.operation.kind='RESTORE';value.operation.phase='FAILED';value.operation.outcome=outcome('RESTORE_FAILED_UNCHANGED');
+  assert.match(restoreResult(value),/before configuration writes/);
+  assert.match(restoreResult(value,'pl'),/przed zapisem konfiguracji/);
+  assert.doesNotMatch(restoreResult(value),/completed successfully|Rollback was verified/);
+});

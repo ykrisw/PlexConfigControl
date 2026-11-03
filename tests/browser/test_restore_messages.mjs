@@ -47,3 +47,12 @@ test('pending publication blocks restore controls even at FAILED or READY checkp
     assert.equal(view.cancelVisible,false);assert.match(view.notice,/odzyskiwanie/);
   }
 });
+
+test('execution preparing before snapshot is active rather than a manual-stop wait',()=>{
+  const source=state('READY');source.snapshot.operation.operation.outcome={code:'RESTORE_IN_PROGRESS',archive:'TrueNASPlexConfig_2026.11.03_12.00.00.tar.gz'};
+  source.snapshot.operation.progress={operation:'RESTORE',stage:'RESTORING',active:true,done:0,total:null,elapsed_seconds:17.8};
+  const view=restorePresentation(source,'pl');
+  assert.equal(view.waiting,false);assert.equal(view.active,true);assert.equal(view.cancelVisible,false);
+  assert.match(view.notice,/Restore jest w toku/);assert.match(view.progressText,/Przywracanie konfiguracji · 17 s/);
+  assert.doesNotMatch(view.progressText,/bytes|bajt|%/);
+});

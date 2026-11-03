@@ -606,3 +606,31 @@ operation clears the previous outcome. Web History remains separate: clearing
 History neither recreates events from this field nor clears operational recovery
 locks. API output strips malformed or unrecognized outcome contents. No execution
 or cleanup capability is enabled by these diagnostic notices.
+
+
+## Restore outcome notices and interrupted execution
+
+Restore stores an allowlisted historical outcome alongside the current operation:
+completion, failure before configuration writes, verified rollback, unconfirmed
+recovery, verified data/snapshot cleanup with failed final reporting, or process
+interruption. API output also binds each code to its operation kind. The panel
+never equates a verified rollback with successful Restore, or a recorded snapshot
+identity with confirmed current presence. English/Polish messages preserve these
+distinctions and do not claim that Plex is currently stopped based on old history.
+
+Success requires consistent SUCCESS/COMPLETED state and confirmed operation
+snapshot cleanup. Completion state is saved only after final reporting returns.
+Live stage/elapsed labels use recorded progress; no file-byte count or percentage
+is fabricated for rsync stages without such measurements. The execution API
+remains disabled in the restricted test installation.
+
+An execution-start record is now persisted before private staging/database work.
+Startup recognizes interrupted execution even if the phase had still been the
+manual-stop preparation phase. It remains blocked until recovery is checked;
+retrying execution, cancelling it as ordinary preparation, or reporting readiness
+cannot erase that record. A normal validated archive simply waiting for the user
+to stop Plex has no execution record and survives restart without this warning.
+
+Tests cover both paths and real coordinator checkpoint selection with injected
+host adapters. Browser CI adds synthetic read-only rollback/recovery fixtures
+and reload checks; these fixtures perform no real snapshot or Restore operation.

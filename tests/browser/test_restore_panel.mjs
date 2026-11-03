@@ -83,3 +83,10 @@ test('pending publication prevents selection validation and cancellation request
   }
   controller.dispose();
 });
+
+
+test('an interrupted execution cannot be cancelled as ordinary Restore preparation',async()=>{
+  let cancelled=0;const controller=new RestoreController({cancelRestore:async()=>cancelled++},()=>{});
+  controller.state.snapshot={operation:{operation:{kind:'RESTORE',phase:'READY',outcome:{code:'RESTORE_IN_PROGRESS',archive:'chosen'}}}};
+  await controller.cancel();assert.equal(cancelled,0);controller.dispose();
+});
