@@ -1,0 +1,296 @@
+<div id="pcc-five-preview" data-preview-theme="light">
+<style>
+#pcc-five-preview{font:14px/1.5 Arial,sans-serif;color-scheme:light;--p-bg:light-dark(#f1f3f8,#151d28);--p-surface:light-dark(#fff,#222d3b);--p-ink:light-dark(#000000,#f2f5fa);--p-secondary:light-dark(#000000,#c4d0e1);--p-line:light-dark(#d6e0ef,#40516a);--p-select:light-dark(#f2f7fd,#203b56);--p-soft:light-dark(#e1e8f2,#2d3a4d);--p-blue:#2a70af;--p-green:light-dark(#118640,#54d788);--p-red:light-dark(#dc2626,#f36c71);--p-green-bg:light-dark(#e0f5e9,#173e2d);--p-red-bg:light-dark(#fde8e8,#4b272e);--p-header:#222932;color:var(--p-ink)}
+#pcc-five-preview *{box-sizing:border-box}#pcc-five-preview [hidden]{display:none!important}#pcc-five-preview button,#pcc-five-preview select,#pcc-five-preview input{font:inherit}#pcc-five-preview button{cursor:pointer}#pcc-five-preview .demo-toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:8px 2px 12px;color:var(--p-secondary)}#pcc-five-preview .demo-toolbar select{color:var(--p-ink);background:var(--p-surface);border:1px solid var(--p-line);border-radius:6px;padding:7px}
+#pcc-five-preview .window{background:var(--p-bg);border-radius:20px;overflow:hidden}#pcc-five-preview header{background:var(--p-header);color:#f4f6fa}#pcc-five-preview .brand{display:flex;align-items:center;gap:12px;font-size:23px;font-weight:700;padding:18px 22px 12px}#pcc-five-preview .brand i,#pcc-five-preview .brand svg{color:#ffbf00;width:21px;height:23.1px;stroke-width:3}#pcc-five-preview nav{display:grid;grid-template-columns:repeat(5,1fr);padding:0 20px}#pcc-five-preview nav button{background:none;border:0;border-bottom:3px solid transparent;color:#ffffff;min-height:60px;font-weight:600;display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center}#pcc-five-preview nav button.active{border-bottom-color:#56bcfa;color:#fff}#pcc-five-preview i,#pcc-five-preview svg{width:16px;height:16px;flex-shrink:0}#pcc-five-preview main{padding:14px 18px 18px;min-height:684px}#pcc-five-preview .surface{padding:18px;background:var(--p-surface);border-radius:15px;margin-bottom:14px}#pcc-five-preview .strip{display:flex;justify-content:space-between;align-items:center;min-height:45px;padding:10px 18px}#pcc-five-preview .heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;margin-bottom:12px}#pcc-five-preview h2{font-size:16px;font-weight:600;margin:0}#pcc-five-preview h3{font-size:20px;margin:0;font-weight:600}#pcc-five-preview p{color:var(--p-secondary);margin:10px 0 14px}#pcc-five-preview .action{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--p-line);border-radius:8px;background:var(--p-bg);color:var(--p-ink);padding:8px 12px;font-weight:500;min-height:35px}#pcc-five-preview .refresh{color:light-dark(#206eaf,#8ac8ff);background:var(--p-surface);padding:10px 14px}#pcc-five-preview .primary{width:100%;min-height:55px;border:0;background:var(--p-blue);color:#fff;border-radius:9px;font-weight:600;font-size:17px}#pcc-five-preview .state{color:var(--p-green);font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:9px}#pcc-five-preview .state.off{color:var(--p-red)}#pcc-five-preview .dot{width:10px;height:10px;background:currentColor;border-radius:50%;box-shadow:0 0 0 5px color-mix(in srgb,currentColor 12%,transparent);animation:pcc-demo-pulse 2s ease-in-out infinite}@keyframes pcc-demo-pulse{50%{opacity:.6;box-shadow:0 0 0 7px color-mix(in srgb,currentColor 16%,transparent)}}
+#pcc-five-preview .rows{display:grid;gap:8px}#pcc-five-preview .row{display:flex;align-items:center;gap:13px;min-height:54px;border:1px solid var(--p-line);border-radius:9px;padding:8px 14px;background:var(--p-surface)}#pcc-five-preview .row.selected{background:var(--p-select);border-color:#8ebaf0}#pcc-five-preview .row input{appearance:none;width:18px;height:18px;border:2px solid #9dafc5;border-radius:50%;margin:0;flex-shrink:0;cursor:pointer}#pcc-five-preview .row input:checked{border-color:var(--p-green);background:radial-gradient(circle,var(--p-green) 0 4px,transparent 5px)}#pcc-five-preview .row .file{color:light-dark(#1676c7,#78bfff)}#pcc-five-preview .row .text{min-width:0;flex:1}#pcc-five-preview .filename{display:block;font-weight:600;font-size:13px;overflow-wrap:anywhere}#pcc-five-preview small{font-size:13px;color:var(--p-secondary)}#pcc-five-preview .archive-surface{min-height:268px}#pcc-five-preview .restore-list{min-height:376px}#pcc-five-preview .pill{border-radius:20px;padding:3px 10px;font-size:12px;white-space:nowrap;background:var(--p-select);color:light-dark(#215886,#b6dcff)}#pcc-five-preview .success{background:var(--p-green-bg);color:var(--p-green)}#pcc-five-preview .failed{background:var(--p-red-bg);color:var(--p-red)}#pcc-five-preview footer{padding:0 18px 18px;color:var(--p-secondary);font-size:12px}#pcc-five-preview .account{display:flex;flex-direction:column;align-items:center;min-height:585px;padding:45px 24px 24px}#pcc-five-preview .account h3{font-size:24px;margin:5px 0 38px}#pcc-five-preview .avatar{width:150px;height:150px;position:relative;border:6px solid var(--p-soft);border-radius:50%;background:#a6b5c9;display:grid;place-items:center;color:#fff;overflow:hidden}#pcc-five-preview .avatar svg{width:24px;height:24px}#pcc-five-preview .photo-tools{position:absolute;bottom:0;left:0;right:0;background:#263444c9;display:flex;justify-content:center;gap:10px;padding:10px;opacity:0}#pcc-five-preview .avatar:hover .photo-tools,#pcc-five-preview .avatar:focus-within .photo-tools{opacity:1}#pcc-five-preview .photo-tools button{background:none;border:0;color:#fff;padding:3px}#pcc-five-preview .account-state{margin-top:88px;margin-bottom:auto}#pcc-five-preview .account-actions{width:100%;display:grid;gap:10px;margin-top:66px}#pcc-five-preview .account-actions button{min-height:54px;font-weight:600;font-size:16px}#pcc-five-preview .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}#pcc-five-preview .stat{display:flex;align-items:center;gap:15px;min-height:98px}#pcc-five-preview .stat span{display:block;color:var(--p-secondary)}#pcc-five-preview .stat b{display:block;font-size:28px;font-weight:500}#pcc-five-preview .filters{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 14px}#pcc-five-preview .filters button{border:0;border-radius:9px;background:var(--p-soft);color:var(--p-ink);min-height:45px;font-weight:600}#pcc-five-preview .filters .chosen{background:var(--p-blue);color:#fff}#pcc-five-preview .history-list{min-height:440px}#pcc-five-preview .history-actions{display:flex;gap:8px}#pcc-five-preview .history-actions button{font-size:12px}#pcc-five-preview .theme-row{display:flex;justify-content:space-between;gap:20px;align-items:center;border-top:1px solid var(--p-line);padding-top:18px;margin-top:22px}#pcc-five-preview .theme-buttons{display:flex;gap:10px}#pcc-five-preview .theme-buttons .chosen{background:var(--p-select);border-color:#69aeff}#pcc-five-preview .about{min-height:390px;padding:24px}#pcc-five-preview .about h3{margin-bottom:30px}#pcc-five-preview .about-row{display:flex;justify-content:space-between;gap:16px;padding:19px 0;border-bottom:1px solid var(--p-line);font-size:13px;font-weight:600}#pcc-five-preview details{border-bottom:1px solid var(--p-line);padding:22px 0;font-size:13px}#pcc-five-preview .overlay{position:absolute;inset:0;background:#10182788;display:flex;align-items:center;justify-content:center;padding:22px;z-index:5}#pcc-five-preview .dialog{background:var(--p-bg);color:var(--p-ink);border:3px solid #e5b321;border-radius:14px;padding:24px;max-width:440px;width:100%}#pcc-five-preview .dialog label{display:grid;gap:5px;margin-top:14px}#pcc-five-preview .dialog input{width:100%;background:var(--p-surface);color:var(--p-ink);border:1px solid var(--p-line);border-radius:7px;padding:10px}#pcc-five-preview .dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}#pcc-five-preview .shell{position:relative}#pcc-five-preview .title-icon{display:flex;gap:12px;align-items:center}#pcc-five-preview .title-icon svg{color:light-dark(#1776ca,#8dc9ff)}
+@media(prefers-reduced-motion:reduce){#pcc-five-preview .dot{animation:none}}@media(max-width:600px){#pcc-five-preview .brand{font-size:20px}#pcc-five-preview nav{padding:0 5px}#pcc-five-preview nav button{font-size:12px}#pcc-five-preview main{padding:12px}#pcc-five-preview .heading{flex-wrap:wrap}#pcc-five-preview .history-actions{flex-wrap:wrap}#pcc-five-preview .theme-row{align-items:flex-start;flex-direction:column}#pcc-five-preview .stats{gap:8px}#pcc-five-preview .stat{padding:12px;gap:8px}#pcc-five-preview .stat svg{display:none}#pcc-five-preview .stat span{font-size:12px}#pcc-five-preview .row{gap:9px;padding:8px}#pcc-five-preview .row .file{display:none}}
+
+/* Shared bottom edge: content cards fill each panel down to the same inset. */
+#pcc-five-preview main{display:flex;flex-direction:column;gap:14px}
+#pcc-five-preview main>.surface{margin-bottom:0;flex-shrink:0}
+#pcc-five-preview main>.stats .surface{margin-bottom:0}
+#pcc-five-preview main>.filters{margin-bottom:0;flex-shrink:0}
+#pcc-five-preview main>.stats{flex-shrink:0}
+#pcc-five-preview main[data-page=Dashboard]>.account{flex:1}
+#pcc-five-preview main[data-page=Backup]>.archive-surface{flex:1}
+#pcc-five-preview main[data-page=Restore]>.restore-list{flex:1}
+#pcc-five-preview main[data-page=History]>.history-list{flex:1}
+#pcc-five-preview main[data-page=Settings]>.about{flex:1}
+
+/* Explicit text colours override inherited host heading/secondary styles. */
+#pcc-five-preview[data-preview-theme=light] main,
+#pcc-five-preview[data-preview-theme=light] main :is(h1,h2,h3,h4,p,small,strong,b,span,label,summary,details,button,input,select),
+#pcc-five-preview[data-preview-theme=light] footer,
+#pcc-five-preview[data-preview-theme=light] .dialog,
+#pcc-five-preview[data-preview-theme=light] .dialog :is(h3,p,label,input,button){color:#000000!important;-webkit-text-fill-color:#000000!important;text-shadow:none!important;opacity:1!important}
+#pcc-five-preview[data-preview-theme=light] main .primary,
+#pcc-five-preview[data-preview-theme=light] main .filters .chosen,
+#pcc-five-preview[data-preview-theme=light] main .photo-tools button{color:#ffffff!important;-webkit-text-fill-color:#ffffff!important}
+#pcc-five-preview[data-preview-theme=light] main .state .dot{background:var(--p-green)!important;color:var(--p-green)!important;-webkit-text-fill-color:var(--p-green)!important}
+#pcc-five-preview[data-preview-theme=light] main .state.off .dot{background:var(--p-red)!important;color:var(--p-red)!important;-webkit-text-fill-color:var(--p-red)!important}
+#pcc-five-preview[data-preview-theme=dark] main :is(h1,h2,h3,h4){color:var(--p-ink)}
+
+/* Compact Important by roughly one third; archive list receives the freed space. */
+#pcc-five-preview main[data-page=Backup]>.pcc-important{padding:10px 18px}
+#pcc-five-preview main[data-page=Backup]>.pcc-important .heading{min-height:28px;margin-bottom:6px}
+#pcc-five-preview main[data-page=Backup]>.pcc-important p{margin:6px 0 0}
+
+/* Account is centred as one group, with actions retained at the bottom. */
+#pcc-five-preview .account{padding:24px}
+#pcc-five-preview .account-content{flex:1;width:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;padding-top:30px}
+#pcc-five-preview .account-content h3{margin:0 0 32px}
+#pcc-five-preview .account-content .account-state{margin:40px 0 0}
+#pcc-five-preview .account-actions{margin-top:24px;flex-shrink:0}
+/* The same control-strip height in Dashboard, Backup, Restore and Settings. */
+#pcc-five-preview .strip{height:56px;min-height:56px;padding:10px 18px}
+#pcc-five-preview .language-picker{border:1px solid var(--p-line);border-radius:8px;padding:7px 12px;background:var(--p-bg);color:var(--p-ink);font:500 14px Arial,sans-serif;min-height:35px}
+#pcc-five-preview .archive-surface,#pcc-five-preview .restore-list{display:flex;flex-direction:column;min-height:0}
+#pcc-five-preview .archive-surface>.heading,#pcc-five-preview .restore-list>.heading{flex-shrink:0}
+#pcc-five-preview .archive-surface>.rows,#pcc-five-preview .restore-list>.rows{display:flex;flex-direction:column;flex:1 1 330px;height:330px;min-height:250px;max-height:480px;overflow-y:scroll;overflow-x:hidden;padding-right:8px;scrollbar-gutter:stable;scrollbar-width:auto;scrollbar-color:auto}
+#pcc-five-preview .archive-surface>.rows>.row,#pcc-five-preview .restore-list>.rows>.row{flex:0 0 auto}
+#pcc-five-preview .rows::-webkit-scrollbar{width:23.52px}
+#pcc-five-preview .rows::-webkit-scrollbar-track{background:var(--p-soft);border-radius:8px}
+#pcc-five-preview .rows::-webkit-scrollbar-thumb{background:#8596ac;border:5.88px solid var(--p-soft);border-radius:8px;min-height:36px}
+#pcc-five-preview[data-preview-theme=light] .row input:not(:checked){background:#fff!important;background-image:none!important}
+#pcc-five-preview[data-preview-theme=dark] .row input:not(:checked){background:var(--p-surface)!important;background-image:none!important;border-color:#b4bfce}
+
+#pcc-five-preview nav button{white-space:normal;text-align:center}
+#pcc-five-preview .theme-buttons{flex-wrap:wrap}
+#pcc-five-preview .history-actions{flex-wrap:wrap}
+#pcc-five-preview .account-content{min-height:360px}
+
+/* Centre the entire identity group against the card itself, not the free space above the actions. */
+#pcc-five-preview .account{position:relative;min-height:585px}
+#pcc-five-preview .account-content{position:absolute;left:24px;right:24px;top:40%;transform:translateY(-50%);width:auto;min-height:0;padding:0}
+#pcc-five-preview .account-actions{margin-top:auto}
+
+/* History now uses the same scroll treatment as both archive panels. */
+#pcc-five-preview .history-list{display:flex;flex-direction:column;min-height:0}
+#pcc-five-preview .history-list>.heading{flex-shrink:0}
+#pcc-five-preview .history-list>.rows{display:flex;flex-direction:column;flex:1 1 480px;height:480px;min-height:320px;max-height:560px;overflow-y:scroll;overflow-x:hidden;padding-right:8px;scrollbar-gutter:stable;scrollbar-width:auto;scrollbar-color:auto}
+#pcc-five-preview .history-list>.rows>.row{flex:0 0 auto}
+
+/* Independent offsets: five percent of the Account card's height. */
+#pcc-five-preview .account-content h3{transform:translateY(calc(-1 * var(--account-nudge,30px)))}
+#pcc-five-preview .account-content .account-state{transform:translateY(var(--account-nudge,30px))}
+#pcc-five-preview .account-content .avatar{margin-top:-19.45425px;margin-bottom:-19.45425px;width:188.9085px;height:188.9085px;min-width:188.9085px;min-height:188.9085px;flex-shrink:0;transform:none}
+
+/* Fill the card's remaining space, without any maximum-height cap. */
+#pcc-five-preview:not([data-measuring]) .archive-surface>.rows,
+#pcc-five-preview:not([data-measuring]) .restore-list>.rows,
+#pcc-five-preview:not([data-measuring]) .history-list>.rows{
+  flex:1 1 0; height:0; min-height:0; max-height:none;
+}
+
+/* Centre the About information block vertically; keep label/value columns aligned. */
+#pcc-five-preview .about{display:flex;flex-direction:column}
+#pcc-five-preview .about>h3{margin-bottom:0;flex-shrink:0}
+#pcc-five-preview .about-info{width:100%;margin-top:auto;margin-bottom:auto;padding:24px 0}
+
+#pcc-five-preview .task-preview-controls{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:0 0 14px}
+#pcc-five-preview .task-preview-controls label{display:flex;align-items:center;gap:10px;flex:1;min-width:240px}
+#pcc-five-preview .task-preview-controls select{font:inherit;max-width:100%;width:100%;background:var(--p-surface);color:var(--p-ink);padding:10px;border:1px solid var(--p-line);border-radius:8px}
+#pcc-five-preview .task-preview-controls>div{display:flex;gap:12px;align-items:center}
+#pcc-five-preview .task-preview-controls button{font:inherit;background:var(--p-surface);color:var(--p-ink);border:1px solid var(--p-line);border-radius:7px;padding:8px 10px}
+#pcc-five-preview .task-card{flex-shrink:0;min-width:0}
+#pcc-five-preview .task-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#pcc-five-preview .task-archive{overflow-wrap:anywhere;font-size:13px;margin:12px 0}
+#pcc-five-preview .task-notification{border:3px solid #e5b321;border-radius:10px;background:var(--p-bg);padding:14px;margin-top:12px}
+#pcc-five-preview .task-notification p{margin:6px 0 0}
+#pcc-five-preview .task-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+#pcc-five-preview .task-operation progress{width:100%;height:10px;border:none;border-radius:6px;background:var(--p-soft);accent-color:var(--p-blue)}
+#pcc-five-preview .task-operation progress::-webkit-progress-bar{background:var(--p-soft);border-radius:6px}
+#pcc-five-preview .task-operation progress::-webkit-progress-value{background:var(--p-blue);border-radius:6px}
+#pcc-five-preview .task-operation progress::-moz-progress-bar{background:var(--p-blue);border-radius:6px}
+#pcc-five-preview .task-snapshot{font-size:12px;overflow-wrap:anywhere;margin-bottom:0}
+#pcc-five-preview .task-busy-note{font-size:12px;margin-bottom:0}
+#pcc-five-preview .task-confirm-check{display:flex;align-items:flex-start;gap:10px}
+#pcc-five-preview .task-confirm-check input{width:18px;height:18px;flex-shrink:0;margin-top:3px}
+#pcc-five-preview button:disabled{cursor:not-allowed;border-style:dashed}
+#pcc-five-preview main .state.unknown .dot{background:#8a98aa!important;color:#8a98aa!important;animation:none!important}
+#pcc-five-preview .dialog [data-task-action]{margin:12px 8px 0 0}
+#pcc-five-preview .dialog p{white-space:pre-line}
+@media(max-width:600px){#pcc-five-preview .task-preview-controls{align-items:stretch}#pcc-five-preview .task-preview-controls label{min-width:0;flex-basis:100%}#pcc-five-preview .task-preview-controls>div{justify-content:space-between}}
+
+/* The header logo owns a fixed-size slot, separate from navigation icons. */
+#pcc-five-preview .brand .pcc-shield-mark{color:#ffbf00!important;align-items:center;justify-content:center}
+#pcc-five-preview .brand .pcc-shield-mark svg,
+#pcc-five-preview .brand .pcc-shield-mark i{width:21px!important;height:23.1px!important;min-width:21px!important;min-height:23.1px!important;max-width:none!important;max-height:none!important;flex-shrink:0!important;color:#ffbf00!important}
+</style>
+<div class="demo-toolbar"><span>SIMULATION · Example data · No connection to TrueNAS</span><label>Plex <select data-demo-status aria-label="Example Plex status"><option value="RUNNING">RUNNING</option><option value="STOPPED">STOPPED</option></select></label></div>
+<div class="window shell">
+<header><div class="brand"><span class="pcc-shield-mark" style="width:21px!important;height:23.1px!important;min-width:21px!important;min-height:23.1px!important;flex:0 0 21px!important;display:inline-flex!important"><i data-lucide="shield-check" aria-hidden="true" style="width:21px!important;height:23.1px!important;min-width:21px!important;min-height:23.1px!important"></i></span>PlexConfigControl</div><nav aria-label="Main navigation"></nav></header>
+<main></main><footer>SIMULATION · Example data · No connection to TrueNAS</footer>
+<div class="overlay" hidden><div class="dialog" role="dialog" aria-modal="true" aria-label="Notification"><div data-dialog-content></div><div class="dialog-actions"><button class="action" data-close>Close</button></div></div></div>
+</div>
+<script>
+(()=>{const root=document.getElementById('pcc-five-preview');const main=root.querySelector('main'),nav=root.querySelector('nav');let page='Backup',theme='Light',language='pl',plex='RUNNING',account=true;const tabs=['Dashboard','Backup','Restore','History','Settings'];const icons=['layout-grid','archive','rotate-ccw','history','settings'];const dates=['2026.11.02_10.30.00','2026.10.30_18.45.00','2026.10.28_09.20.00','2026.10.26_20.15.00','2026.10.24_11.05.00','2026.10.22_09.10.00','2026.10.20_18.40.00','2026.10.18_12.00.00','2026.10.16_20.30.00','2026.10.14_08.15.00','2026.10.12_17.20.00','2026.10.10_10.45.00','2026.10.08_19.30.00'];const files=dates.map(x=>'TrueNASPlexConfig_'+x+'.tar.gz');const icon=n=>'<i data-lucide="'+n+'" aria-hidden="true"></i>';const button=(text,act,ico='',extra='')=>'<button class="action '+extra+'" data-action="'+act+'">'+(ico?icon(ico):'')+text+'</button>';const status=()=>'<div class="surface strip"><strong>Plex Server</strong><span class="state '+(plex==='STOPPED'?'off':'')+'"><span class="dot"></span>'+plex+'</span></div>';const rows=(type)=>'<div class="rows">'+files.map((f,i)=>'<label class="row '+(i===0?'selected':'')+'"><input aria-label="Select '+f+'" type="'+(type==='restore'?'radio':'checkbox')+'" name="'+type+'" '+(i===0?'checked':'')+'>'+icon('file-archive')+'<span class="text"><span class="filename">'+f+'</span><small>'+['2 November 2026 · 3.4 GB','30 October 2026 · 3.3 GB','28 October 2026 · 3.2 GB','26 October 2026 · 3.2 GB','24 October 2026 · 3.1 GB','22 October 2026 · 3.1 GB','20 October 2026 · 3.0 GB','18 October 2026 · 3.0 GB','16 October 2026 · 2.9 GB','14 October 2026 · 2.9 GB','12 October 2026 · 2.8 GB','10 October 2026 · 2.8 GB','8 October 2026 · 2.7 GB'][i]+'</small></span></label>').join('')+'</div>';
+const previewTranslations={"Dashboard": "Pulpit", "Backup": "Kopia zapasowa", "Restore": "Przywracanie", "History": "Historia", "Settings": "Ustawienia", "Plex Server": "Serwer Plex", "Account": "Konto", "ACTIVE": "AKTYWNE", "INACTIVE": "NIEAKTYWNE", "RUNNING": "DZIAŁA", "STOPPED": "ZATRZYMANY", "Change Password": "Zmień hasło", "Current Password": "Obecne hasło", "New Password": "Nowe hasło", "Confirm New Password": "Potwierdź nowe hasło", "Log Out": "Wyloguj", "Log In": "Zaloguj", "Create a new backup": "Utwórz nową kopię zapasową", "Create Backup": "Utwórz kopię zapasową", "Refresh": "Odśwież", "Create and verify a new copy of your Plex configuration.": "Utwórz i zweryfikuj nową kopię konfiguracji Plex.", "Existing Backups": "Istniejące kopie zapasowe", "Delete Selected Archives": "Usuń zaznaczone archiwa", "Important": "Ważne", "13 backups": "13 kopii zapasowych", "Existing backups will not be deleted automatically. Each completed backup is verified before it becomes available.": "Istniejące kopie nie są usuwane automatycznie. Każda nowa kopia jest weryfikowana, zanim stanie się dostępna.", "Archive Validation": "Weryfikacja archiwum", "Select an archive and start validation before continuing.": "Wybierz archiwum i rozpocznij weryfikację przed kontynuowaniem.", "Validate Archive": "Zweryfikuj archiwum", "Select Backup Archive": "Wybierz archiwum kopii zapasowej", "Total Operations": "Wszystkie operacje", "Successful": "Udane", "Failed": "Nieudane", "All (20)": "Wszystkie (20)", "Backup (11)": "Kopie (11)", "Restore (9)": "Przywracanie (9)", "Operations & Events": "Operacje i zdarzenia", "Download Logs": "Pobierz logi", "Clear Selected": "Usuń zaznaczone", "SUCCESS": "SUKCES", "FAILED": "BŁĄD", "Language": "Język", "Appearance": "Wygląd", "Theme": "Motyw", "Light": "Jasny", "Dark": "Ciemny", "System": "Systemowy", "About": "O aplikacji", "Application": "Aplikacja", "Version": "Wersja", "Development preview": "Wersja rozwojowa", "Created by": "Autor", "Details": "Szczegóły", "Manage manual Plex configuration backups and restores.": "Ręczne tworzenie i przywracanie kopii konfiguracji Plex.", "SIMULATION · Example data · No connection to TrueNAS": "PODGLĄD INTERFEJSU · Dane przykładowe · Brak połączenia z TrueNAS", "Close": "Zamknij", "Interface preview — no password will be saved.": "Podgląd interfejsu — hasło nie zostanie zapisane.", "November": "listopada", "October": "października"};
+function localize(){
+ const dictionary=language==='pl'?previewTranslations:Object.fromEntries(Object.entries(previewTranslations).map(([en,pl])=>[pl,en]));
+ const pairs=Object.entries(dictionary).sort((a,b)=>b[0].length-a[0].length);
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node;
+ while(node=walker.nextNode()){
+   if(node.parentElement.closest('script,style,svg,select[data-language]'))continue;
+   const raw=node.nodeValue,trimmed=raw.trim();
+   if(dictionary[trimmed]){node.nodeValue=raw.replace(trimmed,dictionary[trimmed]);continue;}
+   if(language==='pl'){
+     if(/\.tar\.gz/.test(raw))continue;
+     let next=raw;
+     for(const [en,pl] of pairs)next=next.split(en).join(pl);
+     node.nodeValue=next;
+   }
+ }
+ root.lang=language;
+}
+
+const demoCases={
+Backup:[
+{id:'b-empty',label:'Pierwsza kopia — brak archiwów',stage:'GOTOWE',text:'Brak kopii zapasowych. Pierwszą kopię utworzysz bez pytania o nadpisanie.',count:0,action:'start'},
+{id:'b-one',label:'Jedna kopia — wybór użytkownika',stage:'WYMAGANA DECYZJA',text:'Istnieje dokładnie jedna kopia. Wybierz: nadpisz ją po zweryfikowaniu nowej albo utwórz kolejne archiwum z nową datą.',count:1,action:'choice'},
+{id:'b-many',label:'Wiele kopii — utworzenie kolejnej',stage:'GOTOWE',text:'Istnieje 13 archiwów. Nowa kopia otrzyma własną nazwę z datą. Istniejące kopie pozostaną bez zmian.',action:'start'},
+{id:'b-collision',label:'Kolizja nazwy archiwum',stage:'WYMAGANA DECYZJA',text:'Archiwum o tej nazwie już istnieje. Nie zostanie automatycznie nadpisane. Wybierz nadpisanie albo kolejną nazwę z datą.',action:'choice'},
+{id:'b-snapshot',label:'Tworzenie tymczasowej migawki',stage:'TWORZENIE MIGAWKI',text:'Plex działa. Tworzona jest jedna, unikalna migawka konfiguracji. Archiwizacja będzie czytać wyłącznie z niej.',busy:true,elapsed:'00:00:03',snapshot:'pcc-backup-demo-20261103'},
+{id:'b-write',label:'Archiwizacja — postęp odczytu',stage:'TWORZENIE ARCHIWUM',text:'Plex działa bez przerwy. Nowa kopia jest plikiem roboczym i nie jest jeszcze dostępna na liście archiwów.',busy:true,elapsed:'00:04:32',done:2469606195,total:4294967296,snapshot:'pcc-backup-demo-20261103'},
+{id:'b-verify',label:'Sprawdzanie gzip, TAR i wszystkich plików',stage:'WERYFIKACJA KOPII',text:'Sprawdzanie gzip, struktury TAR oraz kompletności i zgodności plików ze źródłową migawką. Kopia nie jest jeszcze zatwierdzona.',busy:true,elapsed:'00:06:18',snapshot:'pcc-backup-demo-20261103'},
+{id:'b-clean',label:'Usuwanie i kontrola braku migawki',stage:'SPRZĄTANIE MIGAWKI',text:'Archiwum zweryfikowano. Trwa usuwanie dokładnie tej jednej migawki. Sukces pojawi się dopiero po potwierdzeniu jej braku.',busy:true,elapsed:'00:06:42',snapshot:'pcc-backup-demo-20261103'},
+{id:'b-success',label:'Backup zakończony sukcesem',stage:'SUKCES',text:'Kopia jest zweryfikowana i dostępna. Tymczasowa migawka została usunięta, a jej brak potwierdzony. Plex nadal działa. Zapisano Historię i plik logu.',tone:'success',elapsed:'00:06:45',published:true,action:'result'},
+{id:'b-overwrite',label:'Nadpisanie zakończone sukcesem',stage:'SUKCES',text:'Starsza kopia została zastąpiona dopiero po weryfikacji nowej i potwierdzeniu usunięcia migawki. Nie utracono starej kopii podczas przygotowania nowej.',tone:'success',published:true,count:1,action:'result'},
+{id:'b-fail-snapshot',label:'Błąd przed utworzeniem migawki',stage:'BŁĄD',text:'Brak uprawnień do utworzenia migawki. Backup nie rozpoczął odczytu konfiguracji. Istniejące archiwa zachowano. Plex nadal działa.',tone:'failed',action:'result'},
+{id:'b-fail-space',label:'Brak miejsca podczas zapisu',stage:'BŁĄD',text:'Brak miejsca na zapis kopii. Plik roboczy został usunięty. Migawkę usunięto i sprawdzono jej brak. Starsze archiwa zachowano. Plex nadal działa.',tone:'failed',elapsed:'00:02:19',action:'result'},
+{id:'b-fail-verify',label:'Nieudana weryfikacja archiwum',stage:'BŁĄD',text:'Weryfikacja wykryła niekompletny plik. Wadliwe archiwum robocze usunięto; nie trafia na listę kopii. Migawkę usunięto. Starsza kopia nie została nadpisana.',tone:'failed',action:'result'},
+{id:'b-leftover',label:'Nie udało się usunąć migawki',stage:'WYMAGANE SPRZĄTANIE',text:'Nie można ogłosić pełnego sukcesu: pozostała tymczasowa migawka. Nowe operacje są zablokowane. Możesz ponowić jej usunięcie po potwierdzeniu.',tone:'failed',snapshot:'pcc-backup-demo-20261103',action:'delete-snapshot'},
+{id:'b-interrupted',label:'Przerwanie aplikacji lub restart',stage:'OPERACJA PRZERWANA',text:'Po ponownym uruchomieniu wykryto niedokończony backup. Stan archiwum roboczego i zapisanej migawki wymaga sprawdzenia. Nowe operacje pozostają zablokowane.',tone:'failed',snapshot:'pcc-backup-demo-20261103',action:'result'},
+{id:'b-delete-failed',label:'Ręczne usuwanie migawki — błąd',stage:'SPRZĄTANIE NIEUDANE',text:'Migawka nadal istnieje. Blokada nowych operacji pozostaje aktywna. Zapisano błąd; niczego nie uznano za usunięte bez sprawdzenia.',tone:'failed',snapshot:'pcc-backup-demo-20261103',action:'delete-snapshot'},
+{id:'b-deleted',label:'Ręczne usuwanie migawki — powodzenie',stage:'MIGAWKA USUNIĘTA',text:'Usunięto wskazaną migawkę i potwierdzono jej brak. Zapisano zdarzenie w Historii. Poprzedni nieudany backup nie zmienił wyniku na sukces; przed nową operacją sprawdzane są też pozostałe pliki robocze.',tone:'success',action:'result'}
+],
+Restore:[
+{id:'r-select',label:'Wybór archiwum — brak zaznaczenia',stage:'NIE ROZPOCZĘTO',text:'Wybierz dokładnie jedno archiwum. Panel nie wybiera go automatycznie. Weryfikacja nie zatrzymuje Plexa.',action:'select'},
+{id:'r-reading',label:'Weryfikacja archiwum przy działającym Plexie',stage:'WERYFIKACJA ARCHIWUM',text:'Odczyt wszystkich plików, sprawdzanie struktury i integralności. Konfiguracja Plexa nie jest zmieniana.',busy:true,elapsed:'00:00:24',done:1288490188,total:4294967296},
+{id:'r-invalid',label:'Archiwum uszkodzone',stage:'ARCHIWUM ODRZUCONE',text:'Błąd integralności gzip: archiwum jest uszkodzone lub niepełne. Restore zablokowany. Plex nadal działa.',tone:'failed',action:'revalidate'},
+{id:'r-unsafe',label:'Niebezpieczna struktura archiwum',stage:'ARCHIWUM ODRZUCONE',text:'Wykryto niedozwoloną ścieżkę poza katalogiem konfiguracji. Nie rozpoczęto przywracania. Plex nadal działa.',tone:'failed',action:'revalidate'},
+{id:'r-missing',label:'Brak wymaganej bazy lub pliku',stage:'ARCHIWUM NIEKOMPLETNE',text:'Brakuje wymaganej bazy com.plexapp.plugins.library.db. Restore zablokowany bez zatrzymywania Plexa.',tone:'failed',action:'revalidate'},
+{id:'r-wait',label:'Poprawna kopia — oczekiwanie na ręczne zatrzymanie',stage:'OCZEKIWANIE NA UŻYTKOWNIKA',text:'Archiwum poprawne. Zatrzymaj Plex ręcznie w TrueNAS Apps. Panel będzie czekać i sam sprawdzać stan usługi. Nie zatrzyma jej za Ciebie.',action:'manual-stop'},
+{id:'r-unknown',label:'Nie można potwierdzić stanu Plexa',stage:'STAN PLEXA NIEZNANY',text:'Utracono połączenie z TrueNAS. Restore pozostaje zablokowany. Nie zakładamy, że Plex jest zatrzymany.',plex:'UNKNOWN',tone:'failed',action:'retry-status'},
+{id:'r-changed',label:'Archiwum podmienione po walidacji',stage:'PONOWNA WERYFIKACJA',text:'Archiwum zmieniono od ostatniego sprawdzenia. Poprzednie potwierdzenie nie jest ważne. Wybierz i zweryfikuj kopię ponownie.',tone:'failed',action:'revalidate'},
+{id:'r-ready',label:'Plex zatrzymany — wymagane RESTORE',stage:'GOTOWE DO POTWIERDZENIA',text:'Niezależnie potwierdzono STOPPED. Wpisz dokładnie RESTORE. Przywracanie zastąpi obecną konfigurację wybranym archiwum.',plex:'STOPPED',action:'confirm-restore'},
+{id:'r-snapshot',label:'Tworzenie jednej migawki awaryjnej',stage:'MIGAWKA AWARYJNA',text:'Plex jest zatrzymany. Przed pierwszym zapisem tworzona jest jedna migawka awaryjna. Druga nie zostanie utworzona, jeśli poprzednia nadal istnieje.',plex:'STOPPED',busy:true,snapshot:'pcc-restore-demo-20261103',elapsed:'00:00:03'},
+{id:'r-writing',label:'Przywracanie konfiguracji — postęp',stage:'PRZYWRACANIE PLIKÓW',text:'Trwa zapis do istniejącego datasetu konfiguracji. Punkt montowania nie jest przenoszony. Plex pozostaje zatrzymany.',plex:'STOPPED',busy:true,elapsed:'00:04:12',done:2147483648,total:4294967296,snapshot:'pcc-restore-demo-20261103'},
+{id:'r-verify',label:'Weryfikacja plików, uprawnień i baz',stage:'SPRAWDZANIE KONFIGURACJI',text:'Kontrola zgodności plików, metadanych, uprawnień i integralności baz Plex. Migawka awaryjna nadal chroni poprzedni stan.',plex:'STOPPED',busy:true,elapsed:'00:06:38',snapshot:'pcc-restore-demo-20261103'},
+{id:'r-clean',label:'Usuwanie migawki awaryjnej po weryfikacji',stage:'USUWANIE MIGAWKI',text:'Przywrócone dane przeszły weryfikację. Trwa usuwanie migawki awaryjnej i potwierdzanie jej braku. To jeszcze nie jest pełny sukces.',plex:'STOPPED',busy:true,snapshot:'pcc-restore-demo-20261103',elapsed:'00:07:01'},
+{id:'r-success',label:'Restore zakończony sukcesem',stage:'SUKCES',text:'Konfiguracja i bazy zweryfikowane. Migawkę awaryjną usunięto i potwierdzono jej brak. Plex pozostaje zatrzymany — uruchom go ręcznie w TrueNAS Apps, gdy będziesz gotowy.',plex:'STOPPED',tone:'success',elapsed:'00:07:06',action:'result'},
+{id:'r-db-fail',label:'Niesprawne narzędzie lub błędna baza przed zapisem',stage:'RESTORE WSTRZYMANY',text:'Kontrola bazy w rozpakowanej kopii nie powiodła się. Nie zmieniono konfiguracji ani nie rozpoczęto zapisu. Plex pozostaje zatrzymany.',plex:'STOPPED',tone:'failed',action:'result'},
+{id:'r-state-race',label:'Plex uruchomiony ponownie przed zapisem',stage:'RESTORE ZABLOKOWANY',text:'Przed zapisem wykryto RUNNING. Nie rozpoczęto modyfikacji konfiguracji. Zatrzymaj Plex ręcznie i ponownie potwierdź gotowość.',plex:'RUNNING',tone:'failed',action:'manual-stop'},
+{id:'r-rollback',label:'Błąd podczas zapisu — odzyskiwanie',stage:'PRZYWRACANIE POPRZEDNIEGO STANU',text:'Zapis konfiguracji zakończył się błędem. Trwa odzyskiwanie z migawki awaryjnej. Nie usuwaj jej i pozostaw Plex zatrzymany.',plex:'STOPPED',busy:true,tone:'failed',snapshot:'pcc-restore-demo-20261103',elapsed:'00:05:22'},
+{id:'r-recovered',label:'Odzyskiwanie potwierdzone — migawka pozostaje',stage:'BŁĄD · POPRZEDNI STAN ODZYSKANY',text:'Przywracanie wybranej kopii nie powiodło się. Poprzednia konfiguracja została odzyskana i zweryfikowana. Migawka awaryjna pozostaje. Plex nadal zatrzymany.',plex:'STOPPED',tone:'failed',snapshot:'pcc-restore-demo-20261103',action:'delete-snapshot'},
+{id:'r-uncertain',label:'Niepewne lub nieudane odzyskiwanie',stage:'WYMAGANE ODZYSKIWANIE',text:'Nie udało się potwierdzić poprawnego odzyskania konfiguracji. Zachowano migawkę awaryjną. Nie uruchamiaj Plexa, dopóki stan danych nie zostanie wyjaśniony.',plex:'STOPPED',tone:'failed',snapshot:'pcc-restore-demo-20261103',action:'delete-snapshot'},
+{id:'r-clean-fail',label:'Dane poprawne, ale migawka nie została usunięta',stage:'WYMAGANE SPRZĄTANIE',text:'Dane przeszły kontrolę, ale sprzątanie nie powiodło się. Pełnego sukcesu nie ogłoszono: wymagane jest potwierdzenie odzyskiwania poprzedniego stanu. Migawka pozostaje; nowe operacje są zablokowane, a Plex zatrzymany.',plex:'STOPPED',tone:'failed',snapshot:'pcc-restore-demo-20261103',action:'delete-snapshot'},
+{id:'r-block-existing',label:'Istnieje wcześniejsza migawka awaryjna',stage:'NOWY RESTORE ZABLOKOWANY',text:'Wykryto nierozwiązaną poprzednią operację. Nie utworzymy drugiej migawki awaryjnej. Najpierw rozstrzygnij odzyskiwanie i sprzątanie.',plex:'STOPPED',tone:'failed',snapshot:'pcc-restore-demo-20261103',action:'delete-snapshot'},
+{id:'r-delete-failed',label:'Ręczne usuwanie migawki — błąd',stage:'MIGAWKA NADAL ISTNIEJE',text:'Próba usunięcia nie powiodła się. Zachowano wpis o migawce i blokadę nowych operacji. Wynik poprzedniego Restore pozostaje nieudany.',plex:'STOPPED',tone:'failed',snapshot:'pcc-restore-demo-20261103',action:'delete-snapshot'},
+{id:'r-deleted',label:'Ręczne usunięcie migawki potwierdzone',stage:'MIGAWKA USUNIĘTA',text:'Potwierdzono usunięcie dokładnie wskazanej migawki. Zapisano zdarzenie w Historii. Nie zmienia to wyniku nieudanego Restore ani nie potwierdza automatycznie poprawności danych.',plex:'STOPPED',tone:'success',action:'result'},
+{id:'r-cancelled',label:'Anulowanie przed rozpoczęciem Restore',stage:'ANULOWANO PRZYGOTOWANIE',text:'Anulowano oczekiwanie i wybór operacji. Nie zapisano konfiguracji i nie utworzono migawki awaryjnej. Panel nie zmienia stanu Plexa.',plex:'STOPPED',action:'select'},
+{id:'r-snapshot-fail',label:'Błąd utworzenia migawki awaryjnej',stage:'RESTORE NIE ROZPOCZĘTY',text:'Nie udało się utworzyć migawki awaryjnej. Nie rozpoczęto zapisu konfiguracji. Plex pozostaje zatrzymany. Nowa operacja wymaga wyjaśnienia niepewnego stanu migawki, jeśli TrueNAS nie potwierdził wyniku.',plex:'STOPPED',tone:'failed',action:'result'},
+{id:'r-interrupted',label:'Restart aplikacji podczas Restore',stage:'OPERACJA PRZERWANA',text:'Wykryto przerwany Restore. Nie uruchomiono Plexa ani automatycznego kolejnego przywracania. Zachowano migawkę; wymagane sprawdzenie odzyskiwania.',plex:'STOPPED',tone:'failed',snapshot:'pcc-restore-demo-20261103',action:'delete-snapshot'}
+]};
+const casePosition={Backup:5,Restore:10};
+let measuringCases=false;
+const previewControls=document.createElement('div');previewControls.className='task-preview-controls';previewControls.innerHTML='<label>Scenariusz <select data-task-case aria-label="Scenariusz zadania"></select></label><div><button data-case-step="-1">← Poprzedni</button><span data-case-counter></span><button data-case-step="1">Następny →</button></div>';
+root.querySelector('.demo-toolbar').after(previewControls);
+const caseSelect=previewControls.querySelector('select');
+const tx=(pl,en)=>language==='pl'?pl:en;
+function currentCase(){return demoCases[page]?.[casePosition[page]||0];}
+function chooseCase(id){const list=demoCases[page];const i=list?.findIndex(c=>c.id===id);if(i>=0){casePosition[page]=i;overlay.hidden=true;draw();}}
+function scenarioButton(label,action){const b=document.createElement('button');b.className='action';b.dataset.taskAction=action;b.textContent=label;return b;}
+function applyScenario(){
+ const cases=demoCases[page];previewControls.hidden=!cases;root.querySelector('[data-demo-status]').disabled=Boolean(cases);
+ if(!cases||root.dataset.measuring)return;
+ const c=currentCase();caseSelect.replaceChildren();
+ cases.forEach((item,i)=>{const o=document.createElement('option');o.value=String(i);o.textContent=item.label;o.selected=i===casePosition[page];caseSelect.append(o);});
+ previewControls.querySelector('[data-case-counter]').textContent=`${casePosition[page]+1} / ${cases.length}`;
+ const isRestore=page==='Restore';const state=c.plex||'RUNNING';
+ const statusEl=main.querySelector('.strip .state');statusEl.classList.toggle('off',state==='STOPPED');statusEl.classList.toggle('unknown',state==='UNKNOWN');statusEl.innerHTML='<span class="dot"></span>'+state;
+ const card=main.querySelectorAll(':scope > .surface')[1];
+ card.classList.add('task-card');card.querySelector('p').remove();card.querySelector('.primary').remove();
+ card.querySelector('[data-action=refresh]').disabled=Boolean(c.busy);
+ const box=document.createElement('div');box.className='task-operation';
+ const meta=document.createElement('div');meta.className='task-meta';
+ const badge=document.createElement('strong');badge.className='pill '+(c.tone||'');badge.textContent=c.stage;meta.append(badge);
+ const elapsed=document.createElement('span');elapsed.textContent=tx('Czas: ','Elapsed: ')+(c.elapsed||'00:00:00');meta.append(elapsed);box.append(meta);
+ const archive=document.createElement('p');archive.className='task-archive';archive.textContent=(isRestore?files[0]:'TrueNASPlexConfig_2026.11.03_12.45.00.tar.gz');box.append(archive);
+ if(c.busy){
+  if(c.total){const pct=Math.round(c.done/c.total*1000)/10;const meter=document.createElement('progress');meter.max=c.total;meter.value=c.done;meter.setAttribute('aria-label',tx('Postęp bieżącego etapu','Current stage progress'));box.append(meter);const counts=document.createElement('p');counts.textContent=`${(c.done/1024**3).toFixed(2)} / ${(c.total/1024**3).toFixed(2)} GiB · ${pct}% `+tx('bieżącego etapu','of this stage');box.append(counts);}
+  else {const line=document.createElement('p');line.textContent=tx('Operacja trwa. Brak wiarygodnej podstawy do pokazania procentu.','Operation in progress. Percentage unavailable for this stage.');box.append(line);}
+ }
+ const note=document.createElement('div');note.className='task-notification';note.setAttribute('role',c.tone==='failed'?'alert':'status');const title=document.createElement('strong');title.textContent=c.label;const text=document.createElement('p');text.textContent=c.text;note.append(title,text);box.append(note);
+ if(c.snapshot){const snap=document.createElement('p');snap.className='task-snapshot';snap.textContent=tx('Migawka operacji: ','Operation snapshot: ')+c.snapshot;box.append(snap);}
+ const actions=document.createElement('div');actions.className='task-actions';
+ const actionLabels={'start':['Utwórz kopię','Create Backup'],'choice':['Wybierz sposób zapisu','Choose backup action'],'result':['Pokaż wynik i log','Show result and log'],'delete-snapshot':['Usuń migawkę…','Remove Snapshot…'],'select':['Wybierz i zweryfikuj archiwum','Select and validate archive'],'revalidate':['Zweryfikuj ponownie','Validate Again'],'manual-stop':['Anuluj oczekiwanie','Cancel Waiting'],'retry-status':['Sprawdź stan ponownie','Check Status Again'],'confirm-restore':['Potwierdź przywracanie…','Confirm Restore…']};
+ if(c.action){const labels=actionLabels[c.action];actions.append(scenarioButton(tx(...labels),c.action));}
+ if(c.action==='manual-stop')actions.append(scenarioButton(tx('Symuluj: Plex zatrzymany','Simulate: Plex stopped'),'stopped'));
+ actions.append(scenarioButton(tx('Pokaż powiadomienie','Show Notification'),'notify'));box.append(actions);card.append(box);
+ const archiveCard=main.querySelector(isRestore?'.restore-list':'.archive-surface');
+ const rowsEl=archiveCard.querySelector('.rows');
+ rowsEl.querySelectorAll('input').forEach((input,i)=>{input.disabled=Boolean(c.busy);if(isRestore){input.checked=c.id!=='r-select'&&i===0;input.closest('label').classList.toggle('selected',input.checked);}});
+ if(!isRestore){
+  if(c.count===0){rowsEl.replaceChildren();const empty=document.createElement('p');empty.textContent=tx('Brak archiwów.','No archives.');rowsEl.append(empty);}
+  if(c.count===1)Array.from(rowsEl.children).slice(1).forEach(row=>row.remove());
+  if(c.published){const row=document.createElement('div');row.className='row selected';const text=document.createElement('strong');text.className='filename';text.textContent='TrueNASPlexConfig_2026.11.03_12.45.00.tar.gz';row.append(text);rowsEl.prepend(row);if(c.count===1)Array.from(rowsEl.children).slice(1).forEach(r=>r.remove());}
+  const total=c.count===0?0:c.count===1?1:c.published?14:13;main.querySelector('.pcc-important .pill').textContent=total+tx(' kopii zapasowych',' backups');
+  main.querySelector('[data-action=delete]').disabled=Boolean(c.busy)||Boolean(c.snapshot);
+ }
+ if(c.busy){const busy=document.createElement('p');busy.className='task-busy-note';busy.textContent=tx('Nowe operacje i usuwanie używanych archiwów są zablokowane.','New operations and archive deletion are locked.');box.append(busy);}
+}
+root.addEventListener('change',e=>{if(e.target===caseSelect){casePosition[page]=Number(caseSelect.value);overlay.hidden=true;draw();}},true);
+root.addEventListener('click',e=>{
+ const step=e.target.closest('[data-case-step]');if(step){const list=demoCases[page];casePosition[page]=(casePosition[page]+Number(step.dataset.caseStep)+list.length)%list.length;draw();return;}
+ const action=e.target.closest('[data-task-action]');if(!action)return;
+ e.preventDefault();e.stopImmediatePropagation();const name=action.dataset.taskAction,c=currentCase();
+ if(name==='notify'||name==='result'){const logPath=name==='result'?'\n\n'+tx('Plik logu: ','Log file: ')+'Plex Config/Logs/'+(page==='Backup'?'Backup':'Restore')+'_2026.11.03_12.45.00.log':'';notice(c.stage,c.text+(c.snapshot?'\n\n'+tx('Zachowana migawka: ','Retained snapshot: ')+c.snapshot:'')+logPath);return;}
+ if(name==='start'){chooseCase('b-snapshot');return;}
+ if(name==='stopped'){chooseCase('r-ready');return;}
+ if(name==='manual-stop'){chooseCase('r-cancelled');return;}
+ if(name==='retry-status'){chooseCase('r-wait');return;}
+ if(name==='select'||name==='revalidate'){chooseCase('r-reading');return;}
+ if(name==='choice'){
+  dialog.replaceChildren();const title=document.createElement('h3');title.textContent=tx('Jak zapisać kopię?','How should this backup be saved?');const p=document.createElement('p');p.textContent=tx('Starsze archiwum zostanie zachowane do czasu zweryfikowania nowej kopii i usunięcia migawki.','The old archive is kept until the new copy is verified and its snapshot removed.');dialog.append(title,p,scenarioButton(tx('Nadpisz istniejącą','Overwrite Existing'),'choose-overwrite'),scenarioButton(tx('Utwórz kolejną','Create Another'),'choose-new'));overlay.hidden=false;return;
+ }
+ if(name==='choose-overwrite'||name==='choose-new'){chooseCase('b-write');return;}
+ if(name==='confirm-restore'){
+  dialog.replaceChildren();const h=document.createElement('h3');h.textContent=tx('Potwierdź przywracanie','Confirm Restore');const p=document.createElement('p');p.textContent=tx('Plex jest zatrzymany. Konfiguracja zostanie zastąpiona. Wpisz dokładnie RESTORE.','Plex is stopped. Its configuration will be replaced. Type RESTORE.');const input=document.createElement('input');input.placeholder='RESTORE';input.setAttribute('aria-label','RESTORE');input.autocomplete='off';const button=scenarioButton(tx('Rozpocznij przywracanie','Start Restore'),'run-restore');button.disabled=true;input.addEventListener('input',()=>button.disabled=input.value!=='RESTORE');dialog.append(h,p,input,button);overlay.hidden=false;input.focus();return;
+ }
+ if(name==='run-restore'){chooseCase('r-snapshot');return;}
+ if(name==='delete-snapshot'){
+  dialog.replaceChildren();const h=document.createElement('h3');h.textContent=tx('Usunąć migawkę operacji?','Remove operation snapshot?');const p=document.createElement('p');p.textContent=c.snapshot+'\n\n'+tx('Usunięcie migawki odbiera możliwość odzyskania z niej poprzedniej konfiguracji. Nie zmienia wyniku nieudanej operacji.','Deleting this snapshot removes its recovery option and does not change the failed operation result.');const label=document.createElement('label');label.className='task-confirm-check';const check=document.createElement('input');check.type='checkbox';label.append(check,document.createTextNode(tx('Rozumiem i potwierdzam usunięcie wskazanej migawki.','I understand and confirm removal of this exact snapshot.')));const button=scenarioButton(tx('Usuń wskazaną migawkę','Remove This Snapshot'),'confirm-delete');button.disabled=true;check.addEventListener('change',()=>button.disabled=!check.checked);dialog.append(h,p,label,button);overlay.hidden=false;return;
+ }
+ if(name==='confirm-delete'){chooseCase(page==='Backup'?'b-deleted':'r-deleted');return;}
+},true);
+
+function draw(){main.dataset.page=page;nav.innerHTML=tabs.map((t,i)=>'<button class="'+(page===t?'active':'')+'" data-tab="'+t+'" aria-current="'+(page===t?'page':'false')+'">'+icon(icons[i])+t+'</button>').join('');if(page==='Dashboard'){main.innerHTML=status()+'<section class="surface account"><div class="account-content"><h3>Account</h3><div class="avatar">'+icon('user-round')+'<div class="photo-tools"><button aria-label="Upload Photo" data-action="photo">'+icon('image-up')+'</button><button aria-label="Remove Photo" data-action="photo">'+icon('trash-2')+'</button></div></div><div class="account-state"><span class="state '+(account?'':'off')+'"><span class="dot"></span>'+(account?'ACTIVE':'INACTIVE')+'</span></div></div><div class="account-actions">'+button('Change Password','password')+button(account?'Log Out':'Log In','logout')+'</div></section>';}if(page==='Backup'){main.innerHTML=status()+'<section class="surface"><div class="heading"><h3 class="title-icon">'+icon('archive')+'Create a new backup</h3>'+button('Refresh','refresh','refresh-cw','refresh')+'</div><p>Create and verify a new copy of your Plex configuration.</p><button class="primary" data-action="backup">⊕&nbsp; Create Backup</button></section><section class="surface archive-surface"><div class="heading"><h2>Existing Backups</h2>'+button('Delete Selected Archives','delete','trash-2')+'</div>'+rows('backup')+'</section><section class="surface pcc-important"><div class="heading"><h2 class="title-icon">'+icon('info')+'Important</h2><span class="pill">13 backups</span></div><p>Existing backups will not be deleted automatically. Each completed backup is verified before it becomes available.</p></section>';}if(page==='Restore'){main.innerHTML=status()+'<section class="surface"><div class="heading"><h3 class="title-icon">'+icon('shield-check')+'Archive Validation</h3>'+button('Refresh','refresh','refresh-cw','refresh')+'</div><p>Select an archive and start validation before continuing.</p><button class="primary" data-action="validate">Validate Archive</button></section><section class="surface restore-list"><div class="heading"><h2>Select Backup Archive</h2></div>'+rows('restore')+'</section>';}if(page==='History'){const events=[["2 November 2026 · 18:15:00", "Restore", "SUCCESS"], ["2 November 2026 · 10:30:00", "Backup", "SUCCESS"], ["1 November 2026 · 19:20:15", "Restore", "FAILED"], ["31 October 2026 · 21:40:00", "Backup", "SUCCESS"], ["30 October 2026 · 20:15:22", "Backup", "SUCCESS"], ["28 October 2026 · 17:32:10", "Backup", "SUCCESS"], ["27 October 2026 · 16:20:00", "Restore", "SUCCESS"], ["26 October 2026 · 20:15:00", "Backup", "FAILED"], ["24 October 2026 · 11:05:00", "Restore", "SUCCESS"], ["22 October 2026 · 10:30:00", "Backup", "FAILED"], ["21 October 2026 · 11:30:00", "Restore", "SUCCESS"], ["20 October 2026 · 12:30:00", "Backup", "SUCCESS"], ["19 October 2026 · 13:30:00", "Restore", "SUCCESS"], ["18 October 2026 · 14:30:00", "Backup", "FAILED"], ["17 October 2026 · 15:30:00", "Restore", "SUCCESS"], ["16 October 2026 · 16:30:00", "Backup", "SUCCESS"], ["15 October 2026 · 17:30:00", "Restore", "SUCCESS"], ["14 October 2026 · 10:30:00", "Backup", "FAILED"], ["13 October 2026 · 11:30:00", "Restore", "SUCCESS"], ["12 October 2026 · 12:30:00", "Backup", "SUCCESS"]];main.innerHTML='<div class="stats">'+[['list','Total Operations','20'],['circle-check','Successful','15'],['circle-alert','Failed','5']].map(x=>'<section class="surface stat">'+icon(x[0])+'<div><span>'+x[1]+'</span><b>'+x[2]+'</b></div></section>').join('')+'</div><div class="filters"><button class="chosen" data-filter="All">All (20)</button><button data-filter="Backup">Backup (11)</button><button data-filter="Restore">Restore (9)</button></div><section class="surface history-list"><div class="heading"><h2>Operations &amp; Events</h2><div class="history-actions">'+button('Download Logs','download','download')+button('Clear Selected','clear','trash-2')+'</div></div><div class="rows">'+events.map((x,i)=>'<label class="row '+(i===0?'selected':'')+'" data-event-type="'+x[1]+'"><input type="checkbox" '+(i===0?'checked':'')+' aria-label="Select event '+(i+1)+'">'+icon(x[1]==='Backup'?'archive':'rotate-ccw')+'<span class="text">'+x[0]+' · '+x[1]+'</span><span class="pill '+(x[2]==='SUCCESS'?'success':'failed')+'">'+x[2]+'</span></label>').join('')+'</div></section>';}if(page==='Settings'){main.innerHTML='<section class="surface strip"><strong>Language</strong>'+'<select class="language-picker" data-language aria-label="Language"><option value="en" '+(language==='en'?'selected':'')+'>English</option><option value="pl" '+(language==='pl'?'selected':'')+'>Polski</option></select>'+'</section><section class="surface" style="padding:24px"><h3 class="title-icon">'+icon('palette')+'Appearance</h3><div class="theme-row"><h2>Theme</h2><div class="theme-buttons">'+['Light','Dark','System'].map((t,i)=>'<button class="action '+(theme===t?'chosen':'')+'" data-theme="'+t+'">'+icon(['sun','moon','monitor'][i])+t+'</button>').join('')+'</div></div></section><section class="surface about"><h3 class="title-icon">'+icon('info')+'About</h3><div class="about-info"><div class="about-row"><span>Application</span><span>PlexConfigControl</span></div><div class="about-row"><span>Version</span><span>Development preview</span></div><div class="about-row"><span>Created by</span><span style="font-size:12px">Krzysztof Wojciechowski</span></div><details><summary>Details</summary><p>Manage manual Plex configuration backups and restores.</p></details></div></section>';}applyScenario();if(window.lucide)lucide.createIcons();localize();
+requestAnimationFrame(()=>{const card=main.querySelector('.account');if(card)card.style.setProperty('--account-nudge',(card.getBoundingClientRect().height*.05)+'px');});} 
+const overlay=root.querySelector('.overlay'),dialog=root.querySelector('[data-dialog-content]');function notice(title,text){dialog.innerHTML='<h3></h3><p></p>';dialog.querySelector('h3').textContent=title;dialog.querySelector('p').textContent=text;overlay.hidden=false;localize();root.querySelector('[data-close]').focus();}root.addEventListener('click',e=>{const tab=e.target.closest('[data-tab]');if(tab){page=tab.dataset.tab;draw();return;}const th=e.target.closest('[data-theme]');if(th){theme=th.dataset.theme;root.dataset.previewTheme=theme==='System'?(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):theme.toLowerCase();root.style.colorScheme=theme==='System'?'light dark':theme.toLowerCase();draw();return;}if(e.target.closest('[data-close]')){overlay.hidden=true;return;}const filter=e.target.closest('[data-filter]');if(filter){root.querySelectorAll('[data-filter]').forEach(x=>x.classList.toggle('chosen',x===filter));root.querySelectorAll('[data-event-type]').forEach(x=>x.hidden=filter.dataset.filter!=='All'&&x.dataset.eventType!==filter.dataset.filter);return;}const action=e.target.closest('[data-action]');if(!action)return;const act=action.dataset.action;if(act==='password'){dialog.innerHTML='<h3>Change Password</h3><label>Current Password<input type="password" autocomplete="current-password"></label><label>New Password<input type="password" autocomplete="new-password"></label><label>Confirm New Password<input type="password" autocomplete="new-password"></label><p>Interface preview — no password will be saved.</p>';overlay.hidden=false;localize();return;}if(act==='logout'){account=!account;draw();return;}const messages={backup:['Create Backup','Preview only. A real backup keeps Plex running, verifies the archive, then removes its temporary snapshot.'],validate:['Archive Validation',plex==='RUNNING'?'After validation, the application waits for you to stop Plex manually in TrueNAS Apps.':'After validation, Restore requires the confirmation text RESTORE. Plex remains stopped afterward.'],delete:['Delete Selected Archives','The real application asks for confirmation before deleting selected archive files.'],clear:['Clear Selected','Only selected web-history records will be removed. Permanent files in Plex Config/Logs remain untouched.'],download:['Download Logs','Download the logs for the selected events.'],refresh:['Refresh','This preview uses example data and does not contact TrueNAS.'],photo:['Profile Photo','Upload, replace or remove a profile photo. Application data will be stored in the ixVolume.'],language:['Language','English and Polish are planned in the interface. This preview is in English.']};if(messages[act])notice(...messages[act]);});root.addEventListener('change',e=>{if(e.target.matches('[data-language]')){language=e.target.value;equalizePanels();return;}if(e.target.matches('[data-demo-status]')){plex=e.target.value;draw();}if(e.target.matches('.row input'))root.querySelectorAll('.row').forEach(r=>r.classList.toggle('selected',r.querySelector('input').checked));});root.addEventListener('keydown',e=>{if(e.key==='Escape')overlay.hidden=true;});
+// Every tab shares the same content height at a given viewport width.
+// Measure the full content of all five panels, without clipping or scrollbars.
+function equalizePanels(){
+  root.dataset.measuring='true';
+  const selectedPage=page;
+  main.style.height='auto';
+  main.style.minHeight='0px';
+  let commonHeight=684;
+  for(const tab of tabs){page=tab;draw();commonHeight=Math.max(commonHeight,Math.ceil(main.getBoundingClientRect().height));}
+  page=selectedPage;
+  draw();
+  main.style.minHeight=(commonHeight+100)+'px';
+  main.style.height=(commonHeight+100)+'px';
+  delete root.dataset.measuring;
+}
+equalizePanels();
+let measuredWidth=root.getBoundingClientRect().width;
+new ResizeObserver(()=>{
+  const width=root.getBoundingClientRect().width;
+  if(Math.abs(width-measuredWidth)>.5){measuredWidth=width;equalizePanels();}
+}).observe(root);
+if(document.fonts)document.fonts.ready.then(equalizePanels);
+})();
+</script>
+</div>
