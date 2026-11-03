@@ -415,3 +415,13 @@ Manual checks on a physical iPhone/iPad remain necessary for that application,
 for native OS dialogs and for the user's specific OS/browser versions. A failed
 or unavailable simulator/driver run must be reported as such, never relabeled
 as a passed WebKit/device-emulation test.
+
+
+Mobile Safari WebDriver on the hosted Apple simulators was observed to leave
+secure password inputs empty. Mobile test controls therefore use DOM value/input/
+change events and DOM click activation after checking visibility/enabled state.
+They still run in real simulator Safari against the real HTTPS application and
+backend, without mocking login or bypassing CSRF. This verifies application logic
+and rendering, not native user activation, physical keyboard, gesture or picker
+behavior. macOS Safari/Firefox continue using normal WebDriver keyboard/clicks.
+The distinction must remain explicit when reporting mobile results.

@@ -74,8 +74,27 @@ def exercise(driver, fixture, output, *, mobile):
     wait = WebDriverWait(driver, 20)
     def visible(selector):
         return wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR,selector)))
+    def activate(element):
+        if mobile:
+            # Mobile safaridriver can fail to populate secure inputs or target
+            # controls. Exercise the same DOM handlers without claiming native
+            # keyboard/pointer coverage. Backend requests are not mocked.
+            driver.execute_script('arguments[0].click()',element)
+        else:
+            element.click()
     def click(selector):
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,selector))).click()
+        activate(wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,selector))))
+    def fill(element,value):
+        if mobile:
+            driver.execute_script("arguments[0].value=arguments[1];arguments[0].dispatchEvent(new Event('input',{bubbles:true}));arguments[0].dispatchEvent(new Event('change',{bubbles:true}));",element,value)
+        else:
+            element.send_keys(value)
+    def language(value):
+        element=wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,'[data-language]')))
+        if mobile:
+            driver.execute_script("arguments[0].value=arguments[1];arguments[0].dispatchEvent(new Event('change',{bubbles:true}));",element,value)
+        else:
+            Select(element).select_by_value(value)
     def text(selector, expected):
         wait.until(lambda _: expected in visible(selector).text)
     def tab(name):
@@ -86,7 +105,7 @@ def exercise(driver, fixture, output, *, mobile):
         wait.until(lambda _:driver.find_element(By.CSS_SELECTOR,selector).get_attribute('aria-selected')=='true')
         assert driver.execute_script('return document.documentElement.scrollWidth<=innerWidth'),name+' horizontal overflow'
     driver.get(fixture['url'])
-    visible('.pcc-login input').send_keys(fixture['password'])
+    fill(visible('.pcc-login input'),fixture['password'])
     assert driver.execute_script("return document.querySelector('.pcc-login input').value.length")==len(fixture['password']),'WebDriver did not populate the password input'
     click('.pcc-login button')
     visible('.pcc-nav')
@@ -125,7 +144,7 @@ def exercise(driver, fixture, output, *, mobile):
     assert 'Archive detected' in driver.find_element(By.CSS_SELECTOR,'[data-events]').text
     row=driver.find_element(By.CSS_SELECTOR,'.pcc-event-row input')
     event_id=int(row.get_attribute('data-event-id'))
-    row.click()
+    activate(row)
     # Verify actual log bytes through authenticated API on every Apple platform.
     # Native Save/Files UI is not controlled or claimed as tested on iOS/iPadOS.
     result=driver.execute_async_script("""const id=arguments[0],done=arguments[arguments.length-1];
@@ -142,7 +161,7 @@ def exercise(driver, fixture, output, *, mobile):
     for theme in ('Light','Dark'):
         tab('settings');click(f'[data-theme-choice={theme}]')
         wait.until(lambda _:driver.find_element(By.ID,'pcc-app').get_attribute('data-theme')==theme.lower())
-        Select(driver.find_element(By.CSS_SELECTOR,'[data-language]')).select_by_value('pl')
+        language('pl')
         text('[data-about]','O aplikacji')
         heights=[]
         for index,name in enumerate(('dashboard','backup','restore','history','settings'),1):
@@ -170,8 +189,8 @@ def exercise(driver, fixture, output, *, mobile):
     # Verify change-password dialog, validation and session revocation.
     click('[data-password]');visible('[data-panel=dashboard] dialog')
     for name,value in (('current',fixture['password']),('password','ci-apple-new-password'),('confirmation','ci-apple-new-password')):
-        driver.find_element(By.CSS_SELECTOR,f'input[name={name}]').send_keys(value)
-    click('[data-save]');visible('.pcc-login input').send_keys('ci-apple-new-password')
+        fill(driver.find_element(By.CSS_SELECTOR,f'input[name={name}]'),value)
+    click('[data-save]');fill(visible('.pcc-login input'),'ci-apple-new-password')
     click('.pcc-login button');visible('.pcc-nav')
     click('[data-panel=dashboard] [data-logout]');visible('.pcc-login')
 
