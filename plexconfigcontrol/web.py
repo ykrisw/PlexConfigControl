@@ -47,6 +47,7 @@ class Web:
         path=environ.get('PATH_INFO','/')
         assets={'/assets/panel-client.mjs':'panel-client.mjs',
                 '/assets/restore-panel.mjs':'restore-panel.mjs',
+                '/assets/restore-messages.mjs':'restore-messages.mjs',
                 '/assets/restore-view.mjs':'restore-view.mjs',
                 '/assets/restore-view.css':'restore-view.css',
                 '/assets/panel-shell.mjs':'panel-shell.mjs',

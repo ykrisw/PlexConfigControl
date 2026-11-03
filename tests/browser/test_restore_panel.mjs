@@ -38,3 +38,35 @@ test('leaving panel does not cancel server operation and late responses do not r
   release({readiness:{ready:true}}); await pending;
   assert.equal(renders,0); assert.equal(cancels,0);
 });
+
+test('older IDLE replies cannot overwrite a newer validation response',async()=>{
+  const replies=[];
+  const client={restoreView:()=>new Promise(resolve=>replies.push(resolve))};
+  const controller=new RestoreController(client,()=>{});
+  const older=controller.refresh(),newer=controller.refresh();
+  const active={operation:{operation:{phase:'VALIDATING',kind:'RESTORE'}},readiness:null};
+  replies[1](active);await newer;
+  replies[0]({operation:{operation:{phase:'IDLE'}}});await older;
+  assert.equal(controller.state.snapshot,active);controller.dispose();
+});
+
+test('late failed refresh does not clear a newer verified waiting state',async()=>{
+  let fail,finish,calls=0;
+  const client={restoreView:()=>++calls===1?new Promise((resolve,reject)=>{fail=reject;}):new Promise(resolve=>{finish=resolve;})};
+  const controller=new RestoreController(client,()=>{});
+  const older=controller.refresh(),newer=controller.refresh();
+  const waiting={operation:{operation:{phase:'WAITING_FOR_PLEX_STOP',kind:'RESTORE'}}};
+  finish(waiting);await newer;fail(Error('old connection failure'));await older;
+  assert.equal(controller.state.snapshot,waiting);assert.equal(controller.state.error,null);controller.dispose();
+});
+
+test('waiting restore rejects selection changes and duplicate validation; removed selection is cleared',async()=>{
+  let posts=0;
+  const client={validateArchive:async()=>posts++};
+  const controller=new RestoreController(client,()=>{});
+  controller.select('chosen');controller.state.snapshot={operation:{operation:{phase:'WAITING_FOR_PLEX_STOP',kind:'RESTORE'}}};
+  controller.select('other');await controller.validate();
+  assert.equal(controller.state.selected,'chosen');assert.equal(posts,0);
+  controller.reconcileSelection(['other']);assert.equal(controller.state.selected,null);
+  controller.dispose();controller.select('chosen');await controller.validate();assert.equal(posts,0);
+});

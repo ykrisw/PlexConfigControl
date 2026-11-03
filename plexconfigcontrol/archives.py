@@ -88,7 +88,17 @@ def validate_archive(path, max_bytes=1024**4, max_members=2_000_000, *, source_f
                         raise InvalidArchive('Stream limit exceeded')
             if progress_callback: progress_callback('CHECKING_GZIP', expanded)
             source.seek(0)
-            digest = hashlib.file_digest(source, 'sha256').hexdigest()
+            if progress_callback:
+                progress_callback('HASHING_ARCHIVE',0)
+                hasher=hashlib.sha256();hashed=reported=0
+                while chunk:=source.read(1024*1024):
+                    hasher.update(chunk);hashed+=len(chunk)
+                    if hashed-reported>=16*1024*1024:
+                        reported=hashed;progress_callback('HASHING_ARCHIVE',hashed)
+                progress_callback('HASHING_ARCHIVE',hashed)
+                digest=hasher.hexdigest()
+            else:
+                digest = hashlib.file_digest(source, 'sha256').hexdigest()
         except (tarfile.TarError, EOFError, OSError) as error:
             raise InvalidArchive('Corrupt or unreadable archive') from error
         after = os.fstat(source.fileno())

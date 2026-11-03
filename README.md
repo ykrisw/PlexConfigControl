@@ -82,7 +82,7 @@ revokes all sessions and returns to sign-in; explicit logout also returns to
 sign-in only after server confirmation. Leaving the application disposes polling.
 There is no timer that signs users out for inactivity. Saved theme and language
 preferences are loaded at sign-in; Dashboard labels support English and Polish,
-while Restore, sign-in messages and server errors still need full translation.
+while sign-in messages and uncommon server errors still need full translation.
 Profile photo upload/removal is not implemented yet.
 
 `/assets/restore-panel.mjs` exports `bindRestoreControls(root, client, render)`.
@@ -111,6 +111,15 @@ layout hooks; Backup execution still needs integration.
 actual archive list, selection, validation, progress, readiness, cancellation
 and Plex status to the API. It can mount into `shell.sections.get('restore')`.
 No archive is automatically selected. Dynamic text uses `textContent`.
+Restore labels, manual-stop guidance, common archive rejection reasons and real
+validation stages support English and Polish. Unknown diagnostic reasons remain
+visible instead of being replaced by a vague translated error. Validation reads
+all file content, checks the gzip stream and streams SHA-256 calculation with
+actual byte counters for each stage. Compressed hashing bytes and expanded file
+bytes are separate stages; no percentage is invented without a known total.
+An older polling response cannot replace a newer snapshot or clear its result.
+Waiting/active operations reject selection changes and duplicate validation.
+Archive-list read failures disable validation; removed selections are cleared.
 The final destructive Restore action remains unavailable in this development
 view until the host adapters are fully integrated and verified. A disposer
 removes listeners and browser polling without cancelling server work.
@@ -162,8 +171,8 @@ Settings theme buttons persist Light/Dark/System through the authenticated API;
 appearance changes only after server confirmation. First installation stays
 System until manually changed. English/Polish selection updates Settings and tab
 labels immediately. Dashboard and History remount in the new language when next
-opened. Disposing a Restore view never cancels server validation. Complete Restore
-and error translations remain pending. The first downloadable test image predates
+opened. Disposing a Restore view never cancels server validation. Uncommon error
+translations remain pending. The first downloadable test image predates
 the Settings view; subsequent successful build artifacts include it.
 
 All application settings, credentials, sessions, profile data, panel history and

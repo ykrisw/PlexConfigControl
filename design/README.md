@@ -34,3 +34,6 @@ History is connected to web-history records and their stored log-text exports.
 Settings theme/language choices are connected to persistent preferences.
 Backup listing/planning and capability-gated confirmed deletion are connected;
 backup creation/overwrite execution is still incomplete and disabled.
+Restore uses translated English/Polish controls and notices while preserving the
+same layout. Real file/gzip/SHA-256 stages report measured byte counts and elapsed
+time; there is no fabricated percent or Restore execution in the test build.

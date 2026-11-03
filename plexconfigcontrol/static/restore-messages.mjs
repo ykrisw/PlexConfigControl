@@ -1,0 +1,63 @@
+const polish={
+  'Regular archive file required':'Archiwum musi być zwykłym plikiem.',
+  'Archive must be a regular file':'Archiwum musi być zwykłym plikiem.',
+  'Too many entries':'Archiwum zawiera zbyt wiele wpisów.',
+  'Unsafe or duplicate path':'Archiwum zawiera niedozwoloną lub powtórzoną ścieżkę.',
+  'Links and special files unsupported':'Archiwum zawiera nieobsługiwane dowiązania lub pliki specjalne.',
+  'Size limit exceeded':'Przekroczono dozwolony rozmiar zawartości archiwum.',
+  'Incomplete file':'Plik wewnątrz archiwum jest niekompletny.',
+  'Required Plex files missing':'Brak wymaganych plików konfiguracji Plex.',
+  'Stream limit exceeded':'Przekroczono limit rozpakowanego strumienia gzip.',
+  'Corrupt or unreadable archive':'Archiwum jest uszkodzone lub nie można go odczytać.',
+  'Archive changed during validation':'Archiwum zmieniło się podczas weryfikacji.',
+  'Archive is unavailable or unreadable':'Archiwum jest niedostępne lub nie można go odczytać.',
+  'Archive location is not configured':'Lokalizacja archiwów nie została skonfigurowana.',
+  'Archive location is unavailable':'Lokalizacja archiwów jest niedostępna.',
+  'Another operation or recovery must finish':'Najpierw zakończ poprzednią operację lub odzyskiwanie.',
+  'Another operation is running':'Trwa inna operacja.',
+  'Choose a recognized backup archive':'Wybierz archiwum o obsługiwanej nazwie kopii zapasowej.',
+  'Application restarted before validation completed':'Aplikacja uruchomiła się ponownie przed zakończeniem weryfikacji.',
+  'Validation could not be started':'Nie udało się rozpocząć weryfikacji.',
+  'Sign in required':'Zaloguj się ponownie.',
+};
+
+export function restoreError(message,language='en'){
+  if(!message)return '';
+  return language==='pl'?(polish[message]||`Nie udało się wykonać żądania. Szczegóły: ${message}`):String(message);
+}
+
+export function restorePresentation(state,language='en'){
+  const pl=language==='pl',tx=(en,polish)=>pl?polish:en;
+  const operation=state.snapshot?.operation?.operation,phase=operation?.phase;
+  const restore=operation?.kind==='RESTORE';
+  const waiting=restore&&['WAITING_FOR_PLEX_STOP','READY'].includes(phase);
+  const active=['VALIDATING','RUNNING','RECOVERY_REQUIRED'].includes(phase);
+  const details=restore?operation.validation_details:null;
+  let notice=restoreError(state.error,language);
+  if(!notice&&['FAILED','INTERRUPTED'].includes(details?.status))notice=restoreError(details.reason,language);
+  if(!notice&&phase==='RECOVERY_REQUIRED')notice=tx('Recovery or cleanup must be completed before continuing.','Przed kontynuowaniem trzeba zakończyć odzyskiwanie lub sprzątanie.');
+  const readiness=state.snapshot?.readiness;
+  if(!notice&&waiting){
+    const reasons={
+      STOP_PLEX_MANUALLY:tx('Archive validated. Stop Plex manually in TrueNAS Apps. This panel will wait.','Archiwum zweryfikowane. Zatrzymaj Plex ręcznie w TrueNAS Apps. Panel będzie czekał.'),
+      PLEX_STOP_NOT_CONFIRMED:tx('Plex is not confirmed stopped. Restore remains blocked.','Nie potwierdzono zatrzymania Plex. Przywracanie pozostaje zablokowane.'),
+      ARCHIVE_CHANGED_REVALIDATE:tx('The archive changed. Cancel preparation, then validate it again.','Archiwum zmieniło się. Anuluj przygotowanie, a następnie zweryfikuj je ponownie.'),
+      RECOVERY_REQUIRED:tx('Recovery or cleanup is required.','Wymagane jest odzyskiwanie lub sprzątanie.'),
+      VALIDATE_ARCHIVE_FIRST:tx('Validate the selected archive before continuing.','Przed kontynuowaniem zweryfikuj wybrane archiwum.'),
+    };
+    notice=readiness?.ready===true&&readiness.plex?.state==='STOPPED'&&readiness.plex?.available!==false?
+      tx('Archive validated and Plex is stopped. Final Restore execution is not connected in this development build.','Archiwum zweryfikowane i Plex zatrzymany. Wykonywanie przywracania nie jest jeszcze podłączone w tej wersji.'):
+      reasons[readiness?.reason]||tx('Checking Restore readiness…','Sprawdzanie gotowości przywracania…');
+  }
+  const progress=state.snapshot?.operation?.progress;
+  let progressText='';
+  if(restore&&phase==='VALIDATING'&&progress){
+    const stages={READING_ARCHIVE:tx('Reading archive files','Odczyt plików archiwum'),CHECKING_GZIP:tx('Checking gzip stream','Sprawdzanie strumienia gzip'),HASHING_ARCHIVE:tx('Calculating archive checksum','Obliczanie sumy kontrolnej archiwum')};
+    const done=Number.isFinite(progress.done)&&progress.done>=0?progress.done:0;
+    const elapsed=Number.isFinite(progress.elapsed_seconds)&&progress.elapsed_seconds>=0?Math.floor(progress.elapsed_seconds):0;
+    progressText=`${stages[progress.stage]||tx('Archive validation','Weryfikacja archiwum')} · ${done.toLocaleString(pl?'pl-PL':'en-GB')} ${tx('bytes read','odczytanych bajtów')} · ${elapsed} s`;
+  }
+  return {notice,progressText,waiting,active,
+    validateDisabled:!state.selected||state.busy||!operation||waiting||active,
+    cancelVisible:waiting,cancelDisabled:state.busy,selectionDisabled:state.busy||waiting||active||!operation};
+}

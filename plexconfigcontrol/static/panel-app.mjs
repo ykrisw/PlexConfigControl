@@ -47,7 +47,7 @@ export function mountPanelApp(root) {
       if (viewDisposers.has(key)) return;
       if (key === 'dashboard') viewDisposers.set(key, mountDashboardView(section, client, {language: prefs.language, onSignedOut: signedOut}));
       else if (key === 'backup') viewDisposers.set(key,mountBackupView(section,client,{language:prefs.language,timezone:prefs.timezone}));
-      else if (key === 'restore') viewDisposers.set(key, mountRestoreView(section, client));
+      else if (key === 'restore') viewDisposers.set(key, mountRestoreView(section, client,{language:prefs.language}));
       else if (key === 'history') viewDisposers.set(key, mountHistoryView(section, client, {language:prefs.language,timezone:prefs.timezone}));
       else if (key === 'settings') viewDisposers.set(key,mountSettingsView(section,client,{preferences:prefs,onChanged(next){
         const languageChanged=prefs.language!==next.language;

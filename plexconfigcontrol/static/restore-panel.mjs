@@ -5,23 +5,33 @@ export class RestoreController {
     this.render = render;
     this.state = {selected: null, busy: false, snapshot: null, error: null};
     this.disposed = false;
+    this.refreshSerial = 0;
   }
   emit() { if (!this.disposed) this.render({...this.state}); }
   select(name) {
-    if (this.state.busy) return;
+    const phase=this.state.snapshot?.operation?.operation?.phase;
+    if (this.disposed || this.state.busy || ['VALIDATING','RUNNING','RECOVERY_REQUIRED','WAITING_FOR_PLEX_STOP','READY'].includes(phase)) return;
     this.state.selected = name || null;
     this.state.error = null;
     this.emit();
   }
-  async refresh(signal) {
+  reconcileSelection(names) {
+    if(this.disposed)return;
+    if(this.state.selected&&!names.includes(this.state.selected)){
+      this.state.selected=null;this.emit();
+    }
+  }
+  async refresh(signal, force=false) {
+    if(this.disposed||(this.state.busy&&!force))return;
+    const serial=++this.refreshSerial;
     try {
       const snapshot = await this.client.restoreView(signal);
-      if (this.disposed) return;
+      if (this.disposed || serial!==this.refreshSerial) return;
       this.state.snapshot = snapshot;
       this.state.error = null;
       this.emit();
     } catch (error) {
-      if (signal?.aborted || this.disposed) return;
+      if (signal?.aborted || this.disposed || serial!==this.refreshSerial) return;
       this.state.snapshot = null; // Never leave stale READY controls enabled.
       this.state.error = error.message;
       this.emit();
@@ -29,13 +39,15 @@ export class RestoreController {
     }
   }
   async validate() {
-    if (this.state.busy || !this.state.selected) return;
+    const phase=this.state.snapshot?.operation?.operation?.phase;
+    if (this.disposed || this.state.busy || !this.state.selected || ['VALIDATING','RUNNING','RECOVERY_REQUIRED','WAITING_FOR_PLEX_STOP','READY'].includes(phase)) return;
+    this.refreshSerial++;
     this.state.busy = true;
     this.state.error = null;
     this.emit();
     try {
       await this.client.validateArchive(this.state.selected);
-      await this.refresh();
+      await this.refresh(undefined,true);
     } catch (error) {
       // Never retry a POST automatically: the server may already own the job.
       this.state.snapshot = null;
@@ -46,12 +58,14 @@ export class RestoreController {
     }
   }
   async cancel() {
-    if (this.state.busy) return;
+    const operation=this.state.snapshot?.operation?.operation;
+    if (this.disposed || this.state.busy || operation?.kind!=='RESTORE' || !['WAITING_FOR_PLEX_STOP','READY'].includes(operation.phase)) return;
+    this.refreshSerial++;
     this.state.busy = true;
     this.emit();
     try {
       await this.client.cancelRestore();
-      await this.refresh();
+      await this.refresh(undefined,true);
     } catch (error) {
       this.state.snapshot = null;
       this.state.error = error.message;
@@ -97,5 +111,7 @@ export function bindRestoreControls(root, client, render) {
   }, {signal: events.signal});
   controller.emit();
   controller.startPolling();
-  return () => { events.abort(); controller.dispose(); };
+  const dispose=() => { events.abort(); controller.dispose(); };
+  dispose.reconcileSelection=names=>controller.reconcileSelection(names);
+  return dispose;
 }

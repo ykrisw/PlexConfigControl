@@ -63,8 +63,11 @@ class RestoreValidationTests(unittest.TestCase):
             validate_archive(backup/NAME,progress_callback=lambda stage,done: events.append((stage,done)))
             self.assertIn(('READING_ARCHIVE',4*len(REQUIRED)),events)
             self.assertEqual(events[0],('READING_ARCHIVE',0))
-            self.assertEqual(events[-1][0],'CHECKING_GZIP')
-            self.assertGreater(events[-1][1],4*len(REQUIRED))
+            self.assertTrue(any(stage=='CHECKING_GZIP' and count>4*len(REQUIRED) for stage,count in events))
+            self.assertEqual(events[-1],('HASHING_ARCHIVE',(backup/NAME).stat().st_size))
+            import hashlib
+            self.assertEqual(validate_archive(backup/NAME,progress_callback=lambda *_:None).sha256,
+                             hashlib.sha256((backup/NAME).read_bytes()).hexdigest())
             store=StateStore(state); history=History(state)
             service=RestoreValidation(backup,state,store,history)
             result=service.validate(NAME)
