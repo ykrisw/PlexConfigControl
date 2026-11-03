@@ -3,6 +3,10 @@
 Development project for one TrueNAS App managing manual Plex configuration
 backups and restores. **Not ready for installation or production data.**
 
+The approved appearance is frozen in `design/approved-panels.html` with its
+specification in `design/README.md`. Shared production styles import
+`static/approved-appearance.css`; subsequent UI work must use that baseline.
+
 ## Implemented foundations
 
 - Password hashing, escalating persistent lockout and explicit session logout.
