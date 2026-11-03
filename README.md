@@ -3,6 +3,12 @@
 Development project for one TrueNAS App managing manual Plex configuration
 backups and restores. **Not ready for installation or production data.**
 
+First test-installation packaging is under active verification. `Dockerfile`
+builds the unprivileged HTTPS image; **Build test installation** runs a disposable
+container smoke test before producing a downloadable image artifact. Follow
+`deploy/TEST-INSTALL.md` only after that workflow succeeds. This is a restricted
+test build, not permission to run Backup/Restore against live Plex data.
+
 The approved appearance is frozen in `design/approved-panels.html` with its
 specification in `design/README.md`. Shared production styles import
 `static/approved-appearance.css`; subsequent UI work must use that baseline.
@@ -25,7 +31,7 @@ specification in `design/README.md`. Shared production styles import
 - Backup and Settings views connected to the server.
 - Profile photo support and complete UI translations of errors.
 - Single-existing-archive overwrite workflow and crash-safe publication recovery.
-- Production HTTP/HTTPS server, certificate setup and TrueNAS installation form.
+- Verified image build on CI, TrueNAS installation test and final Apps password/secret form.
 - Complete restore verification and rollback verification adapters.
 - End-to-end tests on an isolated TrueNAS test dataset before live use.
 
@@ -38,10 +44,26 @@ GNU tar; no tests modify the user's NAS.
 Requires Python 3.11 or later and GNU tar on Linux.
 
 ```sh
+python -m pip install '.[server]'
 python -m unittest discover -s tests -v
 python -m compileall -q plexconfigcontrol
 node --test tests/browser/*.mjs
 ```
+
+The test runtime requires a writable app ixVolume and non-root UID 568. It serves
+HTTPS on container port 8443, with persistent self-signed TLS identity and local
+verified-TLS health checking. Initial credentials use a salted verifier generated
+by `python -m plexconfigcontrol.installation`; plaintext environment passwords
+are rejected. Existing account credentials are never overwritten on restart.
+The guided TrueNAS Custom App wizard maps ixVolume to `/var/lib/plexconfigcontrol`
+and host port 8787 (configurable) to 8443. This temporary verifier step does not
+complete the final requirement to choose the password directly in an app form.
+
+Only `app.query` for Plex is exposed by the optional test API adapter. The test
+route boundary blocks backup, actual restore, snapshot operations and archive
+deletion. Optional archive storage must be read-only; no live Plex config,
+Docker socket, ZFS devices or root privileges are mounted. It does not create or
+adopt the final `Plex Config` output folder during this test phase.
 
 The browser API module is served at `/assets/panel-client.mjs`. It supports
 session login, CSRF-protected background validation, operation polling and

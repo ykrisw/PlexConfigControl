@@ -1,0 +1,11 @@
+.git
+.github
+tests
+design
+deploy
+**/__pycache__
+**/*.pyc
+**/*.key
+**/*.sqlite3*
+**/*.tar.gz
+**/.env
