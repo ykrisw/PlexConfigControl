@@ -29,7 +29,7 @@ class Validation:
     files: int
     bytes_read: int
 
-def validate_archive(path, max_bytes=1024**4, max_members=2_000_000, *, source_fd=None):
+def validate_archive(path, max_bytes=1024**4, max_members=2_000_000, *, source_fd=None, progress_callback=None):
     """Reject links/special files conservatively; read all files and gzip trailer.
 
     Database integrity and metadata checks are separate restore steps.
@@ -42,6 +42,8 @@ def validate_archive(path, max_bytes=1024**4, max_members=2_000_000, *, source_f
             raise InvalidArchive('Regular archive file required')
         names, regular = set(), set()
         total = files = 0
+        reported = 0
+        if progress_callback: progress_callback('READING_ARCHIVE', 0)
         try:
             with tarfile.open(fileobj=source, mode='r|gz') as archive:
                 for index, member in enumerate(archive):
@@ -61,6 +63,9 @@ def validate_archive(path, max_bytes=1024**4, max_members=2_000_000, *, source_f
                         read = 0
                         while chunk := stream.read(1024 * 1024):
                             read += len(chunk)
+                            if progress_callback and total + read - reported >= 16*1024*1024:
+                                reported = total + read
+                                progress_callback('READING_ARCHIVE', reported)
                         if read != member.size:
                             raise InvalidArchive('Incomplete file')
                         total += read
@@ -68,13 +73,20 @@ def validate_archive(path, max_bytes=1024**4, max_members=2_000_000, *, source_f
                         regular.add(name)
             if not REQUIRED <= regular:
                 raise InvalidArchive('Required Plex files missing')
+            if progress_callback: progress_callback('READING_ARCHIVE', total)
             source.seek(0)
             expanded = 0
+            reported = 0
+            if progress_callback: progress_callback('CHECKING_GZIP', 0)
             with gzip.GzipFile(fileobj=source) as compressed:
                 while chunk := compressed.read(1024 * 1024):
                     expanded += len(chunk)
+                    if progress_callback and expanded - reported >= 16*1024*1024:
+                        reported = expanded
+                        progress_callback('CHECKING_GZIP', expanded)
                     if expanded > max_bytes + max_members * 4096:
                         raise InvalidArchive('Stream limit exceeded')
+            if progress_callback: progress_callback('CHECKING_GZIP', expanded)
             source.seek(0)
             digest = hashlib.file_digest(source, 'sha256').hexdigest()
         except (tarfile.TarError, EOFError, OSError) as error:
