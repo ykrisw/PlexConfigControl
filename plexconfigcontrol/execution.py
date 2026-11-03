@@ -73,11 +73,14 @@ class AcceptedOperation:
 
 
 class ExecutionGateway:
-    def __init__(self, state_directory, archive_directory, api, backend):
+    def __init__(self, state_directory, archive_directory, api, backend, *, receipt_lookup=None):
         self.state = Path(state_directory).resolve()
         self.destination = Path(archive_directory).resolve()
         if api is None or not callable(getattr(backend, 'submit', None)):
             raise ValueError('Explicit execution backend and Plex status connection required')
+        if receipt_lookup is not None and not callable(receipt_lookup):
+            raise ValueError('Receipt lookup must be explicitly configured')
+        self.receipt_lookup = receipt_lookup
         self.store = StateStore(self.state)
         self.api, self.backend = api, backend
 
@@ -88,11 +91,26 @@ class ExecutionGateway:
             raise
         except Exception:
             raise SubmissionUnconfirmed('Operation submission was not confirmed') from None
+        return self._receipt(request, kind, receipt)
+
+    @staticmethod
+    def _receipt(request, kind, receipt):
         if (not isinstance(receipt, AcceptedOperation) or receipt.kind != kind
                 or receipt.request_id != request.request_id):
             raise SubmissionUnconfirmed('Operation submission was not confirmed')
         return {'accepted':True, 'request_id':receipt.request_id, 'kind':kind,
                 'status_url':'/api/operation'}
+
+    def _lookup(self, request, kind):
+        if self.receipt_lookup is None:
+            return None
+        try:
+            receipt = self.receipt_lookup(request)
+        except (OperationBusy, OperationDenied):
+            raise
+        except Exception:
+            raise SubmissionUnconfirmed('Previous submission could not be verified') from None
+        return None if receipt is None else self._receipt(request, kind, receipt)
 
     def backup(self, data):
         if not isinstance(data, dict) or set(data) not in (
@@ -105,6 +123,10 @@ class ExecutionGateway:
         selected = _identity(data.get('archive')) if mode != 'NEW' else None
         if mode == 'NEW' and 'archive' in data:
             raise InvalidExecutionRequest('A new-copy request cannot select an archive')
+        request = BackupRequest(request_id, mode, selected)
+        previous = self._lookup(request, 'BACKUP')
+        if previous is not None:
+            return previous
         plan = plan_backup(self.destination, self.state)
         if mode == 'NEW':
             if plan['archive_count'] == 1:
@@ -114,7 +136,7 @@ class ExecutionGateway:
             raise OperationDenied('Archive selection changed; refresh and confirm again')
         if PlexStatus(self.api).read()['state'] != 'RUNNING':
             raise OperationDenied('Plex must be confirmed RUNNING before Backup')
-        return self._submit(BackupRequest(request_id, mode, selected), 'BACKUP')
+        return self._submit(request, 'BACKUP')
 
     def restore(self, data):
         if (not isinstance(data, dict) or set(data) !=
@@ -126,9 +148,13 @@ class ExecutionGateway:
                 or not isinstance(digest, str) or not re.fullmatch(r'[0-9a-f]{64}', digest)
                 or data.get('confirmation') != 'RESTORE'):
             raise InvalidExecutionRequest('Confirm the selected validated archive with RESTORE')
+        request = RestoreRequest(request_id, name, digest, 'RESTORE')
+        previous = self._lookup(request, 'RESTORE')
+        if previous is not None:
+            return previous
         readiness = restore_readiness(self.store, self.state, self.api, self.destination)
         with self.store.transaction() as operation:
             current_digest = operation.archive_identity
         if not readiness['ready'] or readiness['archive'] != name or current_digest != digest:
             raise OperationDenied('Restore readiness changed; refresh and confirm again')
-        return self._submit(RestoreRequest(request_id, name, digest, 'RESTORE'), 'RESTORE')
+        return self._submit(request, 'RESTORE')

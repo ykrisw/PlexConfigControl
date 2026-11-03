@@ -866,3 +866,35 @@ shell, default worker architecture or live host action is added. The approved UI
 layout is unchanged; controller/button execution wiring awaits the authorised
 backend and its acceptance tests. HTTP and browser-client tests here use an inert
 submission stub; they do not exercise real asynchronous host execution.
+
+### Durable admission and replay protection
+
+`ExecutionJournal` adds a private `execution.sqlite3` ledger for a future
+execution backend. Admission commits under SQLite BEGIN IMMEDIATE/FULL sync,
+allows one queued/running/recovery request, and returns the original receipt for
+an identical request_id/fingerprint even after completion or process recreation.
+Changed mode, archive identity, Restore digest or kind cannot reuse that ID.
+Concurrent claims have one execution owner; only its private token can finalize
+the claim. Only the token hash is stored. The ledger contains request fingerprints,
+IDs, kind, state and timestamps, not archive names, request bodies, passwords,
+commands or operation logs. Web History clearing neither removes deduplication
+records nor regenerates deleted History entries from them.
+
+The execution owner's explicit startup reconciliation, guarded by the operation
+lock, turns queued/running claims into RECOVERY_REQUIRED and invalidates old
+ownership. Nothing is automatically replayed. Confirmed closure of an interrupted
+admission additionally requires the coordinator to be idle/terminal with no
+recorded snapshot, publication intent or private backup/restore workspace. This
+method never deletes those resources or declares the operation successful.
+Journal outcome finalization still requires the backend to independently verify
+the actual coordinator result; ledger state alone proves no data integrity.
+
+`ExecutionGateway` can receive an explicit receipt lookup (for example
+`journal.lookup`). After session/CSRF and strict payload checks, matching replays
+return the existing receipt before re-evaluating live readiness. Thus a lost reply
+cannot cause a resubmission when the first operation has already changed archive
+counts, Plex status or operation state. Conflicting payloads are rejected. A new
+request still passes every current readiness check. No lookup/journal is supplied
+by the default restricted runtime, and no execution service is enabled. This
+change does not yet implement an executor, grant host privileges, serialize work
+for automatic restart, or test iXVolume persistence on the NAS.
