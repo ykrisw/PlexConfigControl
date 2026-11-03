@@ -42,6 +42,16 @@ jobs:
         env:
           PCC_TEST_BROWSER: msedge
         run: python tests/browser_e2e.py
+      - name: Test confirmed execution dialogs in Chromium
+        run: python tests/execution_ui_e2e.py
+      - name: Test confirmed execution dialogs in Firefox
+        env:
+          PCC_TEST_BROWSER: firefox
+        run: python tests/execution_ui_e2e.py
+      - name: Test confirmed execution dialogs in Microsoft Edge
+        env:
+          PCC_TEST_BROWSER: msedge
+        run: python tests/execution_ui_e2e.py
       - name: Test Android touch emulation
         run: python tests/mobile_e2e.py
       - uses: actions/upload-artifact@v4

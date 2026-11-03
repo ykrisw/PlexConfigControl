@@ -977,3 +977,32 @@ Local Python/JavaScript tests cover these control flows and request boundaries.
 The new enabled dialogs and retry actions have not yet been exercised in native
 browsers or on the user's NAS; full browser/host/container acceptance is still
 required before enabling the deployed execution backend.
+
+
+### Native execution-dialog browser suite
+
+`python tests/execution_ui_e2e.py` exercises the actual mounted Backup/Restore
+views with Playwright and a fully intercepted, in-memory API. The workflow runs
+it in Chromium, Firefox and Microsoft Edge after installing disposable browser
+tools. It covers English/Polish, Light/Dark/System and desktop/narrow viewports;
+these narrow viewports are not physical mobile-device tests. Every browser HTTP
+request is intercepted and off-origin requests are aborted. No NAS dataset,
+Docker fixture, privileged runtime or real execution backend is used by this
+suite. The injected CSRF value and submissions are UI fixtures, not an auth test.
+
+Checks include themed three-pixel yellow dialog borders, light-theme black
+headings, popup overflow, exact large archive identities, explicit overwrite,
+lost-reply status checking and same-ID retries with one simulated execution.
+Restore is blocked in the UI while Plex is simulated RUNNING; confirmation must
+be RESTORE, a changed validation digest invalidates an open dialog, and the
+selected current digest is sent once after re-confirmation. The UI then presents
+the corresponding simulated completion. Screenshots (including failures) are
+collected by the existing browser artifact step. The suite does not claim real
+backup integrity or recovery, TLS/auth checks, Safari or physical-device coverage.
+
+The new suite was syntax-checked locally. Native browser execution remains
+unconfirmed: this workspace lacks browser executables and its attempted Chromium
+download did not yield a valid archive. The previous revision's Linux browser
+workflow was queued when checked. Passing Python/JavaScript unit tests must not
+be reported as a native-browser pass; CI results for this suite are still needed.
+Installer packaging remains manual-only; these workflow changes add tests only.
