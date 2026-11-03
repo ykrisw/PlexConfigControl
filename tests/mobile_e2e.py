@@ -13,6 +13,7 @@ import time
 import urllib.request
 import uuid
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from PIL import Image
 from playwright.sync_api import sync_playwright, expect
@@ -79,8 +80,13 @@ def exercise(page, cdp, output, password, *, emulated=False):
     dashboard=page.locator('[data-panel=dashboard]')
     expect(dashboard.locator('.pcc-photo-tools')).to_have_css('opacity','1')
     expect(dashboard.locator('[data-photo-upload]')).to_be_visible()
+    # set_input_files bypasses the chooser button: wait for the same readiness
+    # a real user needs before sending its change event. Loading rejects uploads.
+    expect(dashboard.locator('[data-photo-upload]')).to_be_enabled()
     photo=io.BytesIO();Image.new('RGB',(40,40),'#2a70af').save(photo,format='PNG')
-    dashboard.locator('[data-photo-file]').set_input_files({'name':'touch.png','mimeType':'image/png','buffer':photo.getvalue()})
+    with page.expect_response(lambda response: urlsplit(response.url).path=='/api/account/photo' and response.request.method=='POST') as upload:
+        dashboard.locator('[data-photo-file]').set_input_files({'name':'touch.png','mimeType':'image/png','buffer':photo.getvalue()})
+    assert upload.value.status==200,f'Photo upload HTTP status: {upload.value.status}'
     expect(dashboard.locator('[data-profile-photo]')).to_be_visible()
     tab('Backup')
     backup=page.locator('[data-panel=backup]')
@@ -185,6 +191,7 @@ def main():
                 page=context.new_page()
             page.set_default_timeout(15000)
             page.on('pageerror',lambda error:errors.append(str(error)))
+            page.on('response',lambda response:network_errors.append({'path':urlsplit(response.url).path,'method':response.request.method,'status':response.status}) if response.status>=400 and urlsplit(response.url).path.startswith('/api/') else None)
             page.on('requestfailed',lambda request:network_errors.append({'url':request.url,'failure':request.failure}))
             page.on('console',lambda message:network_errors.append({'console':message.text}) if message.type=='error' else None)
             cdp=context.new_cdp_session(page)
