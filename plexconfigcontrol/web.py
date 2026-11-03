@@ -127,7 +127,8 @@ class Web:
             return respond('200 OK',plan)
         if path=='/api/restore/readiness' and method=='GET':
             try:
-                result=restore_readiness(self.operation_store,self.state_directory,self.truenas_api)
+                result=restore_readiness(self.operation_store,self.state_directory,self.truenas_api,
+                                        self.archives.directory if self.archives else None)
             except OperationBusy:
                 return respond('409 Conflict',{'error':'Another operation is running'})
             return respond('200 OK',result)
