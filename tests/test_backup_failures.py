@@ -59,7 +59,7 @@ class BackupFailureTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root,store,api,history,progress,runner=self.prepare(d)
             def fail(source,dest,name,digest,callback):
-                callback('.pcc-test.tmp')
+                callback('.pcc-' + 'a'*32 + '.tmp')
                 raise OSError('publication failed')
             with patch('plexconfigcontrol.backup.publish_new',side_effect=fail):
                 with self.assertRaises(OSError): runner.run_new()
