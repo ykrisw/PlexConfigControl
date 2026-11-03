@@ -1,4 +1,5 @@
 import io
+import os
 import tarfile
 import tempfile
 import unittest
@@ -11,15 +12,19 @@ class StagingTests(unittest.TestCase):
         with tarfile.open(path,'w:gz') as archive:
             for name in REQUIRED:
                 member=tarfile.TarInfo(name); member.size=4
+                member.uid=os.getuid(); member.gid=os.getgid()
                 archive.addfile(member,io.BytesIO(b'test'))
     def test_real_extraction_and_cleanup_after_exception(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d); state=root/'state'; state.mkdir(); archive=root/'a.tar.gz'; self.make(archive)
             digest=validate_archive(archive).sha256
+            reached=False
             with self.assertRaises(RuntimeError):
                 with stage_archive(archive,state,digest) as config:
+                    reached=True
                     self.assertTrue((config/'Library/Application Support/Plex Media Server/Preferences.xml').is_file())
                     raise RuntimeError('later validation failed')
+            self.assertTrue(reached,'Extraction must succeed before testing later cleanup')
             self.assertEqual(list(state.iterdir()),[])
             self.assertEqual(validate_archive(archive).sha256,digest)
     def test_changed_archive_rejected_before_extraction(self):

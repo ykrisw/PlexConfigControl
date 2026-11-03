@@ -1,4 +1,5 @@
 import io
+import os
 import tarfile
 import tempfile
 import unittest
@@ -24,7 +25,9 @@ class RestoreTests(unittest.TestCase):
             root=Path(d); dest=root/'Plex Config'; (dest/'Logs').mkdir(parents=True)
             with tarfile.open(dest/NAME,'w:gz') as archive:
                 for name in REQUIRED:
-                    m=tarfile.TarInfo(name); m.size=4; archive.addfile(m,io.BytesIO(b'test'))
+                    m=tarfile.TarInfo(name); m.size=4
+                    m.uid=os.getuid(); m.gid=os.getgid()
+                    archive.addfile(m,io.BytesIO(b'test'))
             store=StateStore(root/'state'); api=StoppedAPI(); history=History(root/'state')
             with store.transaction() as op:
                 op.begin('RESTORE'); op.archive_validated(validate_archive(dest/NAME).sha256)
