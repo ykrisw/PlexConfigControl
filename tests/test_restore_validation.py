@@ -2,6 +2,8 @@ import io
 import tarfile
 import tempfile
 import unittest
+import threading
+from unittest.mock import patch
 from pathlib import Path
 from plexconfigcontrol.archives import REQUIRED, InvalidArchive, validate_archive
 from plexconfigcontrol.history import History
@@ -9,9 +11,44 @@ from plexconfigcontrol.state import StateStore
 from plexconfigcontrol.operations import Phase
 from plexconfigcontrol.restore_validation import RestoreValidation
 from plexconfigcontrol.progress import Progress
+from plexconfigcontrol.locking import OperationBusy
 
 NAME='TrueNASPlexConfig_2026.11.03_04.15.35.tar.gz'
 class RestoreValidationTests(unittest.TestCase):
+    def test_background_validation_reserves_lock_and_reports_failure(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d); backup=root/'backup'; backup.mkdir(); (backup/NAME).write_bytes(b'broken')
+            state=root/'state'; store=StateStore(state); history=History(state)
+            service=RestoreValidation(backup,state,store,history)
+            entered=threading.Event(); release=threading.Event()
+            def slow_validation(*args,**kwargs):
+                entered.set()
+                if not release.wait(5): raise RuntimeError('test worker timeout')
+                raise InvalidArchive('Corrupt or unreadable archive')
+            with patch('plexconfigcontrol.restore_validation.validate_archive',side_effect=slow_validation):
+                worker=service.start_background(NAME)
+                try:
+                    self.assertTrue(entered.wait(5))
+                    with store.transaction() as op: self.assertEqual(op.phase,Phase.VALIDATING)
+                    with self.assertRaises(OperationBusy): service.start_background(NAME)
+                    with self.assertRaises(OperationBusy): service.cancel()
+                finally:
+                    release.set(); worker.join(5)
+                self.assertFalse(worker.is_alive())
+            self.assertEqual(Progress(state).read()['stage'],'FAILED')
+            with store.transaction() as op: self.assertEqual(op.phase,Phase.FAILED)
+            self.assertEqual(history.list()[0]['status'],'FAILED')
+
+    def test_worker_start_failure_releases_reservation(self):
+        with tempfile.TemporaryDirectory() as d:
+            store=StateStore(d); service=RestoreValidation(d,d,store,History(d))
+            with patch('plexconfigcontrol.restore_validation.threading.Thread.start',side_effect=RuntimeError('no threads')):
+                with self.assertRaises(RuntimeError): service.start_background(NAME)
+            with store.transaction() as op: self.assertEqual(op.phase,Phase.FAILED)
+            self.assertEqual(Progress(d).read()['stage'],'FAILED')
+            # A subsequent request obtains the released lock.
+            with self.assertRaises(FileNotFoundError): service.validate(NAME)
+
     def test_validate_wait_and_cancel(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d); backup=root/'backup'; backup.mkdir(); state=root/'state'
