@@ -3,10 +3,10 @@ from .locking import operation_lock
 from .operations import Phase
 from .plex import PlexStatus
 from .publication_intent import pending
-from .archive_store import NAME
+from .archive_store import NAME, archive_matches
 
 
-def restore_readiness(store, state_directory, api):
+def restore_readiness(store, state_directory, api, archive_directory=None):
     with operation_lock(state_directory):
         # Network I/O must not hold a SQLite write transaction.
         plex=PlexStatus(api).read()
@@ -24,6 +24,8 @@ def restore_readiness(store, state_directory, api):
                 reason='RECOVERY_REQUIRED'
             elif not validated:
                 reason='VALIDATE_ARCHIVE_FIRST'
+            elif not archive_matches(archive_directory,archive,details.get('file_identity')):
+                reason='ARCHIVE_CHANGED_REVALIDATE'
             elif plex['state']=='RUNNING':
                 reason='STOP_PLEX_MANUALLY'
             elif plex['state']!='STOPPED':
