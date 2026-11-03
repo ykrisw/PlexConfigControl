@@ -730,3 +730,26 @@ notifications cannot restart the budget. A caller that times out waiting for the
 lock does not close another caller's connection. Late mutation replies remain
 uncertain and are never retried automatically. This is covered by local protocol
 tests; real TrueNAS timeout/recovery behaviour still requires host acceptance tests.
+
+### Opt-in TrueNAS host snapshot smoke test
+
+`python -m tests.host_snapshot_smoke --run-sandbox-test` (as root on the host)
+exercises the application's `Snapshots`, `SnapshotReader` and `StateStore` against
+real middleware/ZFS on one fresh `TrueNAS/pcc-test-<uuid>` dataset. It requires
+Plex already RUNNING, checks durable snapshot intent, read-only snapshot access,
+foreign dataset rejection and verified deletion. Success removes the disposable
+dataset; failure prints its exact identity and retains it for inspection. Private
+state is temporary in `/dev/shm`; no permanent operation logs are created by this
+diagnostic. The fixed, test-only midclt adapter rejects production datasets,
+recursive/forced deletion, app start/stop and rollback. Do not use this adapter in
+the application runtime. This test does not exercise WSS authentication, archive
+creation, Restore, user confirmation or container privileges.
+
+Manual TrueNAS checks reported on 2026-11-03 verified the existing legacy archive's
+gzip and regular-file readability and both archived Plex databases' integrity
+using Plex SQLite on disposable copies. A separate synthetic dataset verified
+snapshot isolation and rollback of file contents, mode and an extra file. The
+initial diagnostic mishandled an empty successful snapshot-deletion response;
+independent queries confirmed deletion and subsequent dataset cleanup. These are
+environment checks, not full application Backup/Restore acceptance. The host smoke
+test above has not yet been run on the user's NAS.
