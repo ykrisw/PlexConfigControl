@@ -1,10 +1,12 @@
 """Durable publication marker in the private ixVolume; caller holds operation lock."""
 import os
+import json
 import re
 import stat
 from .archive_store import NAME
 
 MARKER = 'publication-intent.txt'
+REPLACEMENT_MARKER = 'replacement-intent.json'
 
 def record(directory, stage, archive):
     if not re.fullmatch(r'\.pcc-[0-9a-f]{32}\.tmp', stage) or not NAME.fullmatch(archive):
@@ -33,7 +35,8 @@ def clear(directory):
 
 def pending(directory):
     # A malformed file or dangling symlink also blocks work for investigation.
-    return os.path.lexists(os.path.join(directory, MARKER))
+    return any(os.path.lexists(os.path.join(directory, name))
+               for name in (MARKER, REPLACEMENT_MARKER))
 
 def describe(directory):
     """Read-only diagnostic; never treat a marker as proof of archive success.
@@ -43,6 +46,16 @@ def describe(directory):
     """
     blocked = {'pending': True, 'status': 'RECORD_UNREADABLE',
                'archive': None, 'temporary_file': None}
+    if os.path.lexists(os.path.join(directory, REPLACEMENT_MARKER)):
+        try:
+            if os.path.lexists(os.path.join(directory, MARKER)):
+                return blocked
+            item = read_replacement(directory)
+            return {'pending': True, 'status': 'VERIFICATION_REQUIRED',
+                    'archive': item['archive'], 'temporary_file': item['stage'],
+                    'replaced_archive': item['original']}
+        except (OSError, ValueError, UnicodeError):
+            return blocked
     try:
         parent = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         try:
@@ -68,3 +81,66 @@ def describe(directory):
                 'archive': lines[1], 'temporary_file': lines[0]}
     except (OSError, UnicodeError):
         return blocked
+
+
+def _validate_replacement(item):
+    if not isinstance(item, dict) or set(item) != {
+            'version', 'stage', 'archive', 'sha256', 'original', 'identity'}:
+        raise ValueError('Invalid replacement record')
+    identity = item['identity']
+    if (type(item['version']) is not int or item['version'] != 1
+            or not isinstance(item['stage'], str)
+            or not re.fullmatch(r'\.pcc-[0-9a-f]{32}\.tmp', item['stage'])
+            or any(not isinstance(item[key], str) or not NAME.fullmatch(item[key])
+                   for key in ('archive', 'original'))
+            or item['archive'] == item['original']
+            or not isinstance(item['sha256'], str)
+            or not re.fullmatch(r'[0-9a-f]{64}', item['sha256'])
+            or not isinstance(identity, dict)
+            or set(identity) != {'device', 'inode', 'size', 'modified_ns', 'changed_ns'}
+            or any(type(value) is not int or value < 0 for value in identity.values())):
+        raise ValueError('Invalid replacement identity')
+    return item
+
+
+def record_replacement(directory, stage, archive, digest, original, identity):
+    item = _validate_replacement({'version': 1, 'stage': stage, 'archive': archive,
+                                 'sha256': digest, 'original': original,
+                                 'identity': identity})
+    parent = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        fd = os.open(REPLACEMENT_MARKER, os.O_WRONLY | os.O_CREAT | os.O_EXCL
+                     | os.O_NOFOLLOW, 0o600, dir_fd=parent)
+        with os.fdopen(fd, 'w') as output:
+            json.dump(item, output, sort_keys=True)
+            output.flush()
+            os.fsync(output.fileno())
+        os.fsync(parent)
+    finally:
+        os.close(parent)
+
+
+def read_replacement(directory):
+    parent = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        fd = os.open(REPLACEMENT_MARKER, os.O_RDONLY | os.O_NOFOLLOW
+                     | os.O_NONBLOCK, dir_fd=parent)
+        with os.fdopen(fd, 'rb') as source:
+            info = os.fstat(source.fileno())
+            if not stat.S_ISREG(info.st_mode) or info.st_size > 2048:
+                raise ValueError('Invalid replacement record file')
+            payload = source.read(2049)
+    finally:
+        os.close(parent)
+    if len(payload) > 2048:
+        raise ValueError('Oversized replacement record')
+    return _validate_replacement(json.loads(payload))
+
+
+def clear_replacement(directory):
+    parent = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        os.unlink(REPLACEMENT_MARKER, dir_fd=parent)
+        os.fsync(parent)
+    finally:
+        os.close(parent)

@@ -27,7 +27,10 @@ def fixtures(directory):
 
 
 def main():
-    output=Path('dist/browser-screenshots');output.mkdir(parents=True,exist_ok=True)
+    engine=os.environ.get('PCC_TEST_BROWSER','chromium')
+    if engine not in ('chromium','firefox'):
+        raise ValueError('PCC_TEST_BROWSER must be chromium or firefox')
+    output=Path('dist/browser-screenshots')/engine;output.mkdir(parents=True,exist_ok=True)
     name='pcc-browser-'+uuid.uuid4().hex[:12];volume=name+'-state'
     password='ci-browser-only-password';environment=dict(os.environ,PCC_BOOTSTRAP_VERIFIER=password_verifier(password))
     docker('volume','create',volume)
@@ -62,7 +65,7 @@ def main():
                 "from plexconfigcontrol.history import History; h=History('/var/lib/plexconfigcontrol'); "
                 "[h.add('BACKUP' if i%2 else 'RESTORE','FAILED' if i%4==0 else 'SUCCESS','CI fixture event '+str(i)) for i in range(20)]")
             playwright=sync_playwright().start()
-            browser=playwright.chromium.launch()
+            browser=getattr(playwright,engine).launch()
             # Only this ephemeral browser accepts its own CI self-signed cert.
             # The health probe above verifies that certificate normally.
             context=browser.new_context(ignore_https_errors=True,viewport={'width':1440,'height':1080},color_scheme='light')
@@ -164,7 +167,7 @@ def main():
             expect(page.locator('.pcc-login')).to_be_visible()
             assert not errors,f'Browser errors: {errors}'
             browser.close();page=None
-        print('Real Chromium UI checks passed: five panels, themes, Polish, profile, validation, history and account.')
+        print(f'Real {engine} UI checks passed: five panels, themes, Polish, profile, validation, history and account.')
         return 0
     except BaseException:
         print('Browser JavaScript errors:',errors)

@@ -5,7 +5,9 @@ backups and restores. **Restricted test installation available; not ready for pr
 
 First test-installation packaging passed CI image/HTTPS/restart checks. `Dockerfile`
 builds the unprivileged HTTPS image; **Build test installation** runs a disposable
-container smoke test before producing a downloadable image artifact. Follow
+container smoke test and Chromium/Firefox interface checks. Downloadable image
+artifacts are produced only when the workflow is started manually; ordinary
+code updates still run the checks without generating another installer. Follow
 `deploy/TEST-INSTALL.md` only after that workflow succeeds. This is a restricted
 test build, not permission to run Backup/Restore against live Plex data.
 
@@ -30,7 +32,7 @@ specification in `design/README.md`. Shared production styles import
 - Container access to snapshots and tested file ownership/ACL/xattr preservation.
 - Snapshot-backed Backup execution connected to the web API.
 - Complete UI translations of errors.
-- Single-existing-archive overwrite workflow and crash-safe publication recovery.
+- Web integration of the tested replacement coordinator and explicit publication recovery controls.
 - TrueNAS installation test and final Apps password/secret form.
 - Complete restore verification and rollback verification adapters.
 - End-to-end tests on an isolated TrueNAS test dataset before live use.
@@ -168,6 +170,31 @@ download URLs after use or disposal. Selected downloads are limited to 1000 even
 History IDs now use SQLite AUTOINCREMENT, so deleted IDs are not assigned to new
 events. Existing history databases migrate transactionally, preserving live IDs
 and contents. This prevents stale browser selections from targeting later events.
+
+## Verified replacement coordinator
+
+`Backup.run_overwrite(selected_archive)` implements the single-copy overwrite
+choice at the coordinator layer. It requires the exact current selection and
+recounts under the operation lock; stale selections or a changed archive count
+are rejected before any snapshot. The replacement gets a new dated filename.
+A same-name collision requires another timestamp; it is never silently replaced.
+
+The old file remains intact while the snapshot is read and the new archive is
+validated. Only after exact snapshot removal is confirmed does the coordinator
+publish the new file, re-read its SHA-256, check both identities and retire the
+selected old file. It changes no folder permissions or ownership. A private,
+fsynced replacement intent records both names, the old identity and new digest
+before publication; it is removed only after completion. Ambiguous publication,
+retirement or marker cleanup enters RECOVERY_REQUIRED and blocks more work,
+including after restart. Recovery does not automatically delete either archive.
+Manual reconciliation of this record is still pending; this is not yet enabled
+through the web execution API or the restricted test installation.
+
+External SMB changes detected during replacement retain the original and mark
+recovery required. As with archive deletion, ordinary stat/unlink cannot provide
+filesystem compare-and-swap against concurrent external writers. Do not edit,
+rename or delete either file through SMB during replacement. Isolated TrueNAS
+integration and fault-injection tests remain required before live use.
 
 ## Storage contract
 

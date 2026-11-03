@@ -1,7 +1,8 @@
 """Backup orchestration; host API and verified snapshot access are injected.
 
-Supports new dated copies and requires an explicit current-file decision when
-one copy exists. The overwrite workflow is not implemented here yet.
+Supports new dated copies and explicitly confirmed replacement of one copy.
+Replacement preserves the old file until the new archive is verified and the
+temporary snapshot is confirmed absent. Interrupted publication blocks retries.
 """
 import tempfile
 from datetime import datetime, timezone
@@ -12,7 +13,7 @@ from .backup_archive import create_archive
 from .eventlog import EventLog
 from .locking import operation_lock
 from .operations import Phase
-from .publish import publish_new
+from .publish import publish_new, capture_original, retire_original
 from .snapshots import Snapshots
 from . import publication_intent
 
@@ -21,6 +22,10 @@ class BackupDecisionRequired(RuntimeError):
     def __init__(self, archive):
         super().__init__('Choose whether to overwrite the existing archive or create another copy')
         self.archive = archive
+
+class ArchiveNameCollision(RuntimeError):
+    """A dated filename already exists; the user must choose another timestamp."""
+
 
 class Backup:
     def __init__(self,api,store,history,progress,state_directory,destination,dataset,snapshot_reader):
@@ -37,17 +42,30 @@ class Backup:
         not a reusable boolean. Recount under the operation lock every time.
         Overwriting is a separate workflow and is not enabled by this method.
         """
+        return self._run(create_another=create_another)
+
+    def run_overwrite(self, selected):
+        """The exact Archive selected in the overwrite confirmation is required."""
+        if selected is None:
+            raise ValueError('Select and confirm the existing archive')
+        return self._run(overwrite=selected)
+
+    def _run(self, *, create_another=None, overwrite=None):
         with operation_lock(self.state):
             if publication_intent.pending(self.state):
                 raise RuntimeError('Unresolved archive publication requires recovery')
             archives = ArchiveStore(self.destination, self.state).list()
-            if create_another is not None:
-                if len(archives) != 1 or archives[0] != create_another:
+            selected = overwrite if overwrite is not None else create_another
+            if selected is not None:
+                if len(archives) != 1 or archives[0] != selected:
                     raise ArchiveChanged('Archives changed; refresh and choose again')
             elif len(archives) == 1:
                 raise BackupDecisionRequired(archives[0])
-            with self.store.transaction() as operation: operation.begin('BACKUP')
             started=datetime.now(timezone.utc); name=archive_name(started)
+            if (self.destination/name).exists() or (self.destination/name).is_symlink():
+                raise ArchiveNameCollision('Archive filename already exists; choose another timestamp')
+            original_identity = capture_original(self.destination, overwrite) if overwrite is not None else None
+            with self.store.transaction() as operation: operation.begin('BACKUP')
             log=None; published=False
             snapshots=Snapshots(self.api,self.store,self.dataset)
             try:
@@ -69,10 +87,23 @@ class Backup:
                     log.write('Temporary snapshot absence confirmed.')
                     # Persist staging identity before destination file creation.
                     def intent(stage):
-                        publication_intent.record(self.state,stage,name)
+                        if overwrite is None:
+                            publication_intent.record(self.state,stage,name)
+                        else:
+                            publication_intent.record_replacement(
+                                self.state, stage, name, result.sha256,
+                                overwrite.name, original_identity)
                     publish_new(output,self.destination,name,result.sha256,intent)
                     published=True
-                publication_intent.clear(self.state)
+                    if overwrite is not None:
+                        self.progress.update('VERIFYING_ARCHIVE')
+                        retire_original(self.destination, overwrite, original_identity,
+                                        name, result.sha256)
+                        log.write('Verified replacement: '+overwrite.name+' -> '+name)
+                if overwrite is None:
+                    publication_intent.clear(self.state)
+                else:
+                    publication_intent.clear_replacement(self.state)
                 with self.store.transaction() as operation: operation.finish(True)
                 self.progress.update('COMPLETED')
                 log.write('Backup completed successfully: '+name)
@@ -92,7 +123,12 @@ class Backup:
                 try: self.progress.update('FAILED' if cleanup_ok and not published else 'CLEANUP_REQUIRED')
                 except ValueError: pass
                 if log:
-                    log.write('Backup failed. '+('Snapshot cleanup confirmed.' if cleanup_ok else 'Snapshot cleanup requires attention.'))
+                    with self.store.transaction() as operation:
+                        remaining = operation.snapshot_id
+                    log.write('Backup failed. '+('Temporary snapshot remains or needs verification: '+remaining
+                              if remaining else 'Temporary snapshot absence confirmed.'))
+                    if publication_intent.pending(self.state):
+                        log.write('Archive publication requires review; existing archives were not automatically cleaned up.')
                     self.history.add('BACKUP','FAILED',log.finish(),name)
                 raise
             finally:
