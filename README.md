@@ -583,3 +583,26 @@ final reporting, private workspace leftovers and unavailable recovery-intent
 storage. It also confirms that a retained valid archive can be fully reverified
 and acknowledged without new host calls. This does not enable Backup execution
 in the restricted web runtime or establish real TrueNAS/ZFS permissions.
+
+
+## Backup outcome notices
+
+The current operation state now stores a small allowlisted historical outcome
+(code and archive filename). It distinguishes completion, failure before confirmed
+publication, a published archive requiring review, uncertain publication, process
+interruption and confirmed re-verification. It is not an archive allowlist or proof
+that a file still exists or is currently valid. Moving a completed archive does
+not rewrite the historical result; returned archives still need validation.
+
+Backup displays success only for consistent SUCCESS/COMPLETED state with no
+recorded snapshot or pending publication. Failure and publication warnings use
+the existing themed yellow-border notifications in English/Polish. Re-verification
+is explicitly separate from the original failed Backup. Recovery replies are
+bound to the observed outcome as well as snapshot/publication identity; outdated
+replies or failed reads cannot retain an earlier confirmation.
+
+Older operation-state payloads without this optional field remain readable. A new
+operation clears the previous outcome. Web History remains separate: clearing
+History neither recreates events from this field nor clears operational recovery
+locks. API output strips malformed or unrecognized outcome contents. No execution
+or cleanup capability is enabled by these diagnostic notices.

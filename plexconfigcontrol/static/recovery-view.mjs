@@ -1,15 +1,17 @@
+import {recoveryOutcome} from './operation-outcome.mjs';
 import {createRecoveryController} from './recovery-controller.mjs';
 
 export function mountRecoveryView(root,client,{language='en'}={}){
   const pl=language==='pl',tx=(en,polish)=>pl?polish:en;
   root.classList.add('pcc-notice');root.hidden=true;
   root.setAttribute('role','status');root.setAttribute('aria-live','polite');
-  root.innerHTML='<strong data-recovery-title></strong><p data-recovery-snapshot></p><p data-recovery-status></p><section data-recovery-publication hidden><strong data-publication-title></strong><p data-publication-archive></p><p data-publication-stage></p><p data-publication-older></p><p data-publication-warning></p></section><p data-recovery-warning></p><p data-recovery-limit></p><button type="button" data-recovery-refresh></button>';
+  root.innerHTML='<strong data-recovery-title></strong><p data-recovery-outcome hidden></p><p data-recovery-snapshot></p><p data-recovery-status></p><section data-recovery-publication hidden><strong data-publication-title></strong><p data-publication-archive></p><p data-publication-stage></p><p data-publication-older></p><p data-publication-warning></p></section><p data-recovery-warning></p><p data-recovery-limit></p><button type="button" data-recovery-refresh></button>';
   const find=selector=>root.querySelector(selector);
   const controller=createRecoveryController(client,state=>{
     root.hidden=!state.visible;
     if(!state.visible)return;
     find('[data-recovery-title]').textContent=tx('Recovery required','Wymagane odzyskiwanie');
+    const outcome=find('[data-recovery-outcome]');outcome.textContent=recoveryOutcome(state.data,language);outcome.hidden=!outcome.textContent;
     find('[data-recovery-snapshot]').textContent=state.data?.snapshot_id?
       `${tx('Recorded snapshot','Zapisany snapshot')}: ${state.data.snapshot_id}`:
       state.data?.snapshot_state==='NONE'?tx('No snapshot is recorded.','Nie zapisano snapshotu.'):

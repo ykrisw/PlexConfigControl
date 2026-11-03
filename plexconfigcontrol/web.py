@@ -23,6 +23,7 @@ from .archives import InvalidArchive
 from .operations import OperationDenied
 from .restore_readiness import restore_readiness
 from .recovery_status import recovery_status
+from .outcome import describe_outcome
 from .profile_photo import ProfilePhoto,InvalidPhoto,PhotoChanged,MAX_UPLOAD
 
 class Web:
@@ -70,6 +71,7 @@ class Web:
                 '/assets/settings-view.mjs':'settings-view.mjs',
                 '/assets/recovery-view.mjs':'recovery-view.mjs',
                 '/assets/recovery-controller.mjs':'recovery-controller.mjs',
+                '/assets/operation-outcome.mjs':'operation-outcome.mjs',
                 '/assets/backup-controller.mjs':'backup-controller.mjs',
                 '/assets/backup-view.mjs':'backup-view.mjs',
                 '/assets/approved-appearance.css':'approved-appearance.css'}
@@ -201,6 +203,7 @@ class Web:
         if path=='/api/operation' and method=='GET':
             with self.operation_store.transaction() as operation:
                 state=operation_dict(operation)
+                state['outcome']=describe_outcome(operation.outcome) if operation.kind=='BACKUP' else None
             return respond('200 OK',{'operation':state,'progress':self.progress.read(),
                                     'publication':describe_publication(self.state_directory),
                                     'archive_discovery':self.discovery.status() if self.discovery else None})

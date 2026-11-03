@@ -119,3 +119,13 @@ test('ordinary active publication is not mislabeled interrupted and missing meta
   assert.equal(view.states.at(-1).visible,true);assert.equal(view.states.at(-1).error,true);assert.equal(calls,0);
   view.controller.dispose();
 });
+
+test('a stale historical outcome cannot replace a newer publication warning',async()=>{
+  const record=pending(),before={code:'BACKUP_PUBLICATION_UNCERTAIN',archive},after={code:'BACKUP_PUBLISHED_REVIEW',archive};
+  const releases=[];const view=setup({recovery:()=>new Promise(resolve=>releases.push(resolve))});
+  view.controller.observe({...operation(null,record),operation:{...operation(null).operation,outcome:before}});
+  view.controller.observe({...operation(null,record),operation:{...operation(null).operation,outcome:after}});
+  releases[1]({...result('NONE',null,record),outcome:after});await flush();
+  releases[0]({...result('NONE',null,record),outcome:before});await flush();
+  assert.equal(view.states.at(-1).data.outcome.code,after.code);view.controller.dispose();
+});

@@ -135,6 +135,7 @@ class PublicationRecovery:
                 # blocks backup, restore and archive deletion. Startup reblocks.
                 with self.store.transaction() as operation:
                     operation.phase = Phase.FAILED
+                    operation.outcome = {'code': 'BACKUP_RECONCILED', 'archive': item['archive']}
                 try:
                     (intent.clear_replacement if replacement else intent.clear)(self.state)
                     if intent.pending(self.state):

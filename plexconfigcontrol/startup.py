@@ -2,6 +2,7 @@
 from .locking import operation_lock
 from .operations import Phase
 from .publication_intent import pending
+from .outcome import describe_outcome
 
 
 def reconcile_startup(store, progress, history, state_directory):
@@ -23,6 +24,10 @@ def reconcile_startup(store, progress, history, state_directory):
             # destination staging file. Never silently allow another operation.
             operation.phase=Phase.RECOVERY_REQUIRED
             kind=operation.kind
+            if kind=='BACKUP':
+                previous=describe_outcome(operation.outcome)
+                operation.outcome={'code':'BACKUP_INTERRUPTED',
+                                   'archive':previous['archive'] if previous else None}
             if kind=='RESTORE' and phase==Phase.VALIDATING and operation.validation_details:
                 operation.validation_details={
                     'archive':operation.validation_details.get('archive'),

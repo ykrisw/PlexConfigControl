@@ -31,6 +31,7 @@ class Operation:
     archive_identity: str | None = None
     snapshot_id: str | None = None
     validation_details: dict | None = None
+    outcome: dict | None = None
 
     def begin(self, kind: str) -> None:
         if kind not in ('BACKUP', 'RESTORE'):
@@ -40,6 +41,7 @@ class Operation:
         self.kind = kind
         self.archive_identity = None
         self.validation_details = None
+        self.outcome = None
         self.phase = Phase.VALIDATING
 
     def archive_validated(self, identity: str) -> None:

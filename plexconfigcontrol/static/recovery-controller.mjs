@@ -1,3 +1,4 @@
+import {normalizeOutcome} from './operation-outcome.mjs';
 // Read-only recovery status. This controller cannot delete snapshots or files.
 const archiveName=/^TrueNASPlexConfig_\d{4}\.\d{2}\.\d{2}_\d{2}\.\d{2}\.\d{2}\.tar\.gz$/;
 const temporaryName=/^\.pcc-[0-9a-f]{32}\.tmp$/;
@@ -21,13 +22,14 @@ export function createRecoveryController(client,render,{schedule=setTimeout,canc
     try{
       const result=await client.recovery(lifecycle.signal);
       if(disposed||request!==serial)return;
-      const record=publication(result?.publication);
+      const record=publication(result?.publication),outcome=normalizeOutcome(result?.outcome);
       if(!result||result.snapshot_id!==expected.snapshot_id||result.phase!==expected.phase||result.kind!==expected.kind||
          !record||JSON.stringify(record)!==JSON.stringify(expected.publication)||
+         outcome===undefined||JSON.stringify(outcome)!==JSON.stringify(expected.outcome)||
          !(expected.snapshot_id===null?result.snapshot_state==='NONE':['PRESENT','ABSENT','UNKNOWN'].includes(result.snapshot_state))||
          result.removal_supported!==false||result.removal_available!==false||result.publication_resolution_supported!==false)
         throw Error('Unverified recovery reply');
-      data={...result,publication:record};
+      data={...result,publication:record,outcome};
     }catch{if(disposed||request!==serial)return;data=null;error=true;}
     finally{
       if(!disposed&&request===serial){loading=false;emit();if(visible)timer=schedule(refresh,3000);}
@@ -39,12 +41,12 @@ export function createRecoveryController(client,render,{schedule=setTimeout,canc
       if(disposed)return;
       const operation=snapshot?.operation;
       if(!operation||!['IDLE','SUCCESS','FAILED','RECOVERY_REQUIRED','VALIDATING','RUNNING','WAITING_FOR_PLEX_STOP','READY'].includes(operation.phase)){if(visible){serial++;key='';expected=null;loading=false;cancel(timer);data=null;error=true;emit();}return;}
-      const record=publication(snapshot.publication);
+      const record=publication(snapshot.publication),outcome=normalizeOutcome(operation.outcome);
       const next=operation.phase==='RECOVERY_REQUIRED'||(['IDLE','SUCCESS','FAILED'].includes(operation.phase)&&snapshot.publication?.pending===true);
-      const nextKey=JSON.stringify([operation.phase,operation.kind,operation.snapshot_id,record]);
+      const nextKey=JSON.stringify([operation.phase,operation.kind,operation.snapshot_id,record,outcome]);
       if(nextKey===key)return;
-      key=nextKey;serial++;loading=false;cancel(timer);visible=next;data=null;error=next&&!record;
-      expected=record?{phase:operation.phase,kind:operation.kind,snapshot_id:operation.snapshot_id??null,publication:record}:null;
+      key=nextKey;serial++;loading=false;cancel(timer);visible=next;data=null;error=next&&(!record||outcome===undefined);
+      expected=record&&outcome!==undefined?{phase:operation.phase,kind:operation.kind,snapshot_id:operation.snapshot_id??null,publication:record,outcome}:null;
       emit();if(visible)void refresh();
     },
     refresh,

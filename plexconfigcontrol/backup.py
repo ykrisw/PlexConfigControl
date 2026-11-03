@@ -67,7 +67,9 @@ class Backup:
             if (self.destination/name).exists() or (self.destination/name).is_symlink():
                 raise ArchiveNameCollision('Archive filename already exists; choose another timestamp')
             original_identity = capture_original(self.destination, overwrite) if overwrite is not None else None
-            with self.store.transaction() as operation: operation.begin('BACKUP')
+            with self.store.transaction() as operation:
+                operation.begin('BACKUP')
+                operation.outcome={'code':'BACKUP_IN_PROGRESS','archive':name}
             log=None; published=False; stage_identity=None; result=None
             snapshots=Snapshots(self.api,self.store,self.dataset)
             try:
@@ -116,7 +118,9 @@ class Backup:
                 self.history.add('BACKUP','SUCCESS',log.finish(),name)
                 # Keep RUNNING until durable reporting has returned, so an
                 # interruption is reconciled at startup rather than hidden.
-                with self.store.transaction() as operation: operation.finish(True)
+                with self.store.transaction() as operation:
+                    operation.finish(True)
+                    operation.outcome={'code':'BACKUP_COMPLETED','archive':name}
                 return name
             except Exception:
                 cleanup_ok=True
@@ -144,6 +148,10 @@ class Backup:
                 with self.store.transaction() as operation:
                     operation.phase=Phase.RECOVERY_REQUIRED if cleanup_required else Phase.FAILED
                     remaining=operation.snapshot_id
+                    code=('BACKUP_PUBLISHED_REVIEW' if published else
+                          'BACKUP_PUBLICATION_UNCERTAIN' if publication_intent.pending(self.state) else
+                          'BACKUP_FAILED')
+                    operation.outcome={'code':code,'archive':name}
                 try: self.progress.fail_closed(cleanup_required)
                 except Exception: pass
                 message='Backup failed. '

@@ -195,6 +195,10 @@ def main():
                 "record_replacement('/var/lib/plexconfigcontrol','.pcc-'+'a'*32+'.tmp',"
                 +repr(recovery_archive)+",'b'*64,"+repr(recovery_old)+","
                 "dict(device=0,inode=0,size=0,modified_ns=0,changed_ns=0))")
+            docker('exec',name,'python','-c',
+                "from plexconfigcontrol.state import StateStore; s=StateStore('/var/lib/plexconfigcontrol'); "
+                "ctx=s.transaction(); op=ctx.__enter__(); "
+                "op.outcome={'code':'BACKUP_PUBLISHED_REVIEW','archive':"+repr(recovery_archive)+"}; ctx.__exit__(None,None,None)")
             page.reload();expect(page.locator('.pcc-nav')).to_be_visible()
             page.set_viewport_size({'width':360,'height':900})
             for tab_name,panel_key in (('Backup','backup'),('Restore','restore')):
@@ -206,6 +210,7 @@ def main():
                 expect(recovery.locator('[data-publication-older]')).to_contain_text(recovery_old)
                 expect(recovery.locator('[data-publication-stage]')).to_contain_text('presence not checked')
                 expect(recovery.locator('[data-publication-warning]')).to_contain_text('not proof')
+                expect(recovery.locator('[data-recovery-outcome]')).to_contain_text('not a successful Backup')
                 assert recovery.locator('button').count()==1
                 if panel_key=='backup':
                     expect(panel.locator('[data-create]')).to_be_disabled()
@@ -220,6 +225,17 @@ def main():
                 "from plexconfigcontrol.publication_intent import clear_replacement; "
                 "clear_replacement('/var/lib/plexconfigcontrol')")
             expect(page.locator('[data-panel=restore] [data-recovery]')).to_be_hidden()
+            docker('exec',name,'python','-c',
+                "from plexconfigcontrol.state import StateStore; s=StateStore('/var/lib/plexconfigcontrol'); "
+                "ctx=s.transaction(); op=ctx.__enter__(); "
+                "op.outcome={'code':'BACKUP_FAILED','archive':"+repr(recovery_archive)+"}; ctx.__exit__(None,None,None)")
+            page.get_by_role('tab',name='Backup',exact=True).click()
+            expect(page.locator('[data-panel=backup] [data-operation-result]')).to_contain_text('No new archive has been confirmed')
+            assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth')
+            page.screenshot(path=str(output/'backup-failed-result.png'),full_page=True)
+            page.reload();expect(page.locator('.pcc-nav')).to_be_visible()
+            page.get_by_role('tab',name='Backup',exact=True).click()
+            expect(page.locator('[data-panel=backup] [data-operation-result]')).to_contain_text('Backup failed')
             page.set_viewport_size({'width':1440,'height':1080})
             page.get_by_role('tab',name='Settings',exact=True).click()
             settings=page.locator('[data-panel=settings]')
@@ -228,6 +244,13 @@ def main():
             settings.locator('[data-language]').select_option('pl')
             expect(page.get_by_role('tab',name='Ustawienia',exact=True)).to_be_visible()
             expect(settings.locator('[data-about]')).to_have_text('O aplikacji')
+            page.get_by_role('tab',name='Kopia zapasowa',exact=True).click()
+            expect(page.locator('[data-panel=backup] [data-operation-result]')).to_contain_text('Nie potwierdzono utworzenia nowego archiwum')
+            docker('exec',name,'python','-c',
+                "from plexconfigcontrol.state import StateStore; s=StateStore('/var/lib/plexconfigcontrol'); "
+                "ctx=s.transaction(); op=ctx.__enter__(); op.outcome=None; ctx.__exit__(None,None,None)")
+            expect(page.locator('[data-panel=backup] [data-operation-result]')).to_be_hidden()
+            page.get_by_role('tab',name='Ustawienia',exact=True).click()
             settings.locator('[data-theme-choice=Light]').click()
             expect(page.locator('#pcc-app')).to_have_attribute('data-theme','light')
             for theme in ('Light','Dark'):

@@ -1,6 +1,7 @@
 """Read-only web representation; no mutation capability is granted here."""
 from .locking import operation_lock, OperationBusy
 from .publication_intent import describe
+from .outcome import describe_outcome
 
 
 def recovery_status(store, inspector=None):
@@ -9,15 +10,17 @@ def recovery_status(store, inspector=None):
         # injected Recovery.inspect acquires its own lock for an API read.
         with operation_lock(store.directory):
             with store.transaction() as operation:
-                identity = (operation.snapshot_id, operation.phase.value, operation.kind)
+                identity = (operation.snapshot_id, operation.phase.value, operation.kind,
+                            describe_outcome(operation.outcome) if operation.kind=='BACKUP' else None)
             return identity, describe(store.directory)
 
     identity, publication = read_identity()
-    identifier, phase, kind = identity
+    identifier, phase, kind, outcome = identity
     result = {'phase':phase, 'kind':kind, 'snapshot_id':identifier,
               'snapshot_state':'UNKNOWN' if identifier else 'NONE',
               'removal_available':False, 'removal_supported':False,
               'publication':publication, 'publication_resolution_supported':False,
+              'outcome':outcome,
               'confirmation_required':True,
               'reason':'RECOVERY_INSPECTION_UNAVAILABLE' if identifier else 'NO_RETAINED_SNAPSHOT',
               'loses_restore_recovery_point':bool(identifier) and kind=='RESTORE'}
