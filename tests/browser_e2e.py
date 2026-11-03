@@ -29,8 +29,8 @@ def fixtures(directory):
 
 def main():
     engine=os.environ.get('PCC_TEST_BROWSER','chromium')
-    if engine not in ('chromium','firefox'):
-        raise ValueError('PCC_TEST_BROWSER must be chromium or firefox')
+    if engine not in ('chromium','firefox','msedge'):
+        raise ValueError('PCC_TEST_BROWSER must be chromium, firefox or msedge')
     output=Path('dist/browser-screenshots')/engine;output.mkdir(parents=True,exist_ok=True)
     name='pcc-browser-'+uuid.uuid4().hex[:12];volume=name+'-state'
     password='ci-browser-only-password';environment=dict(os.environ,PCC_BOOTSTRAP_VERIFIER=password_verifier(password))
@@ -66,11 +66,13 @@ def main():
                 "from plexconfigcontrol.history import History; h=History('/var/lib/plexconfigcontrol'); "
                 "[h.add('BACKUP' if i%2 else 'RESTORE','FAILED' if i%4==0 else 'SUCCESS','CI fixture event '+str(i)) for i in range(20)]")
             playwright=sync_playwright().start()
-            browser=getattr(playwright,engine).launch()
+            browser=playwright.chromium.launch(channel='msedge') if engine=='msedge' else getattr(playwright,engine).launch()
+            print(f'Browser under test: {engine} {browser.version}')
             # Only this ephemeral browser accepts its own CI self-signed cert.
             # The health probe above verifies that certificate normally.
             context=browser.new_context(ignore_https_errors=True,viewport={'width':1440,'height':1080},color_scheme='light')
             page=context.new_page();page.set_default_timeout(12000)
+            if engine=='msedge': assert 'Edg/' in page.evaluate('navigator.userAgent'),'Microsoft Edge channel was not launched'
             page.on('pageerror',lambda error:errors.append(str(error)))
             page.goto(base);page.locator('.pcc-login input').fill(password)
             page.get_by_role('button',name='Sign In',exact=True).click()

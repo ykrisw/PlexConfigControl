@@ -356,3 +356,29 @@ Tests cover authentication, unexpected adapter replies, missing host integration
 controller races and simulated recovery intent inside disposable browser fixtures.
 Actual confirmed snapshot removal remains to be connected after host integration
 is authorized and verified; the informational view does not perform cleanup.
+
+## Microsoft Edge and Android browser checks
+
+The browser workflow also installs and launches the actual Microsoft Edge stable
+channel on its Linux runner (`PCC_TEST_BROWSER=msedge`), verifies the Edge user
+agent and runs the full desktop interface suite. This is separate from bundled
+Chromium coverage and does not establish results on Windows or macOS.
+
+`tests/mobile_e2e.py` exercises touch events, avatar controls/upload, checkbox/radio
+selection, archive-list swiping, validation/cancellation, History confirmation,
+five-tab navigation, English/Polish, Light/Dark, saved preferences and logout.
+The default mode uses a Pixel 5 Chromium device profile, with Android user agent
+and touch enabled. That mode alone is not an Android OS test.
+
+A separate CI job starts an Android API 35 x86_64 Google APIs emulator and attaches
+to its Chrome browser through adb/CDP. The test explicitly refuses physical
+ADB devices and non-CI execution in Android mode. It prints the actual Android
+and Chrome versions. The test app and all data are disposable; no user NAS is
+contacted, no installer artifact is produced, and app host mutations remain
+blocked. TLS is verified by a separate host health probe; only the ephemeral test
+browser accepts the synthetic test certificate. Screenshots are stored separately
+for Edge, Android device emulation and Android-system tests.
+
+These checks exercise the web client. A physical Android phone, vendor-specific
+browser/file pickers, native downloads and Android keyboard behavior still need
+manual device verification; emulator success is not a blanket compatibility claim.
