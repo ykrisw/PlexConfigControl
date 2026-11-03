@@ -15,6 +15,7 @@ from .progress import Progress
 from .state import StateStore
 from dataclasses import asdict as operation_dict
 from .publication_intent import describe as describe_publication
+from .backup_plan import plan_backup
 
 class Web:
     def __init__(self,state_directory,archive_directory=None,truenas_api=None):
@@ -109,6 +110,16 @@ class Web:
             status=self.plex.read() if self.plex else {
                 'state':'UNKNOWN','available':False,'restore_allowed':False,'checked_at':None}
             return respond('200 OK',status)
+        if path=='/api/backup/plan' and method=='GET':
+            if self.archives is None:
+                return respond('503 Service Unavailable',{'error':'Archive location is not configured'})
+            try:
+                plan=plan_backup(self.archives.directory,self.state_directory)
+            except OperationBusy:
+                return respond('409 Conflict',{'error':'Another operation or recovery must finish'})
+            except OSError:
+                return respond('503 Service Unavailable',{'error':'Archive location is unavailable'})
+            return respond('200 OK',plan)
         if path=='/api/archives' and method=='GET':
             if self.archives is None:
                 return respond('503 Service Unavailable',{'error':'Archive location is not configured'})
