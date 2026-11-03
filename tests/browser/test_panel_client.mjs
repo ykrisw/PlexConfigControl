@@ -2,6 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {PanelClient, ApiError} from '../../plexconfigcontrol/static/panel-client.mjs';
 
+test('default browser fetch retains its Window/global receiver',async()=>{
+  const original=globalThis.fetch;
+  globalThis.fetch=function(){
+    assert.equal(this,globalThis,'Native browser fetch must not receive the PanelClient instance');
+    return Promise.resolve({ok:true,status:200,json:async()=>({authenticated:true,csrf:'token'})});
+  };
+  try{const client=new PanelClient();await client.restoreSession();assert.equal(client.csrf,'token');}
+  finally{globalThis.fetch=original;}
+});
+
 function setup(responses) {
   const calls=[];
   const client=new PanelClient({fetcher: async (path, options) => {

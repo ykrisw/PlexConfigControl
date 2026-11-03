@@ -8,7 +8,7 @@ export class ApiError extends Error {
 }
 
 export class PanelClient {
-  constructor({fetcher = globalThis.fetch, onSessionExpired = () => {}} = {}) {
+  constructor({fetcher = (...args) => globalThis.fetch(...args), onSessionExpired = () => {}} = {}) {
     this.fetcher = fetcher;
     this.onSessionExpired = onSessionExpired;
     this.csrf = null;
