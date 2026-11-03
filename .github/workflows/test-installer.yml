@@ -52,7 +52,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - name: Package test installation
-        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[test-installer]'))
+        if: github.event_name == 'workflow_dispatch'
         run: |
           mkdir -p dist
           docker save plexconfigcontrol:test | gzip > dist/PlexConfigControl-test-image.tar.gz
@@ -72,7 +72,7 @@ jobs:
           cd dist
           sha256sum PlexConfigControl-test-image.tar.gz TEST-INSTALL.md TEST-INSTALL-PL.md BUILD-INFO.txt > SHA256SUMS
       - uses: actions/upload-artifact@v4
-        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[test-installer]'))
+        if: github.event_name == 'workflow_dispatch'
         with:
           name: PlexConfigControl-test-installation
           path: |

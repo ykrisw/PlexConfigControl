@@ -3,7 +3,7 @@
 This is a test build, not a complete backup/restore product. To prepare a current
 package, open **Actions → Build test installation → Run workflow**, select **main**,
 and wait for the image/browser checks to pass. Installer artifacts are generated
-for manual runs or an explicitly marked `[test-installer]` request on main; ordinary code pushes run tests without another image package.
+only for manual workflow runs; ordinary code pushes run tests without another image package.
 
 Download **PlexConfigControl-test-installation** from that run's **Artifacts**.
 It includes the Docker image, this guide and SHA256SUMS. GitHub sign-in may be

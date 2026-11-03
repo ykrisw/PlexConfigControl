@@ -717,8 +717,16 @@ Browser CI also checks revocation in a second isolated browser context. These
 checks use disposable local account state and never modify a NAS account/password.
 
 
-Installer packaging may also be explicitly requested by a main-branch push whose
-commit message includes `[test-installer]`. Normal pushes still run tests without
-producing another installer. Packages include BUILD-INFO.txt with the exact source
+Installer packaging runs only through manual workflow dispatch. Normal code pushes
+run tests without producing another installer. Packages include BUILD-INFO.txt with the exact source
 commit and checksums for the image, guides and build information. Restricted test
 mode and disabled host execution remain unchanged.
+
+
+TrueNAS RPC calls share one request time budget across waiting for the client lock,
+connection setup, authentication and response notifications. The production
+WebSocket transport receives the remaining timeout before each send/receive;
+notifications cannot restart the budget. A caller that times out waiting for the
+lock does not close another caller's connection. Late mutation replies remain
+uncertain and are never retried automatically. This is covered by local protocol
+tests; real TrueNAS timeout/recovery behaviour still requires host acceptance tests.

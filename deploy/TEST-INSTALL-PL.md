@@ -8,7 +8,7 @@ Nie podłączaj do niej konfiguracji Plex, urządzeń ZFS ani gniazda Dockera.
 
 W repozytorium GitHub otwórz **Actions → Build test installation → Run workflow**
 i wybierz gałąź **main**. Aktualna paczka instalacyjna jest przygotowywana tylko
-przy takim ręcznym uruchomieniu lub wyraźnie oznaczonym żądaniu przygotowania paczki przez autora (`[test-installer]`). Zwykłe aktualizacje kodu uruchamiają testy,
+przy takim ręcznym uruchomieniu. Zwykłe aktualizacje kodu uruchamiają testy,
 ale nie tworzą kolejnej instalki.
 
 Poczekaj na zakończenie testów obrazu i przeglądarek, a następnie pobierz z sekcji

@@ -18,3 +18,15 @@ class TransportTests(unittest.TestCase):
     def test_missing_credentials_or_ca_fail_closed(self):
         with self.assertRaises(ValueError): build_client('wss://nas/api/current','user','')
         with self.assertRaises(OSError): SecureWebSocket('/nonexistent/pcc-ca.pem')
+
+    def test_remaining_deadline_caps_connection_timeout(self):
+        calls=[]
+        transport=SecureWebSocket(timeout=12,connector=lambda url,**kw:calls.append(kw))
+        transport.connect_with_timeout('wss://nas/api/current',3)
+        self.assertEqual(calls[-1]['timeout'],3)
+        transport.connect_with_timeout('wss://nas/api/current',20)
+        self.assertEqual(calls[-1]['timeout'],12)
+        with self.assertRaises(ValueError):
+            transport.connect_with_timeout('wss://nas/api/current',0)
+        client=build_client('wss://nas/api/current','user','key',timeout=7)
+        self.assertEqual(client.timeout,7)
