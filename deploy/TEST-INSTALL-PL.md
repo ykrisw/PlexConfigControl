@@ -111,3 +111,25 @@ udanym logowaniu można usunąć zmienną `PCC_BOOTSTRAP_VERIFIER` w ustawieniac
 Usuń `plexconfigcontrol-test` przez TrueNAS Apps. Usunięcie iXVolume usuwa konto,
 ustawienia, sesje, historię WWW i certyfikat tej aplikacji. Zachowanie wolumenu
 zachowuje te dane. Testowa aplikacja nie usuwa zewnętrznych archiwów ani ich logów.
+
+
+### Przechowywanie archiwum poza aplikacją
+
+Gotowy plik `TrueNASPlexConfig_YYYY.MM.DD_HH.MM.SS.tar.gz` jest samodzielną kopią.
+Możesz skopiować go w całości, np. przez SMB, na dysk zewnętrzny lub inny NAS.
+Nie rozpakowuj go i zachowaj oryginalną nazwę. Nie potrzebuje dodatkowego pliku
+z sumą kontrolną, historii panelu ani logu operacji. Uprawnienia plików konfiguracji
+Plex są zapisane wewnątrz archiwum, niezależnie od uprawnień samego pliku `.tar.gz`.
+
+Aby użyć kopii później, wklej ją do skonfigurowanego folderu `Plex Config`, zaczekaj
+na zakończenie kopiowania, kliknij **Refresh / Odśwież**, wybierz plik i uruchom
+**Validate Archive / Zweryfikuj archiwum**. Walidacja odbywa się ponownie, gdy Plex
+działa. Po nowej instalacji wklej kopię do nowego folderu utworzonego przez program.
+Nie zmieniaj na siłę uprawnień folderu ani konfiguracji Plex. Plik musi być dostępny
+do odczytu dla aplikacji zgodnie z ustawieniami wybranej lokalizacji.
+
+Niedokończona lub uszkodzona kopia zostanie odrzucona. Jeśli podmienisz plik już po
+walidacji, anuluj przygotowanie i zweryfikuj wklejony plik ponownie. Ręczne zatrzymanie
+Plex oraz potwierdzenie tekstem `RESTORE` nadal będą wymagane przed przywróceniem.
+Ograniczona wersja testowa nadal blokuje właściwe wykonanie Restore; ta instrukcja
+nie odblokowuje operacji na działającym serwerze.

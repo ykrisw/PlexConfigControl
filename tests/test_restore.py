@@ -4,8 +4,9 @@ import tarfile
 import tempfile
 import unittest
 from pathlib import Path
-from plexconfigcontrol.archives import REQUIRED,validate_archive
+from plexconfigcontrol.archives import REQUIRED
 from plexconfigcontrol.restore import Restore
+from plexconfigcontrol.restore_validation import RestoreValidation
 from plexconfigcontrol.state import StateStore
 from plexconfigcontrol.history import History
 from plexconfigcontrol.progress import Progress
@@ -29,8 +30,7 @@ class RestoreTests(unittest.TestCase):
                     m.uid=os.getuid(); m.gid=os.getgid()
                     archive.addfile(m,io.BytesIO(b'test'))
             store=StateStore(root/'state'); api=StoppedAPI(); history=History(root/'state')
-            with store.transaction() as op:
-                op.begin('RESTORE'); op.archive_validated(validate_archive(dest/NAME).sha256)
+            RestoreValidation(dest,root/'state',store,history).validate(NAME)
             writes=[]
             runner=Restore(api,store,history,Progress(root/'state'),root/'state',dest,'test/config',
                            lambda path:None,lambda path:writes.append(path),lambda path:not fail,lambda identifier:True)

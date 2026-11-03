@@ -11,7 +11,8 @@ from .snapshots import Snapshots
 from .plex import PlexStatus
 from .eventlog import EventLog
 from .staging import stage_archive
-from .archive_store import NAME
+from .archive_store import NAME, archive_matches
+from .publication_intent import pending
 
 class Restore:
     def __init__(self,api,store,history,progress,state_directory,destination,dataset,
@@ -25,10 +26,19 @@ class Restore:
         if not isinstance(name,str) or not NAME.fullmatch(name) or confirmation!='RESTORE':
             raise OperationDenied('Select archive and type RESTORE')
         with operation_lock(self.state):
+            if pending(self.state):
+                raise OperationDenied('Unresolved archive publication requires recovery')
             with self.store.transaction() as op:
                 if op.kind!='RESTORE' or op.phase not in (Phase.WAITING_FOR_PLEX_STOP,Phase.READY):
                     raise OperationDenied('Validate archive first')
                 digest=op.archive_identity
+                details=op.validation_details or {}
+                if (op.snapshot_id or not digest or details.get('status')!='VALID'
+                        or details.get('archive')!=name or details.get('sha256')!=digest):
+                    raise OperationDenied('Validate the selected archive first')
+                identity=details.get('file_identity')
+            if not archive_matches(self.destination,name,identity):
+                raise OperationDenied('Archive changed; validate the returned copy again')
             if PlexStatus(self.api).read()['state']!='STOPPED':
                 raise OperationDenied('Stop Plex manually before Restore')
             snapshots=Snapshots(self.api,self.store,self.dataset)
@@ -38,6 +48,8 @@ class Restore:
                     self.progress.start('RESTORE')
                     with stage_archive(self.destination/name,self.state,digest) as staged:
                         self.database_check(staged)
+                        if not archive_matches(self.destination,name,identity):
+                            raise OperationDenied('Archive changed; validate the returned copy again')
                         # Recheck after potentially lengthy archive/database work.
                         state=PlexStatus(self.api).read()['state']
                         with self.store.transaction() as op:

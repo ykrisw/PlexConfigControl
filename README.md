@@ -196,6 +196,41 @@ filesystem compare-and-swap against concurrent external writers. Do not edit,
 rename or delete either file through SMB during replacement. Isolated TrueNAS
 integration and fault-injection tests remain required before live use.
 
+## Portable single-file archives
+
+Each completed `TrueNASPlexConfig_YYYY.MM.DD_HH.MM.SS.tar.gz` is a standalone
+backup. Copy the complete file unchanged to another disk, NAS or storage service,
+then copy it back into the configured `Plex Config` folder with its original
+filename. Do not extract or repack it. Refresh the archive list and validate it
+again before Restore. No original snapshot, history record, app database,
+sidecar checksum, operation log or source machine path is required to recognize
+and validate the returned archive. After reinstalling, import it into the new
+`Plex Config` folder created by setup; existing-folder setup protections still apply.
+
+File bytes must survive the round trip. The archive container's own owner,
+permissions, mtime, xattrs and inode may change during an SMB/NTFS/exFAT copy;
+configuration file bytes and recorded numeric ownership, modes, ACLs/xattrs and
+paths stay inside the tar stream. The returned file must be readable by the
+app under the selected folder's existing access policy; import does not reset
+ACLs or take ownership. Complete the copy before clicking Refresh/Validate.
+
+Listing scans the directory directly rather than consulting History. Validation
+reads every member and the full gzip stream and computes a fresh SHA-256.
+Changing/replacing a file after validation invalidates readiness and execution,
+even for an identical-byte returned copy: cancel preparation and validate it
+again. Private staging independently checks the content digest before extraction;
+a changed or incomplete copy cannot trigger a configuration write or emergency
+snapshot. Manual Plex stop and typed RESTORE confirmation remain mandatory.
+
+`tests/test_archive_portability.py` exercises actual backup creation, byte-only
+export, deletion of the original archive/snapshot fixture and original app state,
+reimport with changed outer metadata, fresh web listing/prevalidation and a full
+restore coordinator run into an isolated temporary directory. It compares all
+fixture bytes, names, modes, owners, mtimes and supported user xattrs, and runs
+SQLite integrity checks on real fixture databases. It also checks incomplete,
+damaged and replaced copies. ZFS and Plex adapters are simulated; this is not
+proof of live SMB/TrueNAS ACL preservation or Plex-specific database compatibility.
+
 ## Storage contract
 
 Backup now lists real archives with selection, scrolling, Plex state and current
