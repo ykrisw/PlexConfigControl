@@ -36,7 +36,12 @@ Requires Python 3.11 or later and GNU tar on Linux.
 ```sh
 python -m unittest discover -s tests -v
 python -m compileall -q plexconfigcontrol
+node --test tests/browser/test_panel_client.mjs
 ```
+
+The browser API module is served at `/assets/panel-client.mjs`. It supports
+session login, CSRF-protected background validation, operation polling and
+restore readiness. It does not yet render or bind the approved interface.
 
 ## Storage contract
 
