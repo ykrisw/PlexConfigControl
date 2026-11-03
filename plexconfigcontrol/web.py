@@ -3,7 +3,7 @@ import json
 from importlib.resources import files
 from http.cookies import SimpleCookie, CookieError
 from .auth import Account
-from .sessions import Sessions
+from .sessions import Sessions, SessionChanged
 from .settings import Settings
 from .history import History
 from .archive_discovery import ArchiveDiscovery
@@ -37,7 +37,7 @@ class Web:
         self.truenas_api=truenas_api
         self.archives=ArchiveStore(archive_directory,state_directory) if archive_directory else None
         self.account=Account(state_directory)
-        self.sessions=Sessions(state_directory)
+        self.sessions=Sessions(state_directory,self.account)
         self.settings=Settings(state_directory)
         self.history=History(state_directory)
         self.discovery=ArchiveDiscovery(archive_directory,state_directory,self.history,
@@ -126,8 +126,13 @@ class Web:
                     'Sign-in rejected. Remaining attempts: '+str(result['remaining'])+
                     '. Blocked until (Unix UTC): '+str(blocked)+'.')
                 return respond('401 Unauthorized',result)
-            if token: self.sessions.logout(token)
-            token,csrf=self.sessions.create()
+            try:
+                if token: self.sessions.logout(token)
+                token,csrf=self.sessions.create(expected_stamp=result['credential_stamp'])
+            except SessionChanged:
+                return respond('409 Conflict',{'error':'Credentials changed during sign-in. Try again.'})
+            except Exception:
+                return respond('503 Service Unavailable',{'error':'Sign-in could not be confirmed'})
             headers.append(('Set-Cookie','pcc_session='+token+'; Path=/; Secure; HttpOnly; SameSite=Strict'))
             return respond('200 OK',{'authenticated':True,'csrf':csrf})
         if not self.sessions.authenticated(token):
@@ -187,12 +192,24 @@ class Web:
                 return respond('400 Bad Request',{'error':'All password fields are required'})
             if new!=confirm:
                 return respond('400 Bad Request',{'error':'New passwords do not match'})
-            if not self.account.change_password(current,new):
+            try: changed=self.account.change_password(current,new)
+            except Exception:
+                return respond('503 Service Unavailable',{'error':'Password change could not be confirmed. Sign in again before retrying.'})
+            if not changed:
                 return respond('403 Forbidden',{'error':'Current password rejected or account blocked'})
-            self.sessions.revoke_all()
+            # Credential binding already invalidates all prior sessions, even
+            # when deleting obsolete session rows fails on storage.
+            cleanup_pending=False
+            try: self.sessions.revoke_all()
+            except Exception: cleanup_pending=True
             headers.append(('Set-Cookie','pcc_session=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Strict'))
-            self.history.add('PASSWORD_CHANGE','SUCCESS','Panel password changed. All sessions revoked.')
-            return respond('200 OK',{'changed':True,'sign_in_required':True})
+            history_recorded=True
+            try: self.history.add('PASSWORD_CHANGE','SUCCESS','Panel password changed. Prior credential-bound sessions invalidated.')
+            except Exception: history_recorded=False
+            result={'changed':True,'sign_in_required':True}
+            if cleanup_pending: result['session_cleanup_pending']=True
+            if not history_recorded: result['history_recorded']=False
+            return respond('200 OK',result)
         if path=='/api/logout' and method=='POST':
             self.sessions.logout(token)
             headers.append(('Set-Cookie','pcc_session=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Strict'))

@@ -32,6 +32,16 @@ class Account:
     def derive(password, salt, iterations):
         return hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, iterations)
 
+    @staticmethod
+    def _stamp(salt, digest, iterations):
+        return hashlib.sha256(salt+digest+str(iterations).encode('ascii')).hexdigest()
+
+    def credential_stamp(self):
+        """Private session binding; never return this value through the API."""
+        with self.connect() as db:
+            row=db.execute('SELECT salt,digest,iterations FROM account WHERE id=1').fetchone()
+        return self._stamp(*row) if row else 'uninitialized'
+
     def initialize(self, password):
         if not password:
             raise ValueError('Password is required')
@@ -56,7 +66,8 @@ class Account:
             valid = hmac.compare_digest(self.derive(password, salt, iterations), digest)
             if valid:
                 db.execute('UPDATE account SET stage=0,failures=0,blocked_until=0 WHERE id=1')
-                return {'authenticated': True, 'blocked_until': 0, 'remaining': 5}
+                return {'authenticated': True, 'blocked_until': 0, 'remaining': 5,
+                        'credential_stamp': self._stamp(salt,digest,iterations)}
             limit, delay = STAGES[stage]
             failures += 1
             remaining = limit - failures
@@ -73,11 +84,16 @@ class Account:
         if not new:
             raise ValueError('New password is required')
         # Current-password checks use the same persistent lockout as login.
-        if not self.login(current)['authenticated']:
+        verified=self.login(current)
+        if not verified['authenticated']:
             return False
         salt = secrets.token_bytes(32)
         digest = self.derive(new, salt, ITERATIONS)
         with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            row=db.execute('SELECT salt,digest,iterations FROM account WHERE id=1').fetchone()
+            if row is None or not hmac.compare_digest(self._stamp(*row),verified['credential_stamp']):
+                return False
             db.execute('UPDATE account SET salt=?,digest=?,iterations=? WHERE id=1',
                        (salt, digest, ITERATIONS))
         return True

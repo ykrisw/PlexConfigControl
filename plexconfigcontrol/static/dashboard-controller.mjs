@@ -20,10 +20,10 @@ export function createDashboardController(client, render, {
     if (disposed || state.busy) return false;
     state.busy = true; state.error = ''; emit();
     try {
-      await action();
+      const result=await action();
       if (!disposed) {
         dispose();
-        onSignedOut(reason);
+        onSignedOut(reason==='password_changed'&&result?.history_recorded===false?'password_changed_history_pending':reason);
       }
       return true;
     } catch (error) {

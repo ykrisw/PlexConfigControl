@@ -40,6 +40,11 @@ class RuntimeTests(unittest.TestCase):
             app.web.account.change_password('initial-test-password','changed-password')
             app,cert,key=prepare(config,'ignored existing install')
             code,_,data=self.request(app,'/api/settings',cookie=cookie)
+            self.assertEqual(code,'401 Unauthorized')
+            code,headers,_=self.request(app,'/api/login','POST',{'password':'changed-password'})
+            self.assertEqual(code,'200 OK')
+            fresh=headers['Set-Cookie'].split(';')[0]
+            code,_,data=self.request(app,'/api/settings',cookie=fresh)
             self.assertEqual(code,'200 OK');self.assertEqual(json.loads(data)['theme'],'Dark')
             self.assertFalse(app.web.account.login('initial-test-password')['authenticated'])
             self.assertTrue(app.web.account.login('changed-password')['authenticated'])

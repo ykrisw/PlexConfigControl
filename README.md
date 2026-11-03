@@ -686,3 +686,32 @@ changes cannot be serialized by an application-only lock; pause them during setu
 The restricted test runtime does not call destination creation or adopt an existing
 archive mount as newly owned storage. These are installer integration primitives,
 not a completed installation form or permission to alter a live NAS dataset.
+
+
+## Password changes and session generations
+
+Web sessions now bind to a private fingerprint of the current stored credential.
+Changing the password invalidates older sessions immediately, even if deleting
+obsolete session rows or writing the History event fails. A login verified against
+an older credential cannot create an authorized new session after a concurrent
+password change. Password updates also compare the credential verified earlier
+before committing, so a stale concurrent change cannot overwrite a newer password.
+No fingerprint, password, salt or hash is returned by the public session API.
+
+Existing unbound sessions from older builds require one sign-in during migration;
+new bound sessions survive ordinary restarts while credentials remain unchanged.
+There is still no idle-expiry timer. Password-change responses explicitly flag
+unconfirmed History or row-cleanup work; logical invalidation does not depend on
+row deletion. An unavailable History record is mentioned on return to sign-in.
+
+The browser fences responses by session generation. Old unauthorized replies
+cannot sign out a new login, old JSON/download bodies cannot populate a newer
+session, and concurrent account transitions are not automatically retried.
+Background unauthorized polling waits for the result of an in-flight password
+change/logout before deciding whether to return to sign-in, avoiding accidental
+cancellation of the confirmation. A lost connection without an unauthorized
+response does not itself become an idle logout or claimed successful password change.
+
+Tests inject credential-change/session-insert races and database cleanup failures.
+Browser CI also checks revocation in a second isolated browser context. These
+checks use disposable local account state and never modify a NAS account/password.

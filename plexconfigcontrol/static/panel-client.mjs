@@ -12,9 +12,15 @@ export class PanelClient {
     this.fetcher = fetcher;
     this.onSessionExpired = onSessionExpired;
     this.csrf = null;
+    this.sessionEpoch=0;this.transition=false;this.authPending=false;this.deferredUnauthorized=false;
   }
 
+  invalidateSession(){this.csrf=null;this.sessionEpoch++;}
+  assertCurrent(epoch){if(epoch!==this.sessionEpoch)throw new ApiError(409,{error:'Session changed; refresh before continuing'});}
+  expireSession(){this.invalidateSession();this.onSessionExpired();}
+
   async request(path, {body, raw, signal, login = false, download = false} = {}) {
+    const epoch=this.sessionEpoch;
     const controller = new AbortController();
     const abort = () => controller.abort();
     if (signal?.aborted) abort();
@@ -39,12 +45,15 @@ export class PanelClient {
         signal: controller.signal,
         ...(writing ? {body:raw!==undefined?raw:JSON.stringify(body)} : {}),
       });
+      this.assertCurrent(epoch);
       if (!response.ok) {
+        let expiredHere=false;
         if (response.status === 401 && !login) {
-          this.csrf = null;
-          this.onSessionExpired();
+          if(this.transition&&!['/api/account/password','/api/logout'].includes(path))this.deferredUnauthorized=true;
+          else {this.expireSession();expiredHere=true;}
         }
         const result = await response.json();
+        if(!expiredHere)this.assertCurrent(epoch);
         throw new ApiError(response.status, result);
       }
       if (download) {
@@ -55,42 +64,55 @@ export class PanelClient {
           throw new ApiError(502, {error: 'Invalid log download response'});
         }
         const blob = await response.blob();
+        this.assertCurrent(epoch);
         if (blob.size > 34 * 1024 * 1024) throw new ApiError(502, {error: 'Log download is too large'});
         return {filename: match[1], blob};
       }
-      return await response.json();
+      const result=await response.json();
+      this.assertCurrent(epoch);
+      return result;
     } finally {
       clearTimeout(timer);
       signal?.removeEventListener('abort', abort);
     }
   }
 
-  async login(password) {
-    this.csrf = null;
-    const result = await this.request('/api/login', {body: {password}, login: true});
-    if (!result.authenticated || typeof result.csrf !== 'string' || !result.csrf) {
-      throw new ApiError(502, {error: 'Invalid sign-in response'});
-    }
-    this.csrf = result.csrf; // Memory only; password and token are never logged.
-    return result;
+  async authenticate(action){
+    if(this.transition||this.authPending)throw new ApiError(409,{error:'Account action is already in progress'});
+    this.authPending=true;this.invalidateSession();const epoch=this.sessionEpoch;
+    try{
+      const result=await action();this.assertCurrent(epoch);
+      if(result.authenticated!==true||typeof result.csrf!=='string'||!result.csrf)
+        throw new ApiError(502,{error:'Invalid sign-in response'});
+      this.csrf=result.csrf;return result;
+    }finally{this.authPending=false;}
   }
 
-  async logout(signal) {
-    const result = await this.request('/api/logout', {body: {}, signal});
-    if (result.authenticated !== false) throw new ApiError(502, {error: 'Sign-out could not be confirmed'});
-    this.csrf = null;
+  login(password){return this.authenticate(()=>this.request('/api/login',{body:{password},login:true}));}
+
+  async endSession(action,valid,message){
+    if(this.transition||this.authPending)throw new ApiError(409,{error:'Account action is already in progress'});
+    this.transition=true;this.deferredUnauthorized=false;const epoch=this.sessionEpoch;
+    try{
+      const result=await action();this.assertCurrent(epoch);
+      if(!valid(result))throw new ApiError(502,{error:message});
+      this.invalidateSession();return result;
+    }finally{
+      this.transition=false;
+      if(this.deferredUnauthorized&&epoch===this.sessionEpoch)this.expireSession();
+      this.deferredUnauthorized=false;
+    }
   }
 
-  async changePassword(current, password, confirmation, signal) {
-    const result = await this.request('/api/account/password', {body: {
-      current_password: current, new_password: password,
-      confirm_new_password: confirmation,
-    }, signal});
-    if (result.changed !== true || result.sign_in_required !== true) {
-      throw new ApiError(502, {error: 'Password change could not be confirmed'});
-    }
-    this.csrf = null;
-    return result;
+  logout(signal){
+    return this.endSession(()=>this.request('/api/logout',{body:{},signal}),
+      result=>result.authenticated===false,'Sign-out could not be confirmed');
+  }
+
+  changePassword(current,password,confirmation,signal){
+    return this.endSession(()=>this.request('/api/account/password',{body:{
+      current_password:current,new_password:password,confirm_new_password:confirmation},signal}),
+      result=>result.changed===true&&result.sign_in_required===true,'Password change could not be confirmed');
   }
 
   settings(signal) { return this.request('/api/settings', {signal}); }
@@ -112,15 +134,7 @@ export class PanelClient {
     return this.request('/api/history/download', {body: {ids}, signal, download: true});
   }
 
-  async restoreSession() {
-    this.csrf = null;
-    const result = await this.request('/api/session');
-    if (!result.authenticated || typeof result.csrf !== 'string' || !result.csrf) {
-      throw new ApiError(502, {error: 'Invalid session response'});
-    }
-    this.csrf = result.csrf;
-    return result;
-  }
+  restoreSession(){return this.authenticate(()=>this.request('/api/session'));}
 
   validateArchive(archive, signal) {
     return this.request('/api/restore/validate', {body: {archive, background: true}, signal});

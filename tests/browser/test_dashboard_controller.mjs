@@ -54,3 +54,12 @@ test('logout cannot duplicate requests or claim success on network failure', asy
   assert.deepEqual(view.reasons,[]); assert.match(view.states.at(-1).error,/confirm/);
   view.controller.dispose();
 });
+
+
+test('confirmed password change with unavailable History still signs out with an explicit warning',async()=>{
+  const reasons=[];const controller=createDashboardController({status:async()=>({state:'STOPPED',available:true}),
+    changePassword:async()=>({changed:true,sign_in_required:true,history_recorded:false})},()=>{},
+    {onSignedOut:reason=>reasons.push(reason),schedule:()=>1,cancel:()=>{}});
+  assert.equal(await controller.changePassword('old','new','new'),true);
+  assert.deepEqual(reasons,['password_changed_history_pending']);controller.dispose();
+});

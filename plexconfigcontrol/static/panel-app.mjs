@@ -42,7 +42,7 @@ export function mountPanelApp(root) {
     if (epoch !== generation || stopped) return;
     reset();
     const viewDisposers = new Map();
-    const signedOut = reason => showLogin(reason === 'password_changed' ? 'Password changed. Sign in with your new password.' : '');
+    const signedOut = reason => showLogin(reason === 'password_changed_history_pending' ? 'Password changed. Sign in with your new password. The History entry could not be confirmed.' : reason === 'password_changed' ? 'Password changed. Sign in with your new password.' : '');
     const shell = mountPanelShell(root, {theme: prefs.theme, onNavigate(key, section) {
       if (viewDisposers.has(key)) return;
       if (key === 'dashboard') viewDisposers.set(key, mountDashboardView(section, client, {language: prefs.language, onSignedOut: signedOut}));
@@ -75,7 +75,7 @@ export function mountPanelApp(root) {
   void client.restoreSession().then(() => {
     if (!stopped && epoch === initial) return showPanels();
   }).catch(error => { if (!stopped && epoch === initial) showLogin(error.status === 401 ? '' : error.message); });
-  return () => { stopped = true; reset(); client.csrf = null; };
+  return () => { stopped = true; reset(); client.invalidateSession(); };
 }
 
 const root = globalThis.document?.getElementById('pcc-app');
