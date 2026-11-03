@@ -756,4 +756,19 @@ test reached application snapshot creation, persisted intent, read-only access a
 foreign-dataset rejection on the user's NAS. Deletion then exposed a second
 diagnostic adapter parsing issue: midclt returned nonempty, non-JSON text. The
 adapter now ignores mutation stdout and confirms state via strict JSON queries;
-full host smoke completion and cleanup of that second sandbox remain unconfirmed.
+the second sandbox was subsequently removed after the user stopped Filebrowser,
+whose mount namespace retained it. A rerun at commit
+`54df4e8f64e8eec0f939d57f44cb2b84b8fc20d8` passed every snapshot-module check,
+confirmed snapshot/dataset cleanup and observed Plex RUNNING. Filebrowser remains
+stopped by user choice.
+
+
+The opt-in host smoke flag `--archive-test` adds synthetic Plex-shaped files and
+small SQLite fixture databases to the fresh sandbox. It uses the application
+archive builder against the verified read-only snapshot, compares every file to
+that snapshot, checks a byte-only export/return copy using full validation and
+SHA256, and rejects a deliberately truncated copy. Diagnostic archive copies are
+temporary in RAM; no production archive or permanent operation log is modified.
+This additional host archive test has not yet been run on the user's NAS and does
+not exercise the Backup coordinator, SMB access, Restore or database compatibility
+with Plex itself.

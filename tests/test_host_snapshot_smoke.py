@@ -112,3 +112,19 @@ class HostAdapterTests(unittest.TestCase):
                     subprocess.CompletedProcess([], 0, output, '')))
                 with self.assertRaises(ValueError):
                     api.call('pool.dataset.query', [['id', '=', dataset]])
+
+    def test_real_archive_export_return_and_corrupt_copy_with_synthetic_databases(self):
+        from pathlib import Path
+        from tests.host_snapshot_smoke import archive_fixture, exercise_archive
+        from plexconfigcontrol.archives import validate_archive
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root/'source'; source.mkdir()
+            workspace = root/'workspace'; workspace.mkdir()
+            archive_fixture(source)
+            (source/'fixture.bin').write_bytes(b'immutable snapshot fixture')
+            result = exercise_archive(source, workspace)
+            self.assertEqual(result.files, 4)
+            copies = list((workspace/'returned-location').glob('*.tar.gz'))
+            self.assertEqual(len(copies), 1)
+            self.assertEqual(validate_archive(copies[0]), result)

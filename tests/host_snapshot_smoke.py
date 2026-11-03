@@ -74,7 +74,59 @@ def write(path, data, *, new=False):
         os.fsync(stream.fileno())
 
 
-def run():
+def archive_fixture(root):
+    """Synthetic Plex-shaped files, never copied from the live Plex dataset."""
+    import sqlite3
+    from plexconfigcontrol.archives import REQUIRED
+    for member in REQUIRED:
+        path = root / member.removeprefix('config/')
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.suffix == '.db':
+            connection = sqlite3.connect(path)
+            try:
+                connection.execute('CREATE TABLE fixture (value TEXT)')
+                connection.execute("INSERT INTO fixture VALUES ('synthetic test data')")
+                connection.commit()
+            finally:
+                connection.close()
+        else:
+            write(path, b'<Preferences Fixture="true"/>', new=True)
+
+
+def exercise_archive(source, workspace):
+    """Actual GNU tar creation, full validation, portable copy and corruption."""
+    import shutil
+    from datetime import datetime, timezone
+    from plexconfigcontrol.archives import archive_name, validate_archive, InvalidArchive
+    from plexconfigcontrol.backup_archive import create_archive
+    root = Path(workspace)
+    original = root / archive_name(datetime.now(timezone.utc))
+    validation = create_archive(source, original)
+    print('APPLICATION TAR + GZIP + FULL SNAPSHOT CONTENT COMPARISON: OK', flush=True)
+    exported = root / 'external-location'
+    returned = root / 'returned-location'
+    exported.mkdir(); returned.mkdir()
+    export_copy = exported / original.name
+    returned_copy = returned / original.name
+    shutil.copyfile(original, export_copy)
+    shutil.copyfile(export_copy, returned_copy)
+    imported = validate_archive(returned_copy)
+    if imported != validation:
+        raise RuntimeError('Portable archive copy changed content or validation result')
+    print('COPY OUT + COPY BACK + IDENTICAL SHA256/FULL VALIDATION: OK', flush=True)
+    broken = root / 'damaged-test-copy.tar.gz'
+    data = original.read_bytes()
+    broken.write_bytes(data[:-8])
+    try:
+        validate_archive(broken)
+    except InvalidArchive:
+        print('TRUNCATED ARCHIVE REJECTED: OK', flush=True)
+    else:
+        raise RuntimeError('Truncated archive was accepted')
+    return validation
+
+
+def run(*, archive_test=False):
     if os.geteuid() != 0:
         raise RuntimeError('Run through sudo')
     dataset = 'TrueNAS/pcc-test-' + uuid.uuid4().hex
@@ -99,6 +151,8 @@ def run():
         info = root.stat()
         original = b'PCC immutable snapshot fixture\n'
         write(root/'fixture.bin', original, new=True)
+        if archive_test:
+            archive_fixture(root)
         with tempfile.TemporaryDirectory(prefix='pcc-host-state-', dir='/dev/shm') as state:
             store = StateStore(state)
             with store.transaction() as operation:
@@ -118,6 +172,9 @@ def run():
                     raise RuntimeError('Snapshot contents changed')
                 if not os.statvfs(source).f_flag & os.ST_RDONLY:
                     raise RuntimeError('Snapshot is writable')
+                if archive_test:
+                    with tempfile.TemporaryDirectory(prefix='pcc-archive-test-', dir='/dev/shm') as workspace:
+                        exercise_archive(source, workspace)
             print('APPLICATION SNAPSHOT READER + READ-ONLY CHECK: OK', flush=True)
             try:
                 with reader('TrueNAS/not-this-dataset@pcc-backup-'+'a'*32):
@@ -141,7 +198,7 @@ def run():
             raise RuntimeError('Sandbox deletion not confirmed')
         created = False
         print('PLEX RUNNING; TEST DATASET REMOVED: OK', flush=True)
-        print('RESULT: PASS (snapshot modules only; not a full Backup/Restore test)', flush=True)
+        print('RESULT: PASS (snapshot/archive modules; not full Backup/Restore acceptance)', flush=True)
     except BaseException:
         if created:
             print('STOP: do not rerun. Sandbox may remain:', dataset, flush=True)
@@ -153,5 +210,6 @@ def run():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--run-sandbox-test', action='store_true', required=True)
-    parser.parse_args()
-    run()
+    parser.add_argument('--archive-test', action='store_true')
+    args = parser.parse_args()
+    run(archive_test=args.archive_test)
