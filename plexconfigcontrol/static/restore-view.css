@@ -1,3 +1,4 @@
+@import url('/assets/approved-appearance.css');
 .pcc-restore{--pcc-bg:#f1f3f8;--pcc-card:#fff;--pcc-ink:#000000;--pcc-line:#d4dfed;--pcc-selected:#f2f7fd;--pcc-blue:#286eae;box-sizing:border-box;min-height:820px;padding:14px 18px 18px;display:flex;flex-direction:column;gap:14px;background:var(--pcc-bg);color:var(--pcc-ink);font:14px/1.5 Arial,sans-serif}
 .pcc-restore *{box-sizing:border-box}.pcc-restore [hidden]{display:none!important}
 .pcc-restore .pcc-plex,.pcc-restore .pcc-card{background:var(--pcc-card);border-radius:15px;margin:0;padding:18px;flex-shrink:0}
