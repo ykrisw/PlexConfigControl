@@ -660,3 +660,29 @@ confirmations, and disposal/logout cancels pending browser reads. The diagnostic
 POST route is unavailable; configuration continues to belong in deployment setup.
 The added controls stay inside the existing collapsed Details, preserving the
 approved default Settings layout in Light/Dark/System and English/Polish.
+
+
+## Confined destination-setup baseline
+
+The installation-side `storage` module now opens every component of the selected
+absolute parent with NOFOLLOW, rejects traversal/ancestor symlinks and supports
+explicit protected ixVolume/Plex-source paths supplied by trusted deployment code.
+Read-only `inspect_destination` reports name availability separately from untested
+write/SMB permissions. Actual creation rechecks with exclusive mkdir; a folder,
+file or symlink already named `Plex Config` always requires manual renaming.
+
+Fresh `Plex Config`/`Logs` entries are fsynced and checked for observed name/identity
+replacement before success. Existing permissions/ownership are never changed;
+new-directory permissions honor process umask and inherited ACLs. Partial setup
+is retained for explicit inspection, never recursively removed when SMB may have
+already written files. Structured English/Polish error messages omit raw OS error
+text and private paths. Only archives and Logs belong in this user directory.
+
+`verify_destination` checks the returned root/Logs anchors without recreating or
+adopting missing/replaced folders. These are mount-session device/inode anchors,
+not persistent ZFS provenance; real deployment still needs trusted storage binding
+and reboot checks before using them across remounts. External SMB renames/mount
+changes cannot be serialized by an application-only lock; pause them during setup.
+The restricted test runtime does not call destination creation or adopt an existing
+archive mount as newly owned storage. These are installer integration primitives,
+not a completed installation form or permission to alter a live NAS dataset.

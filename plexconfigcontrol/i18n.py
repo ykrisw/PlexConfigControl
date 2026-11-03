@@ -1,6 +1,12 @@
 """UI translation catalog. Stable machine statuses and filenames stay unchanged."""
 CATALOG = {
 'en': {
+'setup_incomplete':'Folder setup could not be confirmed. Inspect and manually rename the new Plex Config folder before retrying. No files were automatically removed.',
+'unsafe_destination':'Choose a valid destination outside protected Plex and application storage, without symbolic links.',
+'destination_changed':'The selected folder was replaced or moved. Check the location before continuing; no replacement folder was adopted.',
+'setup_access_required':'Access was denied. Check access for the app and your SMB user. No existing permissions were changed.',
+'setup_parent_unavailable':'The selected parent folder is unavailable. Select an existing folder; missing parent folders will not be created.',
+'setup_failed':'Setup could not be confirmed. Check the selected location. No files were automatically removed.',
 'dashboard':'Dashboard','backup':'Backup','restore':'Restore','history':'History','settings':'Settings',
 'account':'Account','active':'ACTIVE','inactive':'INACTIVE','plex_server':'Plex Server','running':'RUNNING','stopped':'STOPPED','unknown':'UNKNOWN',
 'change_password':'Change Password','log_out':'Log Out','current_password':'Current Password','new_password':'New Password','confirm_password':'Confirm New Password','save_password':'Save Password','cancel':'Cancel',
@@ -16,6 +22,12 @@ CATALOG = {
 'wrong_password':'Incorrect password','password_mismatch':'New passwords do not match.','sign_in':'Sign In','password':'Password','login_blocked':'Sign-in temporarily blocked','preview':'Development preview',
 },
 'pl': {
+'setup_incomplete':'Nie potwierdzono utworzenia folderów. Sprawdź i ręcznie zmień nazwę nowego folderu Plex Config przed ponowieniem. Nie usunięto automatycznie żadnych plików.',
+'unsafe_destination':'Wybierz poprawną lokalizację poza chronioną konfiguracją Plex i danymi aplikacji, bez linków symbolicznych.',
+'destination_changed':'Wybrany folder został podmieniony lub przeniesiony. Sprawdź lokalizację przed kontynuowaniem; aplikacja nie przejęła innego folderu.',
+'setup_access_required':'Odmówiono dostępu. Sprawdź dostęp aplikacji i swojego użytkownika SMB. Nie zmieniono istniejących uprawnień.',
+'setup_parent_unavailable':'Wybrany folder nadrzędny jest niedostępny. Wybierz istniejący folder; aplikacja nie utworzy brakujących folderów nadrzędnych.',
+'setup_failed':'Nie udało się potwierdzić konfiguracji folderów. Sprawdź wybraną lokalizację. Nie usunięto automatycznie żadnych plików.',
 'dashboard':'Pulpit','backup':'Kopia zapasowa','restore':'Przywracanie','history':'Historia','settings':'Ustawienia',
 'account':'Konto','active':'AKTYWNE','inactive':'NIEAKTYWNE','plex_server':'Serwer Plex','running':'URUCHOMIONY','stopped':'ZATRZYMANY','unknown':'NIEZNANY',
 'change_password':'Zmień hasło','log_out':'Wyloguj się','current_password':'Obecne hasło','new_password':'Nowe hasło','confirm_password':'Potwierdź nowe hasło','save_password':'Zapisz hasło','cancel':'Anuluj',

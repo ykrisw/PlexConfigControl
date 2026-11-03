@@ -1,12 +1,15 @@
 # PlexConfigControl — first test installation
 
-This is a test build, not a complete backup/restore product. Only use an artifact
-from a successful **Build test installation** run. It includes the Docker image,
-this guide and SHA256SUMS. Artifacts expire after 30 days; a build can recreate one.
-The default branch source ZIP is not the installation image.
-Use a successful run that includes **Test real browser interface**. Earlier
-artifacts can fail at sign-in due to a native browser fetch invocation defect
-that server-only smoke tests did not detect.
+This is a test build, not a complete backup/restore product. To prepare a current
+package, open **Actions → Build test installation → Run workflow**, select **main**,
+and wait for the image/browser checks to pass. Installer artifacts are generated
+only for manual runs; ordinary code pushes run tests without another image package.
+
+Download **PlexConfigControl-test-installation** from that run's **Artifacts**.
+It includes the Docker image, this guide and SHA256SUMS. GitHub sign-in may be
+required; artifacts expire after 30 days. The source ZIP is not an installation
+image. Check the actual Chromium, Firefox and Microsoft Edge interface test steps,
+not only the server smoke test: early images predate browser sign-in fixes.
 
 ## What this build can test
 

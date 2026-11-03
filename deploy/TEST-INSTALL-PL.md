@@ -6,14 +6,17 @@ Nie podłączaj do niej konfiguracji Plex, urządzeń ZFS ani gniazda Dockera.
 
 ## Pobranie
 
-W repozytorium GitHub otwórz **Actions → Build test installation**. Wybierz
-zakończone zielonym wynikiem wykonanie i pobierz z sekcji **Artifacts** paczkę
-**PlexConfigControl-test-installation**. Pobieranie może wymagać zalogowania do
-GitHuba. Paczka zawiera obraz kontenera, instrukcje i sumę SHA256. Zwykły ZIP
-ze źródłami repozytorium nie jest instalką. Paczka wygasa po 30 dniach.
-Wybierz wykonanie zawierające zakończony powodzeniem krok **Test real browser
-interface**. Wcześniejsze paczki mogły blokować logowanie z powodu błędu
-wywołania funkcji fetch w przeglądarce, którego testy samego serwera nie wykryły.
+W repozytorium GitHub otwórz **Actions → Build test installation → Run workflow**
+i wybierz gałąź **main**. Aktualna paczka instalacyjna jest przygotowywana tylko
+przy takim ręcznym uruchomieniu. Zwykłe aktualizacje kodu uruchamiają testy,
+ale nie tworzą kolejnej instalki.
+
+Poczekaj na zakończenie testów obrazu i przeglądarek, a następnie pobierz z sekcji
+**Artifacts** paczkę **PlexConfigControl-test-installation**. Pobieranie może wymagać
+zalogowania do GitHuba. Paczka zawiera obraz kontenera, instrukcje i sumę SHA256;
+wygasa po 30 dniach. Zwykły ZIP ze źródłami repozytorium nie jest instalką.
+Nie wybieraj starego obrazu na podstawie samego testu serwera — testy rzeczywistego
+interfejsu obejmują osobne kroki Chromium, Firefox i Microsoft Edge.
 
 ## 1. Wczytaj obraz
 
