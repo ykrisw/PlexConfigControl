@@ -53,8 +53,12 @@ def android_endpoint():
     raise RuntimeError('Android Chrome remote debugging did not become ready')
 
 
-def exercise(page, cdp, output, password):
+def exercise(page, cdp, output, password, *, emulated=False):
     def touch(locator):
+        if emulated:
+            locator.tap()
+            return
+        locator.click(trial=True)  # Wait for a stable, unobstructed target; no click is sent.
         locator.scroll_into_view_if_needed()
         expect(locator).to_be_visible()
         box=locator.bounding_box()
@@ -62,7 +66,9 @@ def exercise(page, cdp, output, password):
         cdp.send('Input.dispatchTouchEvent',{'type':'touchStart','touchPoints':[point]})
         cdp.send('Input.dispatchTouchEvent',{'type':'touchEnd','touchPoints':[]})
     def tab(title):
-        touch(page.get_by_role('tab',name=title,exact=True))
+        button=page.get_by_role('tab',name=title,exact=True)
+        touch(button)
+        expect(button).to_have_attribute('aria-selected','true')
         assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),title+' horizontal overflow'
     page.locator('.pcc-login input').fill(password)
     touch(page.get_by_role('button',name='Sign In',exact=True))
@@ -93,6 +99,9 @@ def exercise(page, cdp, output, password):
     cdp.send('Input.dispatchTouchEvent',{'type':'touchEnd','touchPoints':[]})
     page.wait_for_function('(e)=>e.scrollTop>0',arg=scroller.element_handle())
     assert scroller.evaluate('e=>e.scrollTop')>before
+    # A tap during kinetic scrolling may only stop the fling. Wait for actual
+    # scrolling to settle before testing the next navigation action.
+    page.wait_for_function('''e=>{const now=performance.now();if(e._pccTouchTop!==e.scrollTop){e._pccTouchTop=e.scrollTop;e._pccTouchChanged=now;return false;}return now-e._pccTouchChanged>250;}''',arg=scroller.element_handle())
     tab('Restore')
     restore=page.locator('[data-panel=restore]')
     expect(restore.locator('input[type=radio]')).to_have_count(13)
@@ -139,9 +148,10 @@ def main():
     name='pcc-mobile-'+uuid.uuid4().hex[:12];volume=name+'-state'
     password='ci-touch-only-password';environment=dict(os.environ,PCC_BOOTSTRAP_VERIFIER=password_verifier(password))
     docker('volume','create',volume)
-    page=None;browser=None;errors=[]
+    page=None;browser=None;playwright=None;errors=[];network_errors=[]
     try:
-        with tempfile.TemporaryDirectory() as temporary,sync_playwright() as playwright:
+        with tempfile.TemporaryDirectory() as temporary:
+            playwright=sync_playwright().start()
             temporary=Path(temporary);archives=temporary/'archives';fixtures(archives)
             docker('run','-d','--name',name,'--read-only','--cap-drop=ALL','--security-opt=no-new-privileges:true',
                 '--tmpfs','/tmp:rw,noexec,nosuid,size=64m','-p','127.0.0.1::8443',
@@ -175,23 +185,28 @@ def main():
                 page=context.new_page()
             page.set_default_timeout(15000)
             page.on('pageerror',lambda error:errors.append(str(error)))
+            page.on('requestfailed',lambda request:network_errors.append({'url':request.url,'failure':request.failure}))
+            page.on('console',lambda message:network_errors.append({'console':message.text}) if message.type=='error' else None)
             cdp=context.new_cdp_session(page)
             # Only this disposable browser ignores its own synthetic CI cert.
             # The separate host-side health probe above verifies TLS normally.
             cdp.send('Security.setIgnoreCertificateErrors',{'ignore':True})
             host='10.0.2.2' if mode=='android' else '127.0.0.1'
             page.goto(f'https://{host}:{port}')
-            exercise(page,cdp,output,password)
+            exercise(page,cdp,output,password,emulated=mode=='emulated')
             assert not errors,errors
             print(f'Mobile checks passed ({mode}); UA: '+page.evaluate('navigator.userAgent'))
             browser.close();page=None
     except BaseException:
+        print('Mobile JavaScript errors:',errors)
+        print('Mobile network/console errors:',network_errors)
         if page is not None:
             try:page.screenshot(path=str(output/'failure.png'),full_page=True)
             except Exception:pass
         subprocess.run(['docker','logs','--tail','30',name],check=False)
         raise
     finally:
+        if playwright is not None:playwright.stop()
         subprocess.run(['docker','rm','-f',name],check=False,stdout=subprocess.DEVNULL)
         subprocess.run(['docker','volume','rm',volume],check=False,stdout=subprocess.DEVNULL)
 
