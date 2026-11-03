@@ -1,6 +1,7 @@
 """Restore prevalidation without stopping Plex or changing its configuration."""
 import os
 import stat
+import threading
 from pathlib import Path
 from .archive_store import NAME
 from .archives import validate_archive
@@ -25,38 +26,83 @@ class RestoreValidation:
                 raise OperationDenied('Unresolved archive publication requires recovery')
             with self.store.transaction() as operation:
                 operation.begin('RESTORE')
-            try:
-                self.progress.start('RESTORE')
-                # Keep both directory and source file open. Validation uses the
-                # held inode, not a path which an SMB client could replace.
-                directory=os.open(self.archive_directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+            return self._validate_locked(name)
+
+    def start_background(self, name):
+        """Reserve synchronously; transfer the held lock to one validation thread.
+
+        Non-daemon worker finishes on normal interpreter shutdown. Unexpected
+        process termination leaves VALIDATING for startup reconciliation.
+        """
+        if not isinstance(name,str) or not NAME.fullmatch(name):
+            raise ValueError('Choose a recognized backup archive')
+        guard=operation_lock(self.state_directory)
+        guard.__enter__()
+        reserved=False
+        try:
+            if pending(self.state_directory):
+                raise OperationDenied('Unresolved archive publication requires recovery')
+            with self.store.transaction() as operation:
+                operation.begin('RESTORE')
+            reserved=True
+            self.progress.start('RESTORE')
+            def work():
                 try:
-                    fd=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=directory)
-                    try:
-                        if not stat.S_ISREG(os.fstat(fd).st_mode):
-                            raise ValueError('Archive must be a regular file')
-                        result=validate_archive(None, source_fd=fd,
-                            progress_callback=lambda stage,done: self.progress.update(stage,done=done))
-                    finally:
-                        os.close(fd)
+                    self._validate_locked(name)
+                except Exception:
+                    # The validator persists failure and history. No exception
+                    # payload or server traceback is exposed to the browser.
+                    pass
                 finally:
-                    os.close(directory)
-                with self.store.transaction() as operation:
-                    operation.archive_validated(result.sha256)
-                self.progress.update('WAITING_FOR_PLEX_STOP')
-                self.history.add('ARCHIVE_VALIDATION','SUCCESS',
-                                 'Archive contents verified; waiting for manual Plex stop.',name)
-                return {'archive':name,'sha256':result.sha256,'files':result.files,
-                        'bytes_read':result.bytes_read,'phase':'WAITING_FOR_PLEX_STOP'}
-            except Exception:
-                try: self.progress.update('FAILED')
-                except ValueError: pass
-                with self.store.transaction() as operation:
-                    if operation.phase==Phase.VALIDATING:
+                    guard.__exit__(None,None,None)
+            worker=threading.Thread(target=work,name='pcc-archive-validation',daemon=False)
+            worker.start()
+            return worker
+        except BaseException:
+            try:
+                if reserved:
+                    with self.store.transaction() as operation:
                         operation.phase=Phase.FAILED
-                self.history.add('ARCHIVE_VALIDATION','FAILED',
-                                 'Archive validation failed. Plex configuration was not modified.',name)
-                raise
+                    try: self.progress.update('FAILED')
+                    except ValueError: pass
+            finally:
+                guard.__exit__(None,None,None)
+            raise
+
+    def _validate_locked(self, name):
+        """Caller owns the process-wide lock and has committed VALIDATING."""
+        try:
+            self.progress.start('RESTORE')
+            # Keep both directory and source file open. Validation uses the
+            # held inode, not a path which an SMB client could replace.
+            directory=os.open(self.archive_directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+            try:
+                fd=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=directory)
+                try:
+                    if not stat.S_ISREG(os.fstat(fd).st_mode):
+                        raise ValueError('Archive must be a regular file')
+                    result=validate_archive(None, source_fd=fd,
+                        progress_callback=lambda stage,done: self.progress.update(stage,done=done))
+                finally:
+                    os.close(fd)
+            finally:
+                os.close(directory)
+            with self.store.transaction() as operation:
+                operation.archive_validated(result.sha256)
+            self.progress.update('WAITING_FOR_PLEX_STOP')
+            self.history.add('ARCHIVE_VALIDATION','SUCCESS',
+                             'Archive contents verified; waiting for manual Plex stop.',name)
+            return {'archive':name,'sha256':result.sha256,'files':result.files,
+                    'bytes_read':result.bytes_read,'phase':'WAITING_FOR_PLEX_STOP'}
+        except Exception:
+            try: self.progress.update('FAILED')
+            except ValueError: pass
+            with self.store.transaction() as operation:
+                if operation.phase==Phase.VALIDATING:
+                    operation.phase=Phase.FAILED
+            self.history.add('ARCHIVE_VALIDATION','FAILED',
+                             'Archive validation failed. Plex configuration was not modified.',name)
+            raise
 
     def cancel(self):
         with operation_lock(self.state_directory):
