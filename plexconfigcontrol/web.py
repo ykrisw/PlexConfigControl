@@ -44,8 +44,10 @@ class Web:
             return [body]
         method=environ.get('REQUEST_METHOD','GET')
         path=environ.get('PATH_INFO','/')
-        if method=='GET' and path=='/assets/panel-client.mjs':
-            body=files('plexconfigcontrol').joinpath('static/panel-client.mjs').read_bytes()
+        assets={'/assets/panel-client.mjs':'panel-client.mjs',
+                '/assets/restore-panel.mjs':'restore-panel.mjs'}
+        if method=='GET' and path in assets:
+            body=files('plexconfigcontrol').joinpath('static/'+assets[path]).read_bytes()
             start_response('200 OK',[
                 ('Content-Type','text/javascript; charset=utf-8'),
                 ('Content-Length',str(len(body))),('Cache-Control','no-store'),
