@@ -15,7 +15,7 @@ class WebTests(unittest.TestCase):
     def test_panel_assets_have_correct_mime_types(self):
         with tempfile.TemporaryDirectory() as d:
             app=Web(d)
-            for name in ('panel-layout.css','panel-shell.mjs','restore-view.css','restore-view.mjs'):
+            for name in ('panel-layout.css','panel-shell.mjs','restore-view.css','restore-view.mjs','approved-appearance.css'):
                 responses=[]
                 body=b''.join(app({'REQUEST_METHOD':'GET','PATH_INFO':'/assets/'+name},
                     lambda status,headers:responses.append((status,dict(headers)))))
