@@ -49,7 +49,8 @@ class Web:
                 '/assets/restore-view.mjs':'restore-view.mjs',
                 '/assets/restore-view.css':'restore-view.css',
                 '/assets/panel-shell.mjs':'panel-shell.mjs',
-                '/assets/panel-layout.css':'panel-layout.css'}
+                '/assets/panel-layout.css':'panel-layout.css',
+                '/assets/approved-appearance.css':'approved-appearance.css'}
         if method=='GET' and path in assets:
             body=files('plexconfigcontrol').joinpath('static/'+assets[path]).read_bytes()
             start_response('200 OK',[
