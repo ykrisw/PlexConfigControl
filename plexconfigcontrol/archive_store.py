@@ -20,6 +20,24 @@ class Archive:
 class ArchiveChanged(RuntimeError):
     pass
 
+def file_identity(info):
+    return {'device':info.st_dev,'inode':info.st_ino,'size':info.st_size,
+            'modified_ns':info.st_mtime_ns,'changed_ns':info.st_ctime_ns}
+
+def archive_matches(directory,name,identity):
+    """Cheap advisory check; full digest verification is still required at use."""
+    if directory is None or not isinstance(name,str) or not NAME.fullmatch(name):
+        return False
+    try:
+        fd=os.open(directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+        try:
+            info=os.stat(name,dir_fd=fd,follow_symlinks=False)
+            return stat.S_ISREG(info.st_mode) and file_identity(info)==identity
+        finally:
+            os.close(fd)
+    except OSError:
+        return False
+
 class ArchiveStore:
     def __init__(self, directory, state_directory):
         self.directory = directory
