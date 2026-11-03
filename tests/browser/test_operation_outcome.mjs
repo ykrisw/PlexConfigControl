@@ -83,3 +83,20 @@ test('Restore failure before writes never becomes successful or verified rollbac
   assert.match(restoreResult(value,'pl'),/przed zapisem konfiguracji/);
   assert.doesNotMatch(restoreResult(value),/completed successfully|Rollback was verified/);
 });
+
+test('an admitted request cannot display an older operation success or unconfirmed journal completion',async()=>{
+  const {restoreResult}=await import('../../plexconfigcontrol/static/operation-outcome.mjs');
+  for(const kind of ['BACKUP','RESTORE']){
+    const value=snapshot();value.operation.kind=kind;value.operation.outcome=outcome(kind+'_COMPLETED');value.progress.operation=kind;
+    value.operation.execution_request_id='a'.repeat(32);
+    value.execution={request_id:'b'.repeat(32),kind,state:'RUNNING'};value.execution_bound=false;
+    const render=kind==='BACKUP'?backupResult:restoreResult;
+    assert.equal(render(value),'');
+    value.execution.request_id='a'.repeat(32);value.execution_bound=true;
+    for(const state of ['QUEUED','RUNNING','RECOVERY_REQUIRED','FAILED']){
+      value.execution.state=state;assert.equal(render(value),'');
+    }
+    value.execution.state='SUCCEEDED';assert.match(render(value),/completed successfully/);
+    value.execution.request_id='bad-id';assert.equal(render(value),'');
+  }
+});

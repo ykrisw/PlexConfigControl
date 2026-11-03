@@ -73,16 +73,36 @@ class AcceptedOperation:
 
 
 class ExecutionGateway:
-    def __init__(self, state_directory, archive_directory, api, backend, *, receipt_lookup=None):
+    def __init__(self, state_directory, archive_directory, api, backend, *, receipt_lookup=None, status_reader=None):
         self.state = Path(state_directory).resolve()
         self.destination = Path(archive_directory).resolve()
         if api is None or not callable(getattr(backend, 'submit', None)):
             raise ValueError('Explicit execution backend and Plex status connection required')
         if receipt_lookup is not None and not callable(receipt_lookup):
             raise ValueError('Receipt lookup must be explicitly configured')
+        if status_reader is not None and not callable(status_reader):
+            raise ValueError('Execution status reader must be explicitly configured')
+        self.status_reader = status_reader
         self.receipt_lookup = receipt_lookup
         self.store = StateStore(self.state)
         self.api, self.backend = api, backend
+
+    def status(self):
+        if self.status_reader is None:
+            return None
+        data = self.status_reader()
+        if data is None:
+            return None
+        if (not isinstance(data,dict) or set(data) !=
+                {'request_id','kind','state','created_ns','updated_ns'}
+                or not isinstance(data['request_id'],str)
+                or not re.fullmatch(r'[0-9a-f]{32}',data['request_id'])
+                or data['kind'] not in ('BACKUP','RESTORE')
+                or data['state'] not in ('QUEUED','RUNNING','SUCCEEDED','FAILED','RECOVERY_REQUIRED')
+                or any(not isinstance(data[key],str) or not re.fullmatch(r'[0-9]{1,20}',data[key])
+                       for key in ('created_ns','updated_ns'))):
+            raise SubmissionUnconfirmed('Execution status could not be verified')
+        return dict(data)
 
     def _submit(self, request, kind):
         try:

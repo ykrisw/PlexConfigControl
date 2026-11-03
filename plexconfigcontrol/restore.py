@@ -19,14 +19,17 @@ class Restore:
     def __init__(self,api,store,history,progress,state_directory,destination,dataset,
                  database_check,write_config,verify_config,verify_rollback):
         self.api,self.store,self.history,self.progress=api,store,history,progress
-        self.state=Path(state_directory); self.destination=Path(destination); self.dataset=dataset
+        self.state=Path(state_directory); self.destination=Path(destination)
+        self._operation_guard=operation_lock
+        self._execution_request_id=None
+        self.dataset=dataset
         self.database_check=database_check; self.write_config=write_config
         self.verify_config=verify_config; self.verify_rollback=verify_rollback
 
     def run(self,name,confirmation):
         if not isinstance(name,str) or not NAME.fullmatch(name) or confirmation!='RESTORE':
             raise OperationDenied('Select archive and type RESTORE')
-        with operation_lock(self.state):
+        with self._operation_guard(self.state):
             if pending(self.state):
                 raise OperationDenied('Unresolved archive publication requires recovery')
             with self.store.transaction() as op:
@@ -49,6 +52,7 @@ class Restore:
             with EventLog(self.destination/'Logs','Restore',datetime.now(timezone.utc)) as log:
                 try:
                     with self.store.transaction() as op:
+                        op.execution_request_id=self._execution_request_id
                         op.outcome={'code':'RESTORE_IN_PROGRESS','archive':name}
                     self.progress.start('RESTORE')
                     with stage_archive(self.destination/name,self.state,digest) as staged:

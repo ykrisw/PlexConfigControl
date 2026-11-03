@@ -34,6 +34,8 @@ class Backup:
     def __init__(self,api,store,history,progress,state_directory,destination,dataset,snapshot_reader):
         self.api,self.store,self.history,self.progress=api,store,history,progress
         self.state=Path(state_directory); self.destination=Path(destination)
+        self._operation_guard=operation_lock
+        self._execution_request_id=None
         self.dataset=dataset
         # Context manager must expose ONLY this snapshot's immutable contents.
         self.snapshot_reader=snapshot_reader
@@ -54,7 +56,7 @@ class Backup:
         return self._run(overwrite=selected)
 
     def _run(self, *, create_another=None, overwrite=None):
-        with operation_lock(self.state):
+        with self._operation_guard(self.state):
             if publication_intent.pending(self.state):
                 raise RuntimeError('Unresolved archive publication requires recovery')
             archives = ArchiveStore(self.destination, self.state).list()
@@ -72,6 +74,7 @@ class Backup:
             original_identity = capture_original(self.destination, overwrite) if overwrite is not None else None
             with self.store.transaction() as operation:
                 operation.begin('BACKUP')
+                operation.execution_request_id=self._execution_request_id
                 operation.outcome={'code':'BACKUP_IN_PROGRESS','archive':name}
             log=None; published=False; stage_identity=None; result=None
             snapshots=Snapshots(self.api,self.store,self.dataset)

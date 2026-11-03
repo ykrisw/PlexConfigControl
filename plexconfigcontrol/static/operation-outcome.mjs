@@ -38,13 +38,21 @@ export function recoveryOutcome(data,language='en'){
   };
   return messages[outcome.code]||'';
 }
+function executionMatches(snapshot,kind,success=false){
+  const job=snapshot?.execution;
+  if(job==null)return true; // Legacy/direct coordinator result, no admitted job.
+  return typeof job==='object'&&job.kind===kind&&typeof job.request_id==='string'&&/^[0-9a-f]{32}$/.test(job.request_id)&&
+    snapshot.operation?.execution_request_id===job.request_id&&snapshot.execution_bound!==false&&
+    ['QUEUED','RUNNING','SUCCEEDED','FAILED','RECOVERY_REQUIRED'].includes(job.state)&&(!success||job.state==='SUCCEEDED');
+}
 export function backupResult(snapshot,language='en'){
   const operation=snapshot?.operation,outcome=normalizeOutcome(operation?.outcome),progress=snapshot?.progress;
+  if(!executionMatches(snapshot,'BACKUP'))return '';
   if(!outcome||operation.kind!=='BACKUP'||!['FAILED','SUCCESS'].includes(operation.phase)||operation.snapshot_id!==null||
      snapshot.publication?.pending!==false||snapshot.publication?.status!=='NONE'||
      snapshot.publication?.archive!==null||snapshot.publication?.temporary_file!==null)return '';
   const pl=language==='pl',tx=(en,polish)=>pl?polish:en;
-  if(outcome.code==='BACKUP_COMPLETED'&&operation.phase==='SUCCESS'&&progress?.operation==='BACKUP'&&
+  if(executionMatches(snapshot,'BACKUP',true)&&outcome.code==='BACKUP_COMPLETED'&&operation.phase==='SUCCESS'&&progress?.operation==='BACKUP'&&
      progress.stage==='COMPLETED'&&progress.active===false&&Number.isFinite(progress.finished))
     return tx('Last Backup completed successfully: ','Ostatni Backup zakończył się sukcesem: ')+outcome.archive;
   if(operation.phase==='FAILED'&&outcome.code==='BACKUP_RECONCILED')
@@ -56,11 +64,12 @@ export function backupResult(snapshot,language='en'){
 
 export function restoreResult(snapshot,language='en'){
   const operation=snapshot?.operation,outcome=normalizeOutcome(operation?.outcome),progress=snapshot?.progress;
+  if(!executionMatches(snapshot,'RESTORE'))return '';
   if(!outcome||operation.kind!=='RESTORE'||operation.snapshot_id!==null||
      snapshot.publication?.pending!==false||snapshot.publication?.status!=='NONE'||
      snapshot.publication?.archive!==null||snapshot.publication?.temporary_file!==null)return '';
   const pl=language==='pl',tx=(en,polish)=>pl?polish:en;
-  if(operation.phase==='SUCCESS'&&outcome.code==='RESTORE_COMPLETED'&&progress?.operation==='RESTORE'&&
+  if(executionMatches(snapshot,'RESTORE',true)&&operation.phase==='SUCCESS'&&outcome.code==='RESTORE_COMPLETED'&&progress?.operation==='RESTORE'&&
      progress.stage==='COMPLETED'&&progress.active===false&&Number.isFinite(progress.finished))
     return tx('Last Restore completed successfully. Plex was not started automatically. Archive: ',
       'Ostatnie Restore zakończyło się sukcesem. Plex nie został uruchomiony automatycznie. Archiwum: ')+outcome.archive;

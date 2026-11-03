@@ -147,6 +147,13 @@ class Web:
             return respond('401 Unauthorized',{'error':'Sign in required'})
         if method=='POST' and not self.sessions.check_csrf(token,environ.get('HTTP_X_CSRF_TOKEN')):
             return respond('403 Forbidden',{'error':'Invalid CSRF token'})
+        if (self.execution is not None and method=='POST' and path in
+                ('/api/restore/validate','/api/restore/cancel','/api/archives/delete')):
+            try: execution=self.execution.status()
+            except Exception:
+                return respond('503 Service Unavailable',{'error':'Execution status could not be confirmed'})
+            if execution is not None and execution['state'] in ('QUEUED','RUNNING','RECOVERY_REQUIRED'):
+                return respond('409 Conflict',{'error':'Admitted execution or recovery must finish first'})
         if path=='/api/account/photo/status' and method=='GET':
             try: return respond('200 OK',self.photo.status())
             except OSError: return respond('503 Service Unavailable',{'error':'Profile photo storage is unavailable'})
@@ -245,9 +252,17 @@ class Web:
             with self.operation_store.transaction() as operation:
                 state=operation_dict(operation)
                 state['outcome']=describe_outcome(operation.outcome,operation.kind) if operation.kind in ('BACKUP','RESTORE') else None
-            return respond('200 OK',{'operation':state,'progress':self.progress.read(),
-                                    'publication':describe_publication(self.state_directory),
-                                    'archive_discovery':self.discovery.status() if self.discovery else None})
+            result={'operation':state,'progress':self.progress.read(),
+                    'publication':describe_publication(self.state_directory),
+                    'archive_discovery':self.discovery.status() if self.discovery else None}
+            if self.execution is not None:
+                try:
+                    result['execution']=self.execution.status()
+                    result['execution_bound']=(result['execution'] is not None and
+                        state.get('execution_request_id')==result['execution']['request_id'])
+                except Exception:
+                    return respond('503 Service Unavailable',{'error':'Execution status could not be confirmed'})
+            return respond('200 OK',result)
         if path=='/api/recovery' and method=='GET':
             try:
                 return respond('200 OK',recovery_status(self.operation_store,self.recovery_inspector))

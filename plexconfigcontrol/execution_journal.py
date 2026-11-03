@@ -155,6 +155,15 @@ class ExecutionJournal:
             if changed != 1:
                 raise OperationDenied('Execution claim is no longer current')
 
+    def current(self):
+        with self._connect() as db:
+            row = db.execute("SELECT request_id,kind,state,created_ns,updated_ns FROM requests "
+                "ORDER BY CASE WHEN state IN ('QUEUED','RUNNING','RECOVERY_REQUIRED') THEN 0 ELSE 1 END, "
+                "created_ns DESC,request_id DESC LIMIT 1").fetchone()
+        if row is None:
+            return None
+        return {key:str(row[key]) if key.endswith('_ns') else row[key] for key in row.keys()}
+
     def reconcile_startup(self):
         # A live coordinator's lock prevents a new execution owner from treating
         # its work as interrupted. No requests are requeued or replayed.

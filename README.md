@@ -847,7 +847,7 @@ fields, command strings, paths and dataset names are rejected. Current Plex stat
 archive identities, operation/recovery blocks and readiness are checked before
 submission. Admission does not mark progress/history successful.
 
-No execution backend is supplied by this change. A separately authorised backend
+No execution backend is supplied by the default runtime. A separately authorised backend
 must durably deduplicate request_id together with the complete request payload,
 reserve exclusive execution before returning `AcceptedOperation`, and repeat
 identity/readiness checks under the coordinator lock. A restore request's queued
@@ -896,5 +896,47 @@ cannot cause a resubmission when the first operation has already changed archive
 counts, Plex status or operation state. Conflicting payloads are rejected. A new
 request still passes every current readiness check. No lookup/journal is supplied
 by the default restricted runtime, and no execution service is enabled. This
-change does not yet implement an executor, grant host privileges, serialize work
-for automatic restart, or test iXVolume persistence on the NAS.
+ledger itself does not execute work, grant host privileges or serialize work
+for automatic restart. See the optional runner below; iXVolume persistence on the
+NAS remains untested.
+
+
+### Optional asynchronous execution runner (not installed or enabled)
+
+`ExecutionWorker` connects fixed typed requests to actual Backup/Restore
+coordinators on a non-daemon thread. Trusted deployment must supply fixed API,
+dataset, archive/state directories and coordinator factories. No host credential,
+mount, root privilege, arbitrary command interface or default runtime wiring is
+provided. The runner checks coordinator type, API/dataset/path scope and private
+state/history/progress storage before using it. Admission repeats Plex status,
+archive-count/identity and Restore digest/checkpoint checks under the operation
+lock. It durably reserves/claims the request before returning its receipt.
+
+One lock is held from admission through coordinator reporting and journal
+finalization. A single-use, thread/path-bound guard lends that reservation to the
+coordinator without releasing/reacquiring it. An explicit handoff prevents failed
+thread startup from executing after the parent releases its lock. Matching
+replays return the existing receipt without starting another thread. Shutdown
+rejects new work and waits for owned threads. There is no automatic restart of
+queued/interrupted jobs; the execution owner explicitly calls
+`worker.reconcile_startup()` before accepting traffic, and this refuses live work.
+
+Operation JSON now optionally records `execution_request_id` (legacy rows load
+with None). The coordinator binds it when execution begins; runner success also
+requires matching request/kind/archive, verified SUCCESS, no snapshot/publication
+intent/private workspace and completed progress. Unexpected interruptions remain
+RECOVERY_REQUIRED. Journal/reporting uncertainty cannot become a claimed success.
+`/api/operation` can expose whitelisted execution status with nanosecond timestamps
+as decimal strings and an explicit binding flag, never private ownership tokens
+or request fingerprints. An admitted job awaiting recovery also blocks ordinary
+Restore validation/cancellation and archive deletion. Historical UI success is
+suppressed for a different or unconfirmed admitted job without changing layout.
+
+Local tests exercise the runner with real coordinators, tar/staging and private
+SQLite stores using a fake scoped host API. They cover HTTP admission/status,
+background lock ownership, replay, scoped factories, Restore failure retention,
+startup/shutdown and stale success suppression. This runner has not been tested
+on the NAS, in an unprivileged installed container, or across an actual reboot.
+The approved host-integration/permission design, execution button wiring and
+final app installation remain to be completed. The restricted runtime still
+rejects any execution backend and grants no new capabilities.
