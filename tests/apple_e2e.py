@@ -24,8 +24,15 @@ from selenium.webdriver.support import expected_conditions as EC
 from apple_fixture import apple_fixture
 
 
-def command(*args):
-    return subprocess.check_output(args, text=True, timeout=120).strip()
+def command(*args, timeout=120):
+    print('Apple CI command:', ' '.join(args), flush=True)
+    try:
+        return subprocess.check_output(args, text=True, timeout=timeout).strip()
+    except subprocess.TimeoutExpired as error:
+        partial = error.output or b''
+        if isinstance(partial, bytes): partial = partial.decode('utf-8', errors='replace')
+        print('Timed-out command output:', partial[-4000:], flush=True)
+        raise
 
 
 def create_simulator(tablet):
@@ -50,9 +57,10 @@ def create_simulator(tablet):
     identifier = command('xcrun','simctl','create',name,selected['deviceTypeIdentifier'],runtime)
     try:
         command('xcrun','simctl','boot',identifier)
-        command('xcrun','simctl','bootstatus',identifier,'-b')
+        command('xcrun','simctl','bootstatus',identifier,'-b',timeout=360)
     except BaseException:
-        subprocess.run(['xcrun','simctl','delete',identifier],check=False)
+        subprocess.run(['xcrun','simctl','shutdown',identifier],check=False,timeout=60)
+        subprocess.run(['xcrun','simctl','delete',identifier],check=False,timeout=60)
         raise
     print('Apple simulator:',selected['name'],runtime,identifier,flush=True)
     return identifier
