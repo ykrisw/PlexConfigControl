@@ -58,7 +58,10 @@ export function mountHistoryView(root, client, {language = 'en', timezone = 'Eur
       CLEARED: tx('Selected history records removed. Permanent log files were preserved.', 'Usunięto zaznaczone wpisy historii. Trwałe pliki logów zostały zachowane.'),
       CLEAR_UNCONFIRMED: tx('Deletion could not be confirmed. Review the refreshed list before trying again.', 'Nie udało się potwierdzić usunięcia. Przed kolejną próbą sprawdź odświeżoną listę.'),
     };
-    const message = value.error || notices[value.notice] || '';
+    const logNotice=value.archiveLogs?.pending>0?
+      tx(`Permanent archive-event logs awaiting write: ${value.archiveLogs.pending}. ${value.archiveLogs.enabled?'Check access to Plex Config/Logs.':'Archive storage is read-only in this installation.'}`,
+         `Trwałe logi zdarzeń archiwów oczekujące na zapis: ${value.archiveLogs.pending}. ${value.archiveLogs.enabled?'Sprawdź dostęp do Plex Config/Logs.':'Folder archiwów w tej instalacji jest tylko do odczytu.'}`):'';
+    const message = value.error || notices[value.notice] || logNotice;
     find('[data-notice]').hidden = !message; find('[data-notice]').textContent = message;
     const empty = find('[data-empty]');
     empty.hidden = Boolean(value.entries.length);
@@ -73,13 +76,13 @@ export function mountHistoryView(root, client, {language = 'en', timezone = 'Eur
       input.disabled = value.busy || value.loading || !value.available || dialog.open;
       row.classList.toggle('pcc-selected',input.checked);
       const text = document.createElement('span'); text.className = 'pcc-event-text';
-      const kind = ({BACKUP:tx('Backup','Kopia zapasowa'),RESTORE:tx('Restore','Przywracanie')})[event.kind] || String(event.kind);
+      const kind = ({BACKUP:tx('Backup','Kopia zapasowa'),RESTORE:tx('Restore','Przywracanie'),ARCHIVE_DETECTED:tx('Archive detected','Wykryto archiwum')})[event.kind] || String(event.kind);
       let date = String(event.created);
       if (Number.isFinite(Date.parse(event.created))) date = dateFormat.format(new Date(event.created));
       text.textContent = `${date} · ${kind}`;
       if (event.archive) { const archive = document.createElement('small'); archive.textContent = event.archive; text.append(archive); }
       const status = document.createElement('span'); status.className = 'pcc-event-status'; status.dataset.status = event.status;
-      status.textContent = ({SUCCESS:tx('SUCCESS','SUKCES'),FAILED:tx('FAILED','BŁĄD'),WARNING:tx('WARNING','OSTRZEŻENIE')})[event.status] || String(event.status);
+      status.textContent = ({SUCCESS:tx('SUCCESS','SUKCES'),FAILED:tx('FAILED','BŁĄD'),WARNING:tx('WARNING','OSTRZEŻENIE'),INFO:tx('INFO','INFORMACJA')})[event.status] || String(event.status);
       input.setAttribute('aria-label', `${tx('Select','Zaznacz')}: ${date} · ${kind}`);
       row.append(input,text,status); list.append(row);
       if (input.dataset.eventId === focusedId) input.focus({preventScroll:true});

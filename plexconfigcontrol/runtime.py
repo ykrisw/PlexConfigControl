@@ -80,7 +80,7 @@ def prepare(config,verifier=None):
     if config.truenas_url:
         api=ReadOnlyTrueNAS(build_client(config.truenas_url,config.api_username,
              read_secret(config.api_key_file),config.ca_file,timeout=10))
-    web=Web(config.state,archive_directory=config.archives,truenas_api=api,archive_deletion_enabled=False)
+    web=Web(config.state,archive_directory=config.archives,truenas_api=api,archive_deletion_enabled=False,archive_logs_enabled=False)
     with operation_lock(config.state):
         with web.account.connect() as db:
             existing=db.execute('SELECT id FROM account WHERE id=1').fetchone()

@@ -3,12 +3,12 @@ export function createHistoryController(client, render, {
 } = {}) {
   let entries = [], selected = new Set(), filter = 'ALL';
   let loading = false, busy = false, available = false, disposed = false, timer;
-  let error = '', notice = '';
+  let error = '', notice = '', archiveLogs = null;
   const lifecycle = new AbortController();
   function emit() {
     if (disposed) return;
     render({entries: entries.filter(row => filter === 'ALL' || row.kind === filter),
-      selected: [...selected], filter, loading, busy, available, error, notice,
+      selected: [...selected], filter, loading, busy, available, error, notice, archiveLogs,
       counts: {all: entries.length, backup: entries.filter(x => x.kind === 'BACKUP').length,
         restore: entries.filter(x => x.kind === 'RESTORE').length,
         success: entries.filter(x => x.status === 'SUCCESS').length,
@@ -22,6 +22,16 @@ export function createHistoryController(client, render, {
       if (disposed) return;
       if (!Array.isArray(rows) || rows.some(row => !Number.isSafeInteger(row.id) || row.id <= 0)) throw Error('Invalid history response');
       entries = rows;
+      archiveLogs = null;
+      if(typeof client.operation==='function'){
+        try{
+          const operation=await client.operation(lifecycle.signal);
+          if(disposed)return;
+          const logging=operation?.archive_discovery;
+          if(Number.isSafeInteger(logging?.pending_logs)&&logging.pending_logs>=0&&typeof logging.permanent_logs_enabled==='boolean')
+            archiveLogs={pending:logging.pending_logs,enabled:logging.permanent_logs_enabled};
+        }catch{if(disposed)return;}
+      }
       const ids = new Set(rows.map(row => row.id));
       selected = new Set([...selected].filter(id => ids.has(id)));
       available = true; error = '';

@@ -11,6 +11,7 @@ from .archives import archive_name
 from .archive_store import ArchiveStore, ArchiveChanged
 from .backup_archive import create_archive
 from .eventlog import EventLog
+from .archive_discovery import ArchiveDiscovery
 from .locking import operation_lock
 from .operations import Phase
 from .publish import publish_new, capture_original, retire_original
@@ -95,6 +96,7 @@ class Backup:
                                 overwrite.name, original_identity)
                     publish_new(output,self.destination,name,result.sha256,intent)
                     published=True
+                    ArchiveDiscovery(self.destination,self.state,self.history).remember_created(name)
                     if overwrite is not None:
                         self.progress.update('VERIFYING_ARCHIVE')
                         retire_original(self.destination, overwrite, original_identity,

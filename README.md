@@ -272,3 +272,36 @@ cleanup blocks new operations. Manual snapshot removal requires confirmation.
 When creating a backup, use the current archive count: zero creates a new copy,
 one asks overwrite or create another, two or more create another dated copy.
 History deletion never deletes permanent `.log` files. No inactivity logout.
+
+
+## Archive arrival history and permanent logs
+
+Authenticated archive-list and History refreshes scan the configured directory.
+A newly observed filename/inode creates an `ARCHIVE_DETECTED` / `INFO` event with
+the filename, observed size, detection time and an explicit NOT VALIDATED note.
+History displays “Archive detected” / “Wykryto archiwum”; its text can be downloaded
+through Download Logs. Detection does not count as a successful Backup or Restore.
+No source computer or actual copy time is guessed, and no extraction occurs.
+
+An observation ledger in the app ixVolume prevents repeated events across scans,
+worker restarts and History clearing. App-created backups register their identity
+after publication and are not mislabeled as imports. A removal observed on a scan
+followed by a returned file produces another event. Initial unknown files are
+reported as detected, with no claim that they were copied during app uptime.
+This is directory observation, not a continuous OS audit: changes occurring
+entirely between scans, or an in-place overwrite of the same inode, may not be
+recognized as another arrival. Growing copies do not produce an event per chunk.
+
+Each detection also queues a create-only permanent log named
+`ArchiveImport_YYYY.MM.DD_HH.MM.SS_<unique-id>.log`, exclusively under
+`Plex Config/Logs`. The private durable outbox retries unavailable destinations;
+`/api/operation.archive_discovery.pending_logs` reports records awaiting writing.
+A conflicting or partial existing log is never overwritten or removed. Completed
+logs are not recreated if manually deleted. Clearing web history touches neither
+permanent logs nor the observation ledger and never resurrects the cleared event.
+
+The restricted test runtime still mounts archives read-only: it records and
+exports the History event, queues its permanent log in the app ixVolume and
+explicitly reports permanent_logs_enabled=false. It does not bypass that mount or
+write logs elsewhere on the NAS. A writable configured deployment is required
+to flush those records into Plex Config/Logs. Actual SMB/TrueNAS tests are pending.

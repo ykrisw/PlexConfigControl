@@ -6,6 +6,7 @@ from .auth import Account
 from .sessions import Sessions
 from .settings import Settings
 from .history import History
+from .archive_discovery import ArchiveDiscovery
 from .i18n import CATALOG
 from .downloads import history_logs, MissingHistoryEvent
 from .archive_store import ArchiveStore, Archive, ArchiveChanged
@@ -24,7 +25,7 @@ from .restore_readiness import restore_readiness
 from .profile_photo import ProfilePhoto,InvalidPhoto,PhotoChanged,MAX_UPLOAD
 
 class Web:
-    def __init__(self,state_directory,archive_directory=None,truenas_api=None,*,archive_deletion_enabled=True):
+    def __init__(self,state_directory,archive_directory=None,truenas_api=None,*,archive_deletion_enabled=True,archive_logs_enabled=True):
         self.state_directory=state_directory
         self.operation_store=StateStore(state_directory)
         self.progress=Progress(state_directory)
@@ -35,6 +36,8 @@ class Web:
         self.sessions=Sessions(state_directory)
         self.settings=Settings(state_directory)
         self.history=History(state_directory)
+        self.discovery=ArchiveDiscovery(archive_directory,state_directory,self.history,
+            permanent_logs=archive_logs_enabled) if archive_directory else None
         self.archive_deletion_enabled=archive_deletion_enabled
         self.photo=ProfilePhoto(state_directory)
 
@@ -195,7 +198,8 @@ class Web:
             with self.operation_store.transaction() as operation:
                 state=operation_dict(operation)
             return respond('200 OK',{'operation':state,'progress':self.progress.read(),
-                                    'publication':describe_publication(self.state_directory)})
+                                    'publication':describe_publication(self.state_directory),
+                                    'archive_discovery':self.discovery.status() if self.discovery else None})
         if path=='/api/status' and method=='GET':
             status=self.plex.read() if self.plex else {
                 'state':'UNKNOWN','available':False,'restore_allowed':False,'checked_at':None}
@@ -249,7 +253,7 @@ class Web:
             if self.archives is None:
                 return respond('503 Service Unavailable',{'error':'Archive location is not configured'})
             try:
-                return respond('200 OK',[archive_wire(asdict(item)) for item in self.archives.list()])
+                return respond('200 OK',[archive_wire(asdict(item)) for item in self.discovery.scan()])
             except OSError:
                 return respond('503 Service Unavailable',{'error':'Archive location is unavailable'})
         if path=='/api/archives/delete' and method=='POST':
@@ -293,6 +297,9 @@ class Web:
                 return respond('404 Not Found',{'error':'History event no longer exists'})
             return respond('200 OK',event)
         if path=='/api/history' and method=='GET':
+            if self.discovery:
+                try: self.discovery.scan()
+                except OSError: pass  # Existing history stays available if the folder is offline.
             return respond('200 OK',self.history.list())
         if path=='/api/history/download' and method=='POST':
             try:

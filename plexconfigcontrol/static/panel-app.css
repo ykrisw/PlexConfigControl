@@ -49,6 +49,7 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 .pcc-shell .pcc-event-status{font-size:12px;border-radius:20px;padding:3px 10px;white-space:nowrap}
 .pcc-shell .pcc-event-status[data-status=SUCCESS]{background:light-dark(#e0f5e9,#173e2d)}
 .pcc-shell .pcc-event-status[data-status=FAILED]{background:light-dark(#fde8e8,#4b272e)}
+.pcc-shell .pcc-event-status[data-status=INFO]{background:light-dark(#e6effb,#27394f)}
 .pcc-shell .pcc-event-status[data-status=WARNING]{background:light-dark(#fff0ca,#4e4024)}
 .pcc-shell .pcc-backup .pcc-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;margin-bottom:12px}
 .pcc-shell .pcc-backup h2{font-size:16px;font-weight:600;margin:0}

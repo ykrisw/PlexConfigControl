@@ -2,6 +2,7 @@
 import io
 import json
 import os
+import shutil
 import ssl
 import subprocess
 import tarfile
@@ -93,21 +94,62 @@ def main():
             expect(backup.locator('.pcc-selected')).to_have_count(1)
             expect(backup.locator('[data-delete]')).to_be_disabled()
             assert backup.locator('[data-archives]').evaluate('(e)=>e.scrollHeight>e.clientHeight')
+            # Import while the panel is already open. Copy only archive bytes;
+            # there is deliberately no matching history event or app manifest.
+            imported_name='TrueNASPlexConfig_2026.09.30_08.15.00.tar.gz'
+            external=temporary/imported_name
+            shutil.copyfile(archives/'TrueNASPlexConfig_2026.10.13_10.30.00.tar.gz',external)
+            imported=archives/imported_name
+            shutil.copyfile(external,imported)
+            backup.locator('[data-refresh]').click()
+            expect(backup.locator('.pcc-archive-row')).to_have_count(14)
+            expect(backup.locator('[data-count]')).to_have_text('14 backups')
+            imported_checkbox=backup.get_by_role('checkbox',name='Select: '+imported_name,exact=True)
+            imported_checkbox.check()
+            expect(imported_checkbox).to_be_checked()
+            expect(backup.locator('.pcc-selected').filter(has_text=imported_name)).to_have_count(1)
+            imported_checkbox.uncheck()
             page.get_by_role('tab',name='Restore',exact=True).click()
             restore=page.locator('[data-panel=restore]')
-            expect(restore.locator('input[type=radio]')).to_have_count(13)
+            expect(restore.locator('input[type=radio]')).to_have_count(14)
             assert restore.locator('input:checked').count()==0
-            restore.locator('input[type=radio]').first.check()
+            # The same open Restore tab must discover removal and return.
+            imported.unlink()
+            restore.locator('[data-restore-action=refresh]').click()
+            expect(restore.locator('input[type=radio]')).to_have_count(13)
+            shutil.copyfile(external,imported)
+            restore.locator('[data-restore-action=refresh]').click()
+            expect(restore.locator('input[type=radio]')).to_have_count(14)
+            imported_radio=restore.get_by_role('radio',name='Select: '+imported_name,exact=True)
+            imported_radio.check()
+            expect(imported_radio).to_be_checked()
+            expect(restore.locator('.pcc-selected')).to_contain_text(imported_name)
             expect(restore.locator('[data-restore-action=validate]')).to_be_enabled()
             restore.locator('[data-restore-action=validate]').click()
             expect(restore.locator('[data-validation-notice]')).to_contain_text('not confirmed stopped')
             expect(restore.locator('[data-restore-action=validate]')).to_be_disabled()
             restore.locator('[data-restore-action=cancel]').click()
             expect(restore.locator('[data-restore-action=cancel]')).to_be_hidden()
+            # Return to the approved 13-row screenshot fixture after the import
+            # check. Only this disposable test file is removed, never NAS data.
+            imported.unlink()
+            restore.locator('[data-restore-action=refresh]').click()
+            expect(restore.locator('input[type=radio]')).to_have_count(13)
+            expect(restore.locator('input:checked')).to_have_count(0)
             page.get_by_role('tab',name='History',exact=True).click()
             history=page.locator('[data-panel=history]')
             expect(history.locator('.pcc-event-row')).not_to_have_count(0)
             assert history.locator('[data-events]').evaluate('(e)=>e.scrollHeight>e.clientHeight')
+            imported_event=history.locator('.pcc-event-row').filter(has_text='Archive detected').filter(has_text=imported_name).first
+            expect(imported_event).to_be_visible()
+            expect(imported_event.locator('[data-status=INFO]')).to_have_text('INFO')
+            imported_event.locator('input[type=checkbox]').check()
+            with page.expect_download() as import_download:
+                history.locator('[data-download]').click()
+            import_log=temporary/'import-event.log'
+            import_download.value.save_as(str(import_log))
+            assert imported_name in import_log.read_text() and 'NOT VALIDATED' in import_log.read_text()
+            imported_event.locator('input[type=checkbox]').uncheck()
             history.locator('input[type=checkbox]').first.check()
             with page.expect_download() as downloaded:
                 history.locator('[data-download]').click()

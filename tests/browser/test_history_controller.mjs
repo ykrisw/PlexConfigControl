@@ -76,3 +76,22 @@ test('download uses selected identities and disposed requests cannot deliver a f
   complete({filename:'logs.zip',blob:{}});
   assert.equal(await pending,null);assert.equal(view.states.length,count);
 });
+
+
+test('archive detection is informational history, downloadable and not counted as a successful backup',async()=>{
+  const detected={id:4,kind:'ARCHIVE_DETECTED',status:'INFO',archive:'external.tar.gz'};
+  const view=setup({history:async()=>[detected,...events],downloadHistory:async ids=>({ids})});await flush();
+  assert.equal(view.states.at(-1).counts.all,4);
+  assert.equal(view.states.at(-1).counts.success,2);
+  assert.equal(view.states.at(-1).counts.backup,1);
+  view.controller.select(4,true);assert.deepEqual((await view.controller.download([4])).ids,[4]);
+  view.controller.setFilter('BACKUP');assert.equal(view.states.at(-1).entries.some(row=>row.id===4),false);
+  view.controller.dispose();
+});
+
+
+test('history exposes queued permanent logs without claiming a read-only destination was written',async()=>{
+  const view=setup({history:async()=>events,operation:async()=>({archive_discovery:{pending_logs:3,permanent_logs_enabled:false}})});
+  await flush();assert.deepEqual(view.states.at(-1).archiveLogs,{pending:3,enabled:false});
+  assert.equal(view.states.at(-1).available,true);view.controller.dispose();
+});

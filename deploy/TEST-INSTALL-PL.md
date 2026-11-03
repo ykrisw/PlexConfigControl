@@ -133,3 +133,16 @@ walidacji, anuluj przygotowanie i zweryfikuj wklejony plik ponownie. Ręczne zat
 Plex oraz potwierdzenie tekstem `RESTORE` nadal będą wymagane przed przywróceniem.
 Ograniczona wersja testowa nadal blokuje właściwe wykonanie Restore; ta instrukcja
 nie odblokowuje operacji na działającym serwerze.
+
+
+Wykrycie nowego archiwum pojawia się w **History / Historia** jako
+**Archive detected / Wykryto archiwum**, ze statusem informacyjnym. Wpis zawiera nazwę
+pliku i czas wykrycia; nie potwierdza poprawności kopii. Możesz pobrać jego treść
+przyciskiem **Download Logs / Pobierz logi**. Kolejne odświeżenia i restart nie
+powielają tego samego wpisu. Usunięcie historii nie usuwa trwałego logu zdarzenia.
+
+W tej ograniczonej instalacji folder archiwów jest tylko do odczytu. Trwały log
+importu czeka więc w kolejce w ixVolume na zapis do `Plex Config/Logs`; program
+nie zapisuje go w przypadkowym miejscu ani nie zmienia uprawnień. Pełna instalacja
+z poprawnie skonfigurowanym zapisem będzie zapisywała tam pliki
+`ArchiveImport_YYYY.MM.DD_HH.MM.SS_<unikalny-identyfikator>.log`.

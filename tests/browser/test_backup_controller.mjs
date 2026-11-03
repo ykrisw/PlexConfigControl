@@ -49,3 +49,17 @@ test('ambiguous deletion is not retried and retains a warning after refresh',asy
   await view.controller.remove(view.controller.selection());await flush();
   assert.equal(view.calls.length,1);assert.equal(view.states.at(-1).notice,'DELETE_UNCONFIRMED');view.controller.dispose();
 });
+
+
+test('external imports appear on refresh without auto-selection and vanish when removed outside the app',async()=>{
+  const view=setup({rows:[]});await flush();
+  assert.deepEqual(view.states.at(-1).entries,[]);
+  const imported=archive('01');view.source.rows=[imported];await view.controller.refresh();
+  assert.deepEqual(view.states.at(-1).entries,[imported]);
+  assert.deepEqual(view.states.at(-1).selected,[]);
+  assert.equal(view.states.at(-1).plan.archive_count,1);
+  view.controller.select(imported.name,true);assert.deepEqual(view.states.at(-1).selected,[imported.name]);
+  view.source.rows=[];await view.controller.refresh();
+  assert.deepEqual(view.states.at(-1).entries,[]);assert.deepEqual(view.states.at(-1).selected,[]);
+  assert.equal(view.calls.length,0);view.controller.dispose();
+});
