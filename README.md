@@ -38,7 +38,7 @@ specification in `design/README.md`. Shared production styles import
 - Complete UI translations of errors.
 - Web integration of the tested replacement coordinator and explicit publication recovery controls.
 - TrueNAS installation test and final Apps password/secret form.
-- Complete restore verification and rollback verification adapters.
+- Isolated TrueNAS verification of the file/metadata and rollback comparison adapters.
 - End-to-end tests on an isolated TrueNAS test dataset before live use.
 
 Tests use temporary local files and simulated TrueNAS adapters. Test counts do
@@ -483,3 +483,31 @@ checkpoint; a browser reload or runtime restart cannot dismiss the pending work.
 The core confirmed reconciliation coordinator is still not exposed through a web
 mutation route: `publication_resolution_supported` remains false. The view offers
 only Refresh status. This does not enable live Backup/Restore execution.
+
+
+## Independent rollback verification
+
+`RollbackVerifier(store, snapshot_reader, config_writer)` is a read-only Restore
+adapter for checking a failed Restore after the snapshot rollback request returns.
+It requires the exact still-recorded Restore snapshot and operation state, opens
+it through the scoped `SnapshotReader`, and compares its configuration against
+the configured live dataset with GNU rsync dry-run, checksums, numeric ownership,
+permissions, hardlink/ACL/xattr checks and unexpected-file detection. Plex must
+remain confirmed STOPPED. Target and source directory identities are rechecked
+after the potentially lengthy comparison, as is the outstanding operation record.
+A changed identity or state prevents a verified-rollback result.
+
+Only `ConfigWriter.verify_snapshot` accepts the exact read-only emergency-snapshot
+path beneath the configured dataset. It excludes the root virtual `.zfs/`
+control directory from this comparison. The source/target overlap restriction
+remains intact for configuration writes: this exception cannot authorize copying
+snapshot contents into the live dataset. The adapter does not create a second
+snapshot, remove the retained emergency snapshot, reset ACLs or start Plex.
+A verified rollback still leaves the failed Restore FAILED/RECOVERY_REQUIRED.
+
+Tests execute actual GNU rsync comparisons on temporary files, including
+same-size corruption with preserved mtime, extra files, permissions and hardlinks.
+Coordinator tests inject a simulated snapshot/rollback API and read-only mount
+flag, and verify that corrupted rollback data is never logged as verified.
+These are not real ZFS rollback or TrueNAS ACL tests. The adapter is not yet
+connected to live Restore execution in the restricted web test installation.
