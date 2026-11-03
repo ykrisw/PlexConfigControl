@@ -6,6 +6,7 @@ from .archive_store import NAME
 from .archives import validate_archive
 from .locking import operation_lock
 from .operations import Phase, OperationDenied
+from .publication_intent import pending
 
 class RestoreValidation:
     def __init__(self, archive_directory, state_directory, store, history):
@@ -18,6 +19,8 @@ class RestoreValidation:
         if not isinstance(name,str) or not NAME.fullmatch(name):
             raise ValueError('Choose a recognized backup archive')
         with operation_lock(self.state_directory):
+            if pending(self.state_directory):
+                raise OperationDenied('Unresolved archive publication requires recovery')
             with self.store.transaction() as operation:
                 operation.begin('RESTORE')
             try:
