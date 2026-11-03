@@ -548,3 +548,38 @@ Fault tests cover staging cleanup, unavailable progress/History/log writes,
 snapshot deletion refusal, lost deletion replies, manual Plex restart during
 cleanup, and process interruption/startup. They use real local tar/gzip staging
 with simulated host responses, not real ZFS operations on a NAS.
+
+
+## Backup reporting failures and preservation
+
+Backup applies fail-closed progress reporting to errors after archive publication,
+including failures of permanent logging or web History. A published archive is
+never deleted by this failure handler. If the publication marker had already
+been cleared, it attempts to recreate the same marker from the previously
+verified digest and recorded filenames, without republishing or trusting a fresh
+hash of possibly changed data. Recreating a marker cannot overwrite an existing
+one. If storage cannot retain that intent, durable operation state still remains
+RECOVERY_REQUIRED and manual investigation is needed.
+
+A finalized Backup log is not reopened or edited: subsequent reporting failures
+attempt a separate create-only Recovery log in `Plex Config/Logs`. History/log
+errors cannot mask the original exception or leave a premature COMPLETED status
+as the final progress result when progress storage is available. RUNNING is kept
+until final reporting returns, so process interruption during reporting is
+reconciled at startup. These independent stores are not one atomic transaction;
+manual investigation must consult operation state and existing permanent logs.
+
+For replacement, private workspace cleanup now precedes retirement of the old
+archive. If cleanup fails, both published new and selected old files remain.
+Remaining `backup-*` workspaces block both full success and publication-recovery
+confirmation. This code never recursively deletes an unidentified workspace.
+Snapshot cleanup remains an independent attempt for exactly the recorded temporary
+snapshot, even when logging fails. Plex is neither stopped nor started.
+
+The injected-fault suite uses actual local archive creation/publication with a
+simulated host API. It covers History and log failures, lost publication replies,
+failed/ambiguous snapshot cleanup, lost snapshot creation replies, interrupted
+final reporting, private workspace leftovers and unavailable recovery-intent
+storage. It also confirms that a retained valid archive can be fully reverified
+and acknowledged without new host calls. This does not enable Backup execution
+in the restricted web runtime or establish real TrueNAS/ZFS permissions.

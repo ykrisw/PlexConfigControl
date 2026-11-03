@@ -37,6 +37,9 @@ class PublicationRecovery:
         return item, replacement
 
     def _eligible(self):
+        with os.scandir(self.state) as entries:
+            if any(entry.name.startswith('backup-') for entry in entries):
+                raise OperationDenied('Private backup workspace cleanup requires verification')
         with self.store.transaction() as operation:
             if (operation.kind != 'BACKUP' or operation.snapshot_id
                     or operation.phase not in (Phase.RECOVERY_REQUIRED, Phase.FAILED)):
