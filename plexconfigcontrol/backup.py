@@ -14,7 +14,8 @@ from .backup_archive import create_archive
 from .eventlog import EventLog
 from .archive_discovery import ArchiveDiscovery
 from .locking import operation_lock
-from .operations import Phase
+from .operations import Phase, OperationDenied
+from .plex import PlexStatus
 from .publish import publish_new, capture_original, retire_original
 from .snapshots import Snapshots
 from . import publication_intent
@@ -66,6 +67,8 @@ class Backup:
             started=datetime.now(timezone.utc); name=archive_name(started)
             if (self.destination/name).exists() or (self.destination/name).is_symlink():
                 raise ArchiveNameCollision('Archive filename already exists; choose another timestamp')
+            if PlexStatus(self.api).read()['state'] != 'RUNNING':
+                raise OperationDenied('Plex must be confirmed RUNNING before Backup')
             original_identity = capture_original(self.destination, overwrite) if overwrite is not None else None
             with self.store.transaction() as operation:
                 operation.begin('BACKUP')
@@ -78,6 +81,8 @@ class Backup:
                 log.write('Backup started. Plex will not be stopped.')
                 with self.store.transaction() as operation: operation.begin_backup()
                 self.progress.update('CREATING_SNAPSHOT')
+                if PlexStatus(self.api).read()['state'] != 'RUNNING':
+                    raise OperationDenied('Plex is no longer confirmed RUNNING before snapshot creation')
                 identifier=snapshots.create()
                 log.write('Temporary snapshot created: '+identifier)
                 with tempfile.TemporaryDirectory(prefix='backup-',dir=self.state) as workspace:

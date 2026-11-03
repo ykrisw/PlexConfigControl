@@ -815,6 +815,22 @@ snapshot and rejection of another snapshot. A passing failure diagnostic
 intentionally retains that snapshot and sandbox for separately confirmed manual
 cleanup; private diagnostic state/log/archive copies in RAM are removed. It never
 removes that recovery point automatically. Unexpected failures or unverified
-recovery cannot produce PASS. This failure/rollback host diagnostic has not yet
-run on the user's NAS. Production WSS authentication, least-privilege container
+recovery cannot produce PASS. The user ran this diagnostic at commit
+`d6de9a0e5b006008e9012a6a76d69ae3ccbd89a3`: rollback, metadata checks, FAILED
+reporting, single-snapshot retention and blocking a second snapshot all passed.
+The user subsequently confirmed manual deletion of that exact snapshot and
+sandbox; independent queries confirmed both absent. Production WSS
+authentication, least-privilege container
 integration, reboot persistence and full app acceptance remain untested.
+
+
+Backup execution independently requires confirmed RUNNING status for the exact
+`plex` app, both before creating operation/log state and again immediately before
+snapshot creation. STOPPED, transitional, unavailable, malformed or wrong-app
+responses block execution without starting Plex. A loss of RUNNING confirmation
+after preparation records a failed operation with its diagnostic log and creates
+no snapshot/archive. The rule applies to new copies and confirmed overwrite;
+stale archive choices and the single-copy decision still resolve before host
+reads. These added checks have local regression coverage; the previous host
+coordinator pass predates this additional guard. The restricted web runtime still
+does not enable host writes or operational Backup/Restore routes.

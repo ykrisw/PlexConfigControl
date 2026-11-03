@@ -57,3 +57,69 @@ class BackupTests(unittest.TestCase):
             with store.transaction() as op: self.assertEqual(op.phase,Phase.SUCCESS)
             self.assertEqual(progress.read()['stage'],'COMPLETED')
             self.assertFalse(any(m in ('app.start','app.stop') for m,_ in api.calls))
+
+    def test_unconfirmed_running_plex_blocks_new_and_overwrite_without_mutating_files_or_state(self):
+        from unittest.mock import Mock
+        from dataclasses import asdict
+        from plexconfigcontrol.operations import OperationDenied
+        responses = (
+            [{'name':'plex','state':'STOPPED'}],
+            [{'name':'plex','state':'UNKNOWN'}],
+            [{'name':'plex','state':'DEPLOYING'}],
+            [{'name':'other-app','state':'RUNNING'}],
+            [{'name':'plex','state':'RUNNING'}, {'name':'plex','state':'STOPPED'}],
+            None,
+            TimeoutError('secret transport details'),
+        )
+        for overwrite in (False, True):
+            for response in responses:
+                with self.subTest(overwrite=overwrite,response=response), tempfile.TemporaryDirectory() as directory:
+                    root=Path(directory); state=root/'state'; destination=root/'Plex Config'
+                    (destination/'Logs').mkdir(parents=True)
+                    api=Mock()
+                    if isinstance(response,Exception): api.call.side_effect=response
+                    else: api.call.return_value=response
+                    store=StateStore(state);history=History(state);progress=Progress(state)
+                    reader=Mock()
+                    backup=Backup(api,store,history,progress,state,destination,'test/config',reader)
+                    original=None;selected=None
+                    if overwrite:
+                        original=destination/'TrueNASPlexConfig_2020.01.01_00.00.00.tar.gz'
+                        original.write_bytes(b'preserve existing archive')
+                        selected=ArchiveStore(destination,state).list()[0]
+                    with store.transaction() as operation: before=asdict(operation)
+                    with self.assertRaises(OperationDenied) as error:
+                        if overwrite: backup.run_overwrite(selected)
+                        else: backup.run_new()
+                    self.assertNotIn('secret',str(error.exception))
+                    self.assertTrue(all(call.args[0]=='app.query' for call in api.call.call_args_list))
+                    reader.assert_not_called()
+                    self.assertEqual(list((destination/'Logs').iterdir()),[])
+                    self.assertEqual(history.list(),[])
+                    self.assertIsNone(progress.read())
+                    with store.transaction() as operation: self.assertEqual(asdict(operation),before)
+                    if original: self.assertEqual(original.read_bytes(),b'preserve existing archive')
+
+    def test_plex_stopping_after_initial_check_cannot_create_snapshot_or_publish(self):
+        from unittest.mock import Mock
+        from plexconfigcontrol.operations import OperationDenied
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);state=root/'state';destination=root/'Plex Config'
+            (destination/'Logs').mkdir(parents=True)
+            api=Mock(); api.call.side_effect=[
+                [{'name':'plex','state':'RUNNING'}],
+                [{'name':'plex','state':'STOPPING'}],
+            ]
+            store=StateStore(state);history=History(state);progress=Progress(state)
+            reader=Mock()
+            backup=Backup(api,store,history,progress,state,destination,'test/config',reader)
+            with self.assertRaises(OperationDenied): backup.run_new()
+            self.assertEqual([call.args[0] for call in api.call.call_args_list],['app.query','app.query'])
+            reader.assert_not_called()
+            self.assertEqual(list(destination.glob('*.tar.gz')),[])
+            with store.transaction() as operation:
+                self.assertEqual(operation.phase,Phase.FAILED)
+                self.assertIsNone(operation.snapshot_id)
+            self.assertEqual(progress.read()['stage'],'FAILED')
+            self.assertEqual(history.list()[0]['status'],'FAILED')
+            self.assertEqual(len(list((destination/'Logs').glob('Backup_*.log'))),1)

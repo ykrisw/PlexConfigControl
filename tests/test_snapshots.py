@@ -12,7 +12,7 @@ class API:
             if self.fail_create: raise TimeoutError('reply lost')
         if method=='pool.snapshot.query': return [{'id':args[0][0][2]}] if args[0][0][2] in self.present else []
         if method=='pool.snapshot.delete' and not self.keep: self.present.remove(args[0])
-        if method=='app.query': return [{'state':'RUNNING'}]
+        if method=='app.query': return [{'name':'plex','state':'RUNNING'}]
 
 class SnapshotTests(unittest.TestCase):
     def prepare(self, directory, kind='BACKUP'):
