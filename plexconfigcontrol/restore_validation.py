@@ -7,6 +7,7 @@ from .archives import validate_archive
 from .locking import operation_lock
 from .operations import Phase, OperationDenied
 from .publication_intent import pending
+from .progress import Progress
 
 class RestoreValidation:
     def __init__(self, archive_directory, state_directory, store, history):
@@ -14,6 +15,7 @@ class RestoreValidation:
         self.state_directory=state_directory
         self.store=store
         self.history=history
+        self.progress=Progress(state_directory)
 
     def validate(self, name):
         if not isinstance(name,str) or not NAME.fullmatch(name):
@@ -24,6 +26,7 @@ class RestoreValidation:
             with self.store.transaction() as operation:
                 operation.begin('RESTORE')
             try:
+                self.progress.start('RESTORE')
                 # Keep both directory and source file open. Validation uses the
                 # held inode, not a path which an SMB client could replace.
                 directory=os.open(self.archive_directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
@@ -32,18 +35,22 @@ class RestoreValidation:
                     try:
                         if not stat.S_ISREG(os.fstat(fd).st_mode):
                             raise ValueError('Archive must be a regular file')
-                        result=validate_archive(None, source_fd=fd)
+                        result=validate_archive(None, source_fd=fd,
+                            progress_callback=lambda stage,done: self.progress.update(stage,done=done))
                     finally:
                         os.close(fd)
                 finally:
                     os.close(directory)
                 with self.store.transaction() as operation:
                     operation.archive_validated(result.sha256)
+                self.progress.update('WAITING_FOR_PLEX_STOP')
                 self.history.add('ARCHIVE_VALIDATION','SUCCESS',
                                  'Archive contents verified; waiting for manual Plex stop.',name)
                 return {'archive':name,'sha256':result.sha256,'files':result.files,
                         'bytes_read':result.bytes_read,'phase':'WAITING_FOR_PLEX_STOP'}
             except Exception:
+                try: self.progress.update('FAILED')
+                except ValueError: pass
                 with self.store.transaction() as operation:
                     if operation.phase==Phase.VALIDATING:
                         operation.phase=Phase.FAILED
@@ -60,3 +67,5 @@ class RestoreValidation:
                 operation.phase=Phase.IDLE
                 operation.kind=None
                 operation.archive_identity=None
+            try: self.progress.update('CANCELLED')
+            except ValueError: pass
