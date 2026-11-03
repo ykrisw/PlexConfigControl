@@ -62,7 +62,6 @@ def create_simulator(tablet):
         simulator_app=Path(command('xcode-select','-p'))/'Applications'/'Simulator.app'
         command('open','-a',str(simulator_app),'--args','-CurrentDeviceUDID',identifier)
         command('xcrun','simctl','launch',identifier,'com.apple.mobilesafari')
-        command('xcrun','simctl','openurl',identifier,'about:blank')
     except BaseException:
         subprocess.run(['xcrun','simctl','shutdown',identifier],check=False,timeout=60)
         subprocess.run(['xcrun','simctl','delete',identifier],check=False,timeout=60)
@@ -194,6 +193,10 @@ def main():
                 if mode in ('safari-ios','safari-ipados'):
                     simulator=create_simulator(mode=='safari-ipados')
                     command('xcrun','simctl','keychain',simulator,'add-root-cert',str(fixture['cert']))
+                    # openurl accepts OS-registered URL schemes; about:blank
+                    # is not one on iOS. Open the actual trusted HTTPS fixture
+                    # so Safari has a web content target before driver attach.
+                    command('xcrun','simctl','openurl',simulator,fixture['url'])
                     options.platform_name='iOS'
                     options.set_capability('safari:useSimulator',True)
                     options.set_capability('safari:deviceUDID',simulator)
