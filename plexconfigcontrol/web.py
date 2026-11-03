@@ -16,6 +16,9 @@ from .state import StateStore
 from dataclasses import asdict as operation_dict
 from .publication_intent import describe as describe_publication
 from .backup_plan import plan_backup
+from .restore_validation import RestoreValidation
+from .archives import InvalidArchive
+from .operations import OperationDenied
 
 class Web:
     def __init__(self,state_directory,archive_directory=None,truenas_api=None):
@@ -120,6 +123,27 @@ class Web:
             except OSError:
                 return respond('503 Service Unavailable',{'error':'Archive location is unavailable'})
             return respond('200 OK',plan)
+        if path in ('/api/restore/validate','/api/restore/cancel') and method=='POST':
+            if self.archives is None:
+                return respond('503 Service Unavailable',{'error':'Archive location is not configured'})
+            service=RestoreValidation(self.archives.directory,self.state_directory,
+                                      self.operation_store,self.history)
+            try:
+                if path=='/api/restore/cancel':
+                    service.cancel()
+                    return respond('200 OK',{'cancelled':True})
+                # Synchronous validation: production HTTP timeouts and the UI
+                # must accommodate large archives; no background job is claimed.
+                result=service.validate(data.get('archive'))
+                return respond('200 OK',result)
+            except (OperationBusy,OperationDenied):
+                return respond('409 Conflict',{'error':'Another operation or recovery must finish'})
+            except InvalidArchive as error:
+                return respond('422 Unprocessable Entity',{'error':str(error),'validation':'FAILED'})
+            except ValueError:
+                return respond('400 Bad Request',{'error':'Choose a recognized backup archive'})
+            except OSError:
+                return respond('503 Service Unavailable',{'error':'Archive is unavailable or unreadable'})
         if path=='/api/archives' and method=='GET':
             if self.archives is None:
                 return respond('503 Service Unavailable',{'error':'Archive location is not configured'})
