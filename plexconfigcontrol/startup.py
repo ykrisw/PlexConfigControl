@@ -23,6 +23,11 @@ def reconcile_startup(store, progress, history, state_directory):
             # destination staging file. Never silently allow another operation.
             operation.phase=Phase.RECOVERY_REQUIRED
             kind=operation.kind
+            if kind=='RESTORE' and phase==Phase.VALIDATING and operation.validation_details:
+                operation.validation_details={
+                    'archive':operation.validation_details.get('archive'),
+                    'status':'INTERRUPTED',
+                    'reason':'Application restarted before validation completed'}
         try:
             progress.update('CLEANUP_REQUIRED')
         except ValueError:
