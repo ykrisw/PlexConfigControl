@@ -13,6 +13,25 @@ STAGE = '.pcc-' + 'a'*32 + '.tmp'
 ARCHIVE = 'TrueNASPlexConfig_2026.11.03_04.15.35.tar.gz'
 
 class PublicationIntentTests(unittest.TestCase):
+    def test_diagnostics_are_read_only_and_do_not_claim_success(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(intent.describe(d)['status'],'NONE')
+            intent.record(d,STAGE,ARCHIVE)
+            marker=Path(d)/intent.MARKER
+            before=marker.read_bytes()
+            self.assertEqual(intent.describe(d),{
+                'pending':True,'status':'VERIFICATION_REQUIRED',
+                'archive':ARCHIVE,'temporary_file':STAGE})
+            self.assertEqual(marker.read_bytes(),before)
+            for payload in (b'/private/secret\npassword\n', b'x'*10000, b'\xff'):
+                marker.write_bytes(payload)
+                result=intent.describe(d)
+                self.assertTrue(result['pending'])
+                self.assertEqual(result['status'],'RECORD_UNREADABLE')
+                self.assertIsNone(result['archive'])
+            marker.unlink(); marker.symlink_to(Path(d)/'missing')
+            self.assertEqual(intent.describe(d)['status'],'RECORD_UNREADABLE')
+
     def test_record_is_exclusive_private_and_clear_is_durable(self):
         with tempfile.TemporaryDirectory() as d:
             intent.record(d,STAGE,ARCHIVE)
