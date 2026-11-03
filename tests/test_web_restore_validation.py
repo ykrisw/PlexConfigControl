@@ -3,6 +3,7 @@ import json
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from plexconfigcontrol.archives import REQUIRED
 from plexconfigcontrol.web import Web
@@ -29,6 +30,11 @@ class RestoreEndpointTests(unittest.TestCase):
             self.assertEqual(request(endpoint,{'archive':NAME},False)[0],'401 Unauthorized')
             self.assertEqual(request(endpoint,{'archive':NAME},csrf_value='bad')[0],'403 Forbidden')
             self.assertEqual(request(endpoint,{'archive':'../../other'})[0],'400 Bad Request')
+            with patch('plexconfigcontrol.web.RestoreValidation.start_background') as background:
+                code,result=request(endpoint,{'archive':NAME,'background':True})
+                self.assertEqual(code,'202 Accepted')
+                self.assertEqual(result['status_url'],'/api/operation')
+                background.assert_called_once_with(NAME)
             with tarfile.open(dest/NAME,'w:gz') as archive:
                 for name in REQUIRED:
                     member=tarfile.TarInfo(name); member.size=4
