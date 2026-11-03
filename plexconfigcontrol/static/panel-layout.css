@@ -1,11 +1,11 @@
 /* Shared geometry agreed for Dashboard, Backup, Restore, History and Settings. */
-.pcc-shell{--pcc-content-height:820px;--pcc-inset:18px;--pcc-gap:14px;--pcc-bg:#f1f3f8;--pcc-card:#fff;--pcc-ink:#172438;--pcc-line:#d4dfed;--pcc-selected:#f2f7fd;font:14px/1.5 Arial,sans-serif;background:var(--pcc-bg);color:var(--pcc-ink);border-radius:20px}
+.pcc-shell{--pcc-content-height:820px;--pcc-inset:18px;--pcc-gap:14px;--pcc-bg:#f1f3f8;--pcc-card:#fff;--pcc-ink:#000000;--pcc-line:#d4dfed;--pcc-selected:#f2f7fd;font:14px/1.5 Arial,sans-serif;background:var(--pcc-bg);color:var(--pcc-ink);border-radius:20px}
 .pcc-shell *{box-sizing:border-box}.pcc-shell [hidden]{display:none!important}
 .pcc-shell .pcc-header{background:#222932;color:#f4f6fa;border-radius:20px 20px 0 0}
 .pcc-shell .pcc-brand{display:flex;align-items:center;gap:12px;font-size:23px;font-weight:700;padding:18px 22px 12px}
 .pcc-shell .pcc-logo{width:20px;height:24px;color:#ffbf00;flex-shrink:0}
 .pcc-shell .pcc-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:0 20px}
-.pcc-shell .pcc-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:60px;border:0;border-bottom:3px solid transparent;background:none;color:#e5e9ef;font:600 14px Arial,sans-serif;cursor:pointer}
+.pcc-shell .pcc-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:60px;border:0;border-bottom:3px solid transparent;background:none;color:#ffffff;font:600 14px Arial,sans-serif;cursor:pointer}
 .pcc-shell .pcc-nav button[aria-selected=true]{border-bottom-color:#56bcfa;color:#fff}
 .pcc-shell .pcc-nav svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5}
 .pcc-shell .pcc-main{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(var(--pcc-content-height),auto);padding:14px var(--pcc-inset) 18px}
