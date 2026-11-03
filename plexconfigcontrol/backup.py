@@ -1,18 +1,25 @@
 """Backup orchestration; host API and verified snapshot access are injected.
 
-Initial path supports new dated copies. The single-existing-copy decision must
-be resolved by the caller; overwrite is deliberately not implemented here yet.
+Supports new dated copies and requires an explicit current-file decision when
+one copy exists. The overwrite workflow is not implemented here yet.
 """
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from .archives import archive_name
+from .archive_store import ArchiveStore, ArchiveChanged
 from .backup_archive import create_archive
 from .eventlog import EventLog
 from .locking import operation_lock
 from .operations import Phase
 from .publish import publish_new
 from .snapshots import Snapshots
+
+class BackupDecisionRequired(RuntimeError):
+    """Exactly one copy exists; the UI must offer overwrite or another copy."""
+    def __init__(self, archive):
+        super().__init__('Choose whether to overwrite the existing archive or create another copy')
+        self.archive = archive
 
 class Backup:
     def __init__(self,api,store,history,progress,state_directory,destination,dataset,snapshot_reader):
@@ -22,8 +29,20 @@ class Backup:
         # Context manager must expose ONLY this snapshot's immutable contents.
         self.snapshot_reader=snapshot_reader
 
-    def run_new(self):
+    def run_new(self, *, create_another=None):
+        """Create a dated copy after resolving the current single-copy prompt.
+
+        create_another is the exact Archive identity displayed by that prompt,
+        not a reusable boolean. Recount under the operation lock every time.
+        Overwriting is a separate workflow and is not enabled by this method.
+        """
         with operation_lock(self.state):
+            archives = ArchiveStore(self.destination, self.state).list()
+            if create_another is not None:
+                if len(archives) != 1 or archives[0] != create_another:
+                    raise ArchiveChanged('Archives changed; refresh and choose again')
+            elif len(archives) == 1:
+                raise BackupDecisionRequired(archives[0])
             with self.store.transaction() as operation: operation.begin('BACKUP')
             started=datetime.now(timezone.utc); name=archive_name(started)
             log=None; published=False
