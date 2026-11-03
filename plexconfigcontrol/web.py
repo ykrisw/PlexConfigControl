@@ -1,5 +1,6 @@
 """WSGI JSON endpoints. Mount behind an HTTPS server; UI integration pending."""
 import json
+from importlib.resources import files
 from http.cookies import SimpleCookie, CookieError
 from .auth import Account
 from .sessions import Sessions
@@ -43,6 +44,13 @@ class Web:
             return [body]
         method=environ.get('REQUEST_METHOD','GET')
         path=environ.get('PATH_INFO','/')
+        if method=='GET' and path=='/assets/panel-client.mjs':
+            body=files('plexconfigcontrol').joinpath('static/panel-client.mjs').read_bytes()
+            start_response('200 OK',[
+                ('Content-Type','text/javascript; charset=utf-8'),
+                ('Content-Length',str(len(body))),('Cache-Control','no-store'),
+                ('X-Content-Type-Options','nosniff')])
+            return [body]
         cookie=SimpleCookie()
         try: cookie.load(environ.get('HTTP_COOKIE',''))
         except CookieError: return respond('400 Bad Request',{'error':'Invalid cookie'})
@@ -82,6 +90,11 @@ class Web:
             return respond('401 Unauthorized',{'error':'Sign in required'})
         if method=='POST' and not self.sessions.check_csrf(token,environ.get('HTTP_X_CSRF_TOKEN')):
             return respond('403 Forbidden',{'error':'Invalid CSRF token'})
+        if path=='/api/session' and method=='GET':
+            csrf=self.sessions.csrf_for(token)
+            if csrf is None:
+                return respond('401 Unauthorized',{'error':'Sign in required'})
+            return respond('200 OK',{'authenticated':True,'csrf':csrf})
         if path=='/api/account/password' and method=='POST':
             current=data.get('current_password')
             new=data.get('new_password')
