@@ -126,7 +126,83 @@ def exercise_archive(source, workspace):
     return validation
 
 
-def run(*, archive_test=False):
+def exercise_backup(api, dataset, root, info, workspace):
+    """Real Backup coordinator, synthetic source and RAM-only destination/state."""
+    import tarfile
+    from contextlib import contextmanager
+    from plexconfigcontrol.backup import Backup, BackupDecisionRequired
+    from plexconfigcontrol.archives import validate_archive
+    from plexconfigcontrol.archive_store import ArchiveStore
+    from plexconfigcontrol.history import History
+    from plexconfigcontrol.operations import Phase
+    from plexconfigcontrol.progress import Progress
+    from plexconfigcontrol import publication_intent
+    base = Path(workspace)
+    state = base/'state'
+    destination = base/'Plex Config'
+    (destination/'Logs').mkdir(parents=True)
+    store = StateStore(state)
+    history = History(state)
+    progress = Progress(state)
+    reader = SnapshotReader(root, dataset, info.st_dev, info.st_ino, api)
+    expected = (root/'fixture.bin').read_bytes()
+
+    @contextmanager
+    def immutable_reader(identifier):
+        with reader(identifier) as snapshot:
+            # Deliberately change ONLY the live sandbox after snapshot creation.
+            # The resulting archive must still contain the pre-change bytes.
+            write(root/'fixture.bin', b'live sandbox changed during backup\n')
+            yield snapshot
+
+    backup = Backup(api, store, history, progress, state, destination,
+                    dataset, immutable_reader)
+    name = backup.run_new()
+    result = validate_archive(destination/name)
+    with tarfile.open(destination/name, 'r:gz') as archive:
+        with archive.extractfile('config/fixture.bin') as stream:
+            if stream.read() != expected:
+                raise RuntimeError('Backup archived live data instead of snapshot data')
+    with store.transaction() as operation:
+        if (operation.phase != Phase.SUCCESS or operation.snapshot_id is not None
+                or operation.outcome != {'code':'BACKUP_COMPLETED', 'archive':name}):
+            raise RuntimeError('Backup terminal state was not confirmed')
+    if publication_intent.pending(state):
+        raise RuntimeError('Backup publication intent remains unresolved')
+    if progress.read()['stage'] != 'COMPLETED':
+        raise RuntimeError('Backup progress did not finish')
+    if len(ArchiveStore(destination, state).list()) != 1:
+        raise RuntimeError('Backup archive listing does not match publication')
+    if any(path.name.startswith('backup-') for path in state.iterdir()):
+        raise RuntimeError('Private backup workspace remains')
+    events = history.list()
+    logs = {path.name:path.read_bytes() for path in (destination/'Logs').glob('*.log')}
+    if (len(events) != 1 or events[0]['kind'] != 'BACKUP'
+            or events[0]['status'] != 'SUCCESS' or events[0]['archive'] != name
+            or len(logs) != 1):
+        raise RuntimeError('Backup history or diagnostic log is incomplete')
+    print('BACKUP COORDINATOR + SNAPSHOT-ONLY DATA + PUBLICATION + SUCCESS STATE: OK', flush=True)
+    before = set(api.owned_snapshots)
+    try:
+        backup.run_new()
+    except BackupDecisionRequired as question:
+        if question.archive.name != name:
+            raise RuntimeError('Single-copy prompt selected another archive')
+    else:
+        raise RuntimeError('Second-copy confirmation was not required')
+    if set(api.owned_snapshots) != before or len(history.list()) != 1:
+        raise RuntimeError('Single-copy question unexpectedly started an operation')
+    print('ONE EXISTING COPY REQUIRES A DECISION BEFORE ANOTHER SNAPSHOT: OK', flush=True)
+    history.clear([events[0]['id']])
+    if history.list() or logs != {path.name:path.read_bytes()
+                                 for path in (destination/'Logs').glob('*.log')}:
+        raise RuntimeError('History clear changed diagnostic logs')
+    if validate_archive(destination/name) != result:
+        raise RuntimeError('History clear changed the archive')
+    print('HISTORY CLEAR PRESERVES ARCHIVE AND DIAGNOSTIC LOG BYTES: OK', flush=True)
+
+
+def run(*, archive_test=False, backup_test=False):
     if os.geteuid() != 0:
         raise RuntimeError('Run through sudo')
     dataset = 'TrueNAS/pcc-test-' + uuid.uuid4().hex
@@ -151,7 +227,7 @@ def run(*, archive_test=False):
         info = root.stat()
         original = b'PCC immutable snapshot fixture\n'
         write(root/'fixture.bin', original, new=True)
-        if archive_test:
+        if archive_test or backup_test:
             archive_fixture(root)
         with tempfile.TemporaryDirectory(prefix='pcc-host-state-', dir='/dev/shm') as state:
             store = StateStore(state)
@@ -191,6 +267,9 @@ def run(*, archive_test=False):
                     raise RuntimeError('Confirmed deletion did not clear persisted intent')
                 operation.finish(True)
             print('APPLICATION DELETE + ABSENCE QUERY + STATE CLEANUP: OK', flush=True)
+        if backup_test:
+            with tempfile.TemporaryDirectory(prefix='pcc-backup-test-', dir='/dev/shm') as workspace:
+                exercise_backup(api, dataset, root, info, workspace)
         if PlexStatus(api).read()['state'] != 'RUNNING':
             raise RuntimeError('Plex is no longer RUNNING; investigate before continuing')
         api.call('pool.dataset.delete', dataset, {'recursive': False, 'force': False})
@@ -198,7 +277,7 @@ def run(*, archive_test=False):
             raise RuntimeError('Sandbox deletion not confirmed')
         created = False
         print('PLEX RUNNING; TEST DATASET REMOVED: OK', flush=True)
-        print('RESULT: PASS (snapshot/archive modules; not full Backup/Restore acceptance)', flush=True)
+        print('RESULT: PASS (selected host diagnostics; not full deployment acceptance)', flush=True)
     except BaseException:
         if created:
             print('STOP: do not rerun. Sandbox may remain:', dataset, flush=True)
@@ -211,5 +290,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--run-sandbox-test', action='store_true', required=True)
     parser.add_argument('--archive-test', action='store_true')
+    parser.add_argument('--backup-test', action='store_true')
     args = parser.parse_args()
-    run(archive_test=args.archive_test)
+    run(archive_test=args.archive_test, backup_test=args.backup_test)

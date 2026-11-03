@@ -769,6 +769,17 @@ archive builder against the verified read-only snapshot, compares every file to
 that snapshot, checks a byte-only export/return copy using full validation and
 SHA256, and rejects a deliberately truncated copy. Diagnostic archive copies are
 temporary in RAM; no production archive or permanent operation log is modified.
-This additional host archive test has not yet been run on the user's NAS and does
-not exercise the Backup coordinator, SMB access, Restore or database compatibility
-with Plex itself.
+The user ran this host archive test at commit
+`b8ca8e0d5c758a28abfa1e3d971ddf8e486840d4`: all checks passed, including confirmed
+snapshot/dataset removal and Plex RUNNING. It does not exercise the Backup
+coordinator, SMB access, Restore or database compatibility with Plex itself.
+
+
+The optional `--backup-test` flag additionally runs the actual Backup coordinator
+on the sandbox. Its isolated diagnostic `Plex Config/Logs`, archives, History and
+private state live temporarily in RAM and are removed after the diagnostic. It
+checks snapshot-only contents while the sandbox live file changes, publication,
+terminal progress/state, the one-existing-copy decision and History clearing
+without changing diagnostic log/archive bytes. It never uses production archives
+or permanent user operation logs. This coordinator host test has not yet run on
+the user's NAS; application HTTP/WSS/container/SMB acceptance remains separate.

@@ -128,3 +128,36 @@ class HostAdapterTests(unittest.TestCase):
             copies = list((workspace/'returned-location').glob('*.tar.gz'))
             self.assertEqual(len(copies), 1)
             self.assertEqual(validate_archive(copies[0]), result)
+
+    def test_backup_host_harness_runs_coordinator_against_isolated_snapshot_fixture(self):
+        import shutil
+        from pathlib import Path
+        from contextlib import contextmanager
+        from unittest.mock import patch
+        from tests.host_snapshot_smoke import archive_fixture, exercise_backup
+        from tests.test_snapshots import API
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            source = base/'source'; source.mkdir()
+            workspace = base/'workspace'; workspace.mkdir()
+            archive_fixture(source)
+            (source/'fixture.bin').write_bytes(b'original snapshot data')
+            class Host(API):
+                owned_snapshots = set()
+                def call(self, method, *args):
+                    result = super().call(method, *args)
+                    if method == 'pool.snapshot.create':
+                        identifier = args[0]['dataset']+'@'+args[0]['name']
+                        self.owned_snapshots.add(identifier)
+                        shutil.copytree(source, base/'snapshot')
+                    elif method == 'pool.snapshot.delete':
+                        shutil.rmtree(base/'snapshot')
+                    return result
+            @contextmanager
+            def reader(identifier):
+                yield base/'snapshot'
+            api = Host()
+            with patch('tests.host_snapshot_smoke.SnapshotReader', return_value=reader):
+                exercise_backup(api, 'test/config', source, source.stat(), workspace)
+            self.assertEqual(api.present, set())
+            self.assertFalse(any(method in ('app.start', 'app.stop') for method, _ in api.calls))
