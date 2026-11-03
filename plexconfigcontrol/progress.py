@@ -49,6 +49,26 @@ class Progress:
             db.execute('UPDATE progress SET stage=?,done=?,total=?,updated=?,finished=? WHERE id=1',
                        (stage,done,total,now,now if terminal else None))
 
+    def fail_closed(self, cleanup_required, now=None):
+        """Override a premature terminal success when final reporting fails.
+
+        Caller holds the operation lock. Failure can never become success here,
+        and already-required cleanup cannot be downgraded. Preserve the original
+        finish time so elapsed time does not grow while awaiting investigation.
+        """
+        if type(cleanup_required) is not bool:
+            raise ValueError('Explicit cleanup state required')
+        now=time.time() if now is None else now
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            row=db.execute('SELECT * FROM progress WHERE id=1').fetchone()
+            if row is None:
+                return
+            stage='CLEANUP_REQUIRED' if cleanup_required or row['stage']=='CLEANUP_REQUIRED' else 'FAILED'
+            finished=row['finished'] if row['finished'] is not None else now
+            db.execute('UPDATE progress SET stage=?,done=0,total=NULL,updated=?,finished=? WHERE id=1',
+                       (stage,now,finished))
+
     def resolve_cleanup(self):
         """Keep the failed operation's original end time; never report success.
 

@@ -39,3 +39,17 @@ class LogTests(unittest.TestCase):
                 with self.assertRaises(OSError): EventLog(directory, 'Recovery', STAMP)
             # The failed log is never silently overwritten on retry.
             with self.assertRaises(FileExistsError): EventLog(directory, 'Recovery', STAMP)
+
+    def test_close_error_still_finalizes_log_against_future_edits(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log=EventLog(directory,'Restore',STAMP);log.write('Original record',at=STAMP)
+            close=log.stream.close
+            def failed_close():
+                close()
+                raise OSError('close reporting failed')
+            with patch.object(log.stream,'close',side_effect=failed_close):
+                with self.assertRaises(OSError):log.finish()
+            self.assertTrue(log.closed)
+            before=(Path(directory)/log.name).read_bytes()
+            with self.assertRaises(ValueError):log.write('must not append')
+            self.assertEqual((Path(directory)/log.name).read_bytes(),before)

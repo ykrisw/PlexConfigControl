@@ -511,3 +511,40 @@ Coordinator tests inject a simulated snapshot/rollback API and read-only mount
 flag, and verify that corrupted rollback data is never logged as verified.
 These are not real ZFS rollback or TrueNAS ACL tests. The adapter is not yet
 connected to live Restore execution in the restricted web test installation.
+
+
+## Restore failure and reporting boundaries
+
+Restore now completes private staging cleanup before requesting removal of the
+emergency snapshot, and checks STOPPED again after cleanup. A staging-cleanup
+failure therefore still has the recorded recovery point available. Remaining
+private `restore-*` workspaces, or an unreadable workspace inventory, also keep
+recovery blocked even if configuration writes had not started; they are never
+silently deleted by this failure handler. Failure to
+write progress cannot skip the rollback attempt; host state and exact snapshot
+existence are independently checked before any rollback request.
+
+A lost deletion reply is ambiguous: the snapshot may already be absent. The
+operation retains its exact snapshot intent and remains RECOVERY_REQUIRED until
+inspection/reconciliation confirms what happened. It does not claim snapshot
+presence, create another emergency point or start/stop Plex to investigate.
+
+Errors during final progress/log/history reporting are also failures of the full
+operation. Fail-closed progress can replace a premature COMPLETED with
+CLEANUP_REQUIRED while preserving the recorded finish time. Interrupted startup
+reconciliation uses the same rule. If configuration verification and snapshot
+removal already completed, the app reports that distinction rather than attempt
+a rollback using a nonexistent snapshot. New operations remain blocked.
+
+A finalized permanent Restore log is never reopened or edited. If subsequent
+History/finalization fails, the coordinator attempts a separate create-only
+`Recovery_YYYY.MM.DD_HH.MM.SS.log` under `Plex Config/Logs`. If disk or History
+writes also fail, it preserves the original exception and durable recovery state
+where storage remains available; it does not invent a saved log or History entry.
+These stores are not one atomic transaction; investigating a reporting failure
+must include operation state and any permanent logs already written.
+
+Fault tests cover staging cleanup, unavailable progress/History/log writes,
+snapshot deletion refusal, lost deletion replies, manual Plex restart during
+cleanup, and process interruption/startup. They use real local tar/gzip staging
+with simulated host responses, not real ZFS operations on a NAS.

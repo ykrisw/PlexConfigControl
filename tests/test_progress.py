@@ -21,3 +21,16 @@ class ProgressTests(unittest.TestCase):
             self.assertEqual(p.read(now=999)['elapsed_seconds'],15)
             self.assertFalse(p.read()['active'])
             with self.assertRaises(ValueError): p.update('COMPLETED')
+
+    def test_fail_closed_can_replace_premature_success_without_changing_elapsed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            progress=Progress(directory);progress.start('RESTORE',now=100)
+            progress.update('COMPLETED',done=5,total=5,now=110)
+            progress.fail_closed(True,now=150)
+            result=progress.read(now=999)
+            self.assertEqual(result['stage'],'CLEANUP_REQUIRED')
+            self.assertEqual(result['elapsed_seconds'],10)
+            self.assertIsNone(result['stage_percent'])
+            progress.fail_closed(False,now=160)
+            self.assertEqual(progress.read()['stage'],'CLEANUP_REQUIRED')
+            with self.assertRaises(ValueError):progress.fail_closed(1)

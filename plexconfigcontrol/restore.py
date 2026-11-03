@@ -4,6 +4,7 @@ Writer and verifier must preserve/check data, ownership, ACL and xattrs in the
 existing mounted dataset. No directory swapping, app.start or app.stop calls.
 """
 from datetime import datetime, timezone
+import os
 from pathlib import Path
 from .locking import operation_lock
 from .operations import OperationDenied, Phase
@@ -68,8 +69,14 @@ class Restore:
                             raise RuntimeError('Restored configuration verification failed')
                         if PlexStatus(self.api).read()['state']!='STOPPED':
                             raise OperationDenied('Plex no longer confirmed stopped')
-                        self.progress.update('REMOVING_SNAPSHOT')
-                        snapshots.remove()
+                    # Complete private staging cleanup while recovery is still
+                    # available. Its context manager may fail during removal.
+                    if self._workspace_pending():
+                        raise RuntimeError('Private restore workspace cleanup requires verification')
+                    if PlexStatus(self.api).read()['state']!='STOPPED':
+                        raise OperationDenied('Plex no longer confirmed stopped')
+                    self.progress.update('REMOVING_SNAPSHOT')
+                    snapshots.remove()
                     committed=True
                     with self.store.transaction() as op: op.finish(True)
                     self.progress.update('COMPLETED')
@@ -77,19 +84,65 @@ class Restore:
                     self.history.add('RESTORE','SUCCESS',log.finish(),name)
                 except Exception:
                     with self.store.transaction() as op: identifier=op.snapshot_id
+                    rollback_message=''
                     if modified and identifier and not committed:
+                        # A progress-database failure must not prevent rollback.
+                        try: self.progress.update('ROLLING_BACK')
+                        except Exception: pass
                         try:
-                            self.progress.update('ROLLING_BACK')
                             snapshots.rollback()
                             if self.verify_rollback(identifier) is not True:
                                 raise RuntimeError('Rollback verification failed')
-                            log.write('Rollback verified. Emergency snapshot retained.')
+                            rollback_message='Rollback verified. Emergency snapshot retained. '
                         except Exception:
-                            log.write('Rollback could not be verified. Emergency snapshot retained.')
+                            rollback_message='Rollback could not be verified. Emergency snapshot intent retained; presence requires verification. '
+                    try: workspace_pending=self._workspace_pending()
+                    except OSError: workspace_pending=True
+                    cleanup_required=bool(identifier or modified or workspace_pending)
                     with self.store.transaction() as op:
-                        op.phase=Phase.RECOVERY_REQUIRED if identifier or modified else Phase.FAILED
-                    try: self.progress.update('CLEANUP_REQUIRED' if identifier or modified else 'FAILED')
-                    except ValueError: pass
-                    log.write('Restore failed. Plex was not started by this application.')
-                    self.history.add('RESTORE','FAILED',log.finish(),name)
+                        op.phase=Phase.RECOVERY_REQUIRED if cleanup_required else Phase.FAILED
+                    try: self.progress.fail_closed(cleanup_required)
+                    except Exception: pass
+                    message=rollback_message+'Restore failed. Plex was not started by this application. '
+                    if identifier:
+                        message+='Retained snapshot intent: '+identifier+'. '
+                    elif committed:
+                        message+='Configuration verification and snapshot removal completed; final operation reporting failed. '
+                    elif modified:
+                        message+='No snapshot is recorded; modified configuration needs manual verification. '
+                    else:
+                        message+='Configuration was not modified. '
+                    if workspace_pending:
+                        message+='Private restore workspace cleanup requires verification. '
+                    body=self._record_failure(log,message)
+                    # Reporting errors must not mask the original exception or
+                    # leave the operation marked successful. Keep the durable
+                    # state blocked even when History itself is unavailable.
+                    try: self.history.add('RESTORE','FAILED',body,name)
+                    except Exception: pass
                     raise
+
+    def _workspace_pending(self):
+        # scandir raises on unreadable state storage; glob may suppress errors
+        # on some Python versions and therefore cannot prove cleanup here.
+        with os.scandir(self.state) as entries:
+            return any(entry.name.startswith('restore-') for entry in entries)
+
+    def _record_failure(self,log,message):
+        """Never append to a finalized permanent log, including after I/O errors."""
+        if not log.closed:
+            try:
+                log.write(message)
+                return log.finish()
+            except Exception:
+                try: log.finish()
+                except Exception: pass
+        # A finalization/history failure may follow closing the Restore log.
+        # Record that failure separately rather than rewriting the closed file.
+        message+='Original operation log: '+log.name+'. '
+        try:
+            with EventLog(self.destination/'Logs','Recovery',datetime.now(timezone.utc)) as recovery:
+                recovery.write(message)
+                return recovery.finish()
+        except Exception:
+            return message+'Permanent failure log could not be finalized; inspect operation state and existing logs.'

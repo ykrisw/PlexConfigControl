@@ -47,8 +47,10 @@ class EventLog:
                 self.stream.flush()
                 os.fsync(self.stream.fileno())
             finally:
-                self.stream.close()
-                self.closed = True
+                try:
+                    self.stream.close()
+                finally:
+                    self.closed = True
         return ''.join(self.lines)
 
     def __enter__(self):

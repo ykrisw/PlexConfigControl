@@ -29,7 +29,7 @@ def reconcile_startup(store, progress, history, state_directory):
                     'status':'INTERRUPTED',
                     'reason':'Application restarted before validation completed'}
         try:
-            progress.update('CLEANUP_REQUIRED')
+            progress.fail_closed(True)
         except ValueError:
             pass
         history.add('INTERRUPTED_OPERATION','FAILED',
