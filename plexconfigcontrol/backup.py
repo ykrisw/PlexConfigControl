@@ -14,6 +14,7 @@ from .locking import operation_lock
 from .operations import Phase
 from .publish import publish_new
 from .snapshots import Snapshots
+from . import publication_intent
 
 class BackupDecisionRequired(RuntimeError):
     """Exactly one copy exists; the UI must offer overwrite or another copy."""
@@ -37,6 +38,8 @@ class Backup:
         Overwriting is a separate workflow and is not enabled by this method.
         """
         with operation_lock(self.state):
+            if publication_intent.pending(self.state):
+                raise RuntimeError('Unresolved archive publication requires recovery')
             archives = ArchiveStore(self.destination, self.state).list()
             if create_another is not None:
                 if len(archives) != 1 or archives[0] != create_another:
@@ -66,12 +69,10 @@ class Backup:
                     log.write('Temporary snapshot absence confirmed.')
                     # Persist staging identity before destination file creation.
                     def intent(stage):
-                        with (self.state/'publication-intent.txt').open('w') as file:
-                            import os
-                            file.write(stage+'\n'+name+'\n'); file.flush(); os.fsync(file.fileno())
+                        publication_intent.record(self.state,stage,name)
                     publish_new(output,self.destination,name,result.sha256,intent)
                     published=True
-                (self.state/'publication-intent.txt').unlink(missing_ok=True)
+                publication_intent.clear(self.state)
                 with self.store.transaction() as operation: operation.finish(True)
                 self.progress.update('COMPLETED')
                 log.write('Backup completed successfully: '+name)
@@ -84,7 +85,7 @@ class Backup:
                     if outstanding: snapshots.remove()
                 except Exception:
                     cleanup_ok=False
-                if (self.state/'publication-intent.txt').exists():
+                if publication_intent.pending(self.state):
                     cleanup_ok=False
                 with self.store.transaction() as operation:
                     operation.phase=Phase.FAILED if cleanup_ok and not published else Phase.RECOVERY_REQUIRED
