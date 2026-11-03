@@ -65,7 +65,10 @@ def main():
             for path in ('/api/backup/start','/api/restore/execute','/api/archives/delete','/api/snapshots/delete'):
                 assert request(path,'POST',{},session,csrf)[0]==403
             assert request('/api/settings','POST',{'theme':'Dark','language':'pl'},session,csrf)[0]==200
-            docker('restart',name); wait_ready()
+            docker('restart',name)
+            # Docker can allocate a different random host port after restart.
+            port=int(json.loads(docker('inspect',name))[0]['NetworkSettings']['Ports']['8443/tcp'][0]['HostPort'])
+            wait_ready()
             status,_,data=request('/api/settings',session=session)
             assert status==200 and json.loads(data)['theme']=='Dark' and json.loads(data)['language']=='pl'
             docker('cp',name+':/var/lib/plexconfigcontrol/tls/panel.crt',str(cert))

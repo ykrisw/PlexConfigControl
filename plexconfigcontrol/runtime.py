@@ -110,7 +110,8 @@ def main():
                     'worker_class':'gthread','threads':4,'timeout':60,'graceful_timeout':60,
                     'certfile':str(cert),'keyfile':str(key),'worker_tmp_dir':'/tmp',
                     'accesslog':None,'errorlog':'-','capture_output':False,
-                    'preload_app':False,'limit_request_line':4094,'limit_request_fields':50}.items():
+                    'preload_app':False,'control_socket_disable':True,
+                    'limit_request_line':4094,'limit_request_fields':50}.items():
                     self.cfg.set(name,value)
             def load(self): return prepare(config,verifier)[0]
         Server().run()
