@@ -12,6 +12,18 @@ class Quiet(WSGIRequestHandler):
     def log_message(self,*args): pass
 
 class WebTests(unittest.TestCase):
+    def test_panel_assets_have_correct_mime_types(self):
+        with tempfile.TemporaryDirectory() as d:
+            app=Web(d)
+            for name in ('panel-layout.css','panel-shell.mjs','restore-view.css','restore-view.mjs'):
+                responses=[]
+                body=b''.join(app({'REQUEST_METHOD':'GET','PATH_INFO':'/assets/'+name},
+                    lambda status,headers:responses.append((status,dict(headers)))))
+                self.assertEqual(responses[0][0],'200 OK')
+                expected='text/css' if name.endswith('.css') else 'text/javascript'
+                self.assertEqual(responses[0][1]['Content-Type'],expected+'; charset=utf-8')
+                self.assertTrue(body)
+
     def test_browser_module_served_without_exposing_other_paths(self):
         with tempfile.TemporaryDirectory() as d:
             app=Web(d); responses=[]
