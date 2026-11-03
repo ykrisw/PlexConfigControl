@@ -36,7 +36,10 @@ class RestoreValidationTests(unittest.TestCase):
                     release.set(); worker.join(5)
                 self.assertFalse(worker.is_alive())
             self.assertEqual(Progress(state).read()['stage'],'FAILED')
-            with store.transaction() as op: self.assertEqual(op.phase,Phase.FAILED)
+            with StateStore(state).transaction() as op:
+                self.assertEqual(op.phase,Phase.FAILED)
+                self.assertEqual(op.validation_details,{'archive':NAME,'status':'FAILED',
+                    'reason':'Corrupt or unreadable archive'})
             self.assertEqual(history.list()[0]['status'],'FAILED')
 
     def test_worker_start_failure_releases_reservation(self):
@@ -71,10 +74,23 @@ class RestoreValidationTests(unittest.TestCase):
                 self.assertEqual(operation.phase,Phase.WAITING_FOR_PLEX_STOP)
                 self.assertEqual(operation.archive_identity,result['sha256'])
                 self.assertIsNone(operation.snapshot_id)
+                self.assertEqual(operation.validation_details['status'],'VALID')
+                self.assertEqual(operation.validation_details['files'],len(REQUIRED))
             service.cancel()
             self.assertEqual(Progress(state).read()['stage'],'CANCELLED')
             self.assertFalse(Progress(state).read()['active'])
             with store.transaction() as operation: self.assertEqual(operation.phase,Phase.IDLE)
+            with store.transaction() as operation: self.assertIsNone(operation.validation_details)
+
+    def test_os_error_does_not_expose_host_path_in_result_or_history(self):
+        with tempfile.TemporaryDirectory() as d:
+            store=StateStore(d); history=History(d)
+            service=RestoreValidation(Path(d)/'private-path',d,store,history)
+            with self.assertRaises(FileNotFoundError): service.validate(NAME)
+            with StateStore(d).transaction() as op:
+                self.assertEqual(op.validation_details['reason'],'Archive is unavailable or unreadable')
+                self.assertNotIn(d,str(op.validation_details))
+            self.assertNotIn('private-path',str(history.detail(history.list()[0]['id'])))
     def test_invalid_archive_leaves_no_active_validation(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d); backup=root/'backup'; backup.mkdir(); (backup/NAME).write_bytes(b'broken')
