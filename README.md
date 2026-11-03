@@ -993,6 +993,9 @@ suite. The injected CSRF value and submissions are UI fixtures, not an auth test
 Checks include themed three-pixel yellow dialog borders, light-theme black
 headings, popup overflow, exact large archive identities, explicit overwrite,
 lost-reply status checking and same-ID retries with one simulated execution.
+The uncertainty scenario temporarily hides the latest-operation read until an
+explicit exact-request check or retry, so normal successful polling cannot resolve
+the simulated uncertainty before the user-action assertion.
 Restore is blocked in the UI while Plex is simulated RUNNING; confirmation must
 be RESTORE, a changed validation digest invalidates an open dialog, and the
 selected current digest is sent once after re-confirmation. The UI then presents

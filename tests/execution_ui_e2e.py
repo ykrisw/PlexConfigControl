@@ -26,6 +26,7 @@ class FixtureAPI:
         self.jobs, self.payloads, self.posts = {}, {}, []
         self.executions = 0
         self.lose_reply = False
+        self.hide_current = False
 
     def receipt(self, payload, kind):
         identifier = payload['request_id']
@@ -42,6 +43,7 @@ class FixtureAPI:
                 outcome={'code':kind+'_IN_PROGRESS','archive':NAME})
             self.progress = {'operation':kind,'stage':'RESTORING' if kind=='RESTORE' else 'CREATING_ARCHIVE',
                              'active':True,'finished':None,'elapsed_seconds':2}
+        self.hide_current = False
         return 202, {'accepted':True,'request_id':identifier,'kind':kind,'status_url':'/api/operation'}
 
     def complete(self):
@@ -58,6 +60,7 @@ class FixtureAPI:
                              'archive_delete':False,'snapshot_management':False,'archive_validation':True}
             if path == '/api/status': return 200, {'state':self.plex,'available':True}
             if path == '/api/operation':
+                if self.hide_current: return 503, {'error':'Fixture operation read temporarily unavailable'}
                 return 200, {'operation':self.operation,'progress':self.progress,
                     'publication':{'status':'NONE','pending':False,'archive':None,'temporary_file':None},
                     'execution':self.current,'execution_bound':self.current is not None and
@@ -73,6 +76,7 @@ class FixtureAPI:
                     'plex':{'state':self.plex,'available':True}}
             if path == '/api/execution/status':
                 job=self.jobs.get(parse_qs(query).get('request_id',[''])[0])
+                if job is not None: self.hide_current=False
                 return 200, {'found':job is not None,'execution':job}
         if method == 'POST':
             if path == '/api/restore/validate':
@@ -113,7 +117,9 @@ class FixtureAPI:
             payload=request.post_data_json
         status,body=self.handle(request.method,url.path,payload,url.query)
         if request.method=='POST' and url.path in ('/api/backup/start','/api/restore/execute') and self.lose_reply:
-            self.lose_reply=False;route.abort('failed');return
+            # Keep the latest-status read unavailable until explicit lookup/retry;
+            # otherwise normal polling correctly resolves this lost reply first.
+            self.lose_reply=False;self.hide_current=True;route.abort('failed');return
         route.fulfill(status=status,json=body)
 
 
