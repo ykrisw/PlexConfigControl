@@ -6,6 +6,7 @@ import stat
 import tarfile
 from dataclasses import dataclass
 from zoneinfo import ZoneInfo
+from .naming import DEFAULT_PREFIX, archive_prefix
 
 BASE = 'config/Library/Application Support/Plex Media Server/'
 REQUIRED = {BASE + 'Preferences.xml', BASE + 'Plug-in Support/Databases/' + 'com.plexapp.plugins.library.db', BASE + 'Plug-in Support/Databases/' + 'com.plexapp.plugins.library.blobs.db'}
@@ -18,10 +19,10 @@ def backup_action(count):
         raise ValueError('Negative archive count')
     return 'ASK_OVERWRITE_OR_NEW' if count == 1 else 'CREATE_NEW'
 
-def archive_name(instant, timezone='Europe/London'):
+def archive_name(instant, timezone='Europe/London', prefix=DEFAULT_PREFIX):
     if instant.tzinfo is None:
         raise ValueError('Timezone-aware timestamp required')
-    return instant.astimezone(ZoneInfo(timezone)).strftime('TrueNASPlexConfig_%Y.%m.%d_%H.%M.%S.tar.gz')
+    return archive_prefix(prefix)+instant.astimezone(ZoneInfo(timezone)).strftime('_%Y.%m.%d_%H.%M.%S.tar.gz')
 
 @dataclass(frozen=True)
 class Validation:

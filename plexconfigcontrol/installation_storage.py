@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from .plex_storage import PlexStorage, StorageDiscoveryError, discover_plex_storage
+from .naming import Naming
 from .storage import inspect_destination, create_destination, RenameRequired
 
 
@@ -9,19 +10,21 @@ from .storage import inspect_destination, create_destination, RenameRequired
 class InstallationStoragePlan:
     parent: str
     plex: PlexStorage
+    naming: Naming = Naming()
 
 
-def plan_storage(api, parent, *, manual_source=None):
+def plan_storage(api, parent, *, manual_source=None, folder_name=None, archive_prefix=None):
+    naming=Naming.from_input(folder_name,archive_prefix)
     plex=discover_plex_storage(api,manual_source=manual_source)
     # Current emergency rollback operates on a whole dataset. Never silently
     # include unrelated data when Host Path points to a shared-dataset folder.
     if not plex.dedicated_dataset_root:
         raise StorageDiscoveryError('DEDICATED_PLEX_DATASET_REQUIRED')
     parent=str(Path(parent))
-    inspected=inspect_destination(parent,forbidden_paths=(plex.source,'/mnt/TrueNAS/TrueNAS/PBS-Data'))
+    inspected=inspect_destination(parent,folder_name=naming.folder_name,forbidden_paths=(plex.source,'/mnt/TrueNAS/TrueNAS/PBS-Data'))
     if inspected.get('status')=='RENAME_REQUIRED':
-        raise RenameRequired('Rename the existing Plex Config directory before continuing')
-    return InstallationStoragePlan(parent,plex)
+        raise RenameRequired('Rename the existing selected backup directory before continuing')
+    return InstallationStoragePlan(parent,plex,naming)
 
 
 def create_storage(api, plan):
@@ -31,7 +34,7 @@ def create_storage(api, plan):
     # enduring grant of authority; the worker must recheck before each operation.
     if discover_plex_storage(api,manual_source=plan.plex.source if plan.plex.storage_type=='manual' else None)!=plan.plex:
         raise StorageDiscoveryError('PLEX_STORAGE_CHANGED')
-    return create_destination(plan.parent,forbidden_paths=(plan.plex.source,'/mnt/TrueNAS/TrueNAS/PBS-Data'))
+    return create_destination(plan.parent,folder_name=plan.naming.folder_name,forbidden_paths=(plan.plex.source,'/mnt/TrueNAS/TrueNAS/PBS-Data'))
 
 
 def manual_path_prompt(error, language='en'):

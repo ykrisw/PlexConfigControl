@@ -1,13 +1,12 @@
 """Archive listing and confirmed deletion confined to the backup directory."""
 import os
-import re
 import stat
 from dataclasses import dataclass
 from .locking import operation_lock, OperationBusy
 from .operations import Phase
 from .state import StateStore
 
-NAME = re.compile(r'TrueNASPlexConfig_\d{4}\.\d{2}\.\d{2}_\d{2}\.\d{2}\.\d{2}\.tar\.gz\Z')
+from .naming import ARCHIVE_NAME as NAME
 
 @dataclass(frozen=True)
 class Archive:

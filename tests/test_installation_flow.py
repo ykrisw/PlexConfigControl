@@ -43,14 +43,14 @@ class InstallationFlowTests(unittest.TestCase):
 
     def test_existing_folder_reports_rename_before_ready_without_changes(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root=Path(tmp)/'Plex Config';root.mkdir();marker=root/'keep';marker.write_text('keep')
+            root=Path(tmp)/'Plex Backup';root.mkdir();marker=root/'keep';marker.write_text('keep')
             mode=root.stat().st_mode
             with patch('plexconfigcontrol.installation_storage.discover_plex_storage',return_value=self.plan().plex):
                 flow=InstallationStorageFlow(Mock(),'pl')
                 result=flow.check(tmp)
                 self.assertEqual(result['phase'],'RENAME_REQUIRED');self.assertFalse(result['can_create'])
                 self.assertEqual(marker.read_text(),'keep');self.assertEqual(root.stat().st_mode,mode)
-                root.rename(Path(tmp)/'Old Plex Config')
+                root.rename(Path(tmp)/'Old Plex Backup')
                 self.assertEqual(flow.check(tmp)['phase'],'READY')
                 self.assertFalse(root.exists())  # Checking never creates directories.
 

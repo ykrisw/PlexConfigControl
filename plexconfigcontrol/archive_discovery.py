@@ -76,7 +76,7 @@ class ArchiveDiscovery:
                 now = datetime.now(timezone.utc)
                 log_name = now.astimezone(ZoneInfo('Europe/London')).strftime(
                     'ArchiveImport_%Y.%m.%d_%H.%M.%S_')+secrets.token_hex(8)+'.log'
-                body = ('['+now.isoformat()+'] Archive detected in Plex Config: '+item.name+'\n'
+                body = ('['+now.isoformat()+'] Archive detected in backup folder: '+item.name+'\n'
                         'Size at detection: '+str(item.size)+' bytes.\n'
                         'Detected by directory scan; original copy time and source are unknown.\n'
                         'Not recorded as app-created in this installation. This may be a returned copy, '

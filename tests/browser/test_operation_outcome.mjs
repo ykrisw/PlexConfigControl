@@ -100,3 +100,10 @@ test('an admitted request cannot display an older operation success or unconfirm
     value.execution.request_id='bad-id';assert.equal(render(value),'');
   }
 });
+
+test('custom prefix is retained in verified operation outcomes without accepting paths',()=>{
+  const value=snapshot();value.operation.outcome.archive='Dupa_2026.11.03_12.00.00.tar.gz';
+  assert.match(backupResult(value),/Dupa_2026/);
+  value.operation.outcome.archive='../Dupa_2026.11.03_12.00.00.tar.gz';
+  assert.equal(backupResult(value),'');
+});

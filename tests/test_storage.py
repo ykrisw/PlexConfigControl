@@ -8,7 +8,7 @@ from plexconfigcontrol.storage import RenameRequired, create_destination
 class StorageTests(unittest.TestCase):
     def test_existing_folder_and_permissions_untouched_then_retry(self):
         with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory)/'Plex Config'
+            root=Path(directory)/'Plex Backup'
             root.mkdir(mode=0o750)
             file=root/'precious.tar.gz'; file.write_bytes(b'keep')
             before=root.stat()
@@ -17,16 +17,16 @@ class StorageTests(unittest.TestCase):
             self.assertEqual(root.stat().st_ino,before.st_ino)
             self.assertEqual(file.read_bytes(),b'keep')
             self.assertFalse((root/'Logs').exists())
-            root.rename(Path(directory)/'Old Plex Config')
+            root.rename(Path(directory)/'Old Plex Backup')
             result=create_destination(directory)
             self.assertTrue(result.logs.is_dir())
             self.assertEqual(result.inode,result.root.stat().st_ino)
-            self.assertEqual((Path(directory)/'Old Plex Config'/file.name).read_bytes(),b'keep')
+            self.assertEqual((Path(directory)/'Old Plex Backup'/file.name).read_bytes(),b'keep')
 
     def test_existing_symlink_rejected_without_writing_target(self):
         with tempfile.TemporaryDirectory() as directory:
             target=Path(directory)/'other'; target.mkdir()
-            (Path(directory)/'Plex Config').symlink_to(target, target_is_directory=True)
+            (Path(directory)/'Plex Backup').symlink_to(target, target_is_directory=True)
             with self.assertRaises(RenameRequired): create_destination(directory)
             self.assertEqual(list(target.iterdir()),[])
 
@@ -44,7 +44,7 @@ class StorageTests(unittest.TestCase):
             self.assertEqual(list(parent.iterdir()),[])
             self.assertEqual((parent.stat().st_mode,parent.stat().st_uid,parent.stat().st_gid),
                              (before.st_mode,before.st_uid,before.st_gid))
-            file=parent/'Plex Config';file.write_bytes(b'existing user file')
+            file=parent/'Plex Backup';file.write_bytes(b'existing user file')
             self.assertEqual(inspect_destination(parent)['status'],'RENAME_REQUIRED')
             with self.assertRaises(RenameRequired):create_destination(parent)
             self.assertEqual(file.read_bytes(),b'existing user file')
@@ -65,7 +65,7 @@ class StorageTests(unittest.TestCase):
                 with self.assertRaises(UnsafeDestination):inspect_destination(invalid)
         with tempfile.TemporaryDirectory() as directory:
             parent=Path(directory);source=parent/'live-config';source.mkdir()
-            for forbidden in (source,source/'Plex Config',parent):
+            for forbidden in (source,source/'Plex Backup',parent):
                 with self.subTest(forbidden=forbidden):
                     with self.assertRaises(UnsafeDestination):create_destination(source,forbidden_paths=(forbidden,))
             self.assertEqual(list(source.iterdir()),[])
@@ -90,7 +90,7 @@ class StorageTests(unittest.TestCase):
         from unittest.mock import patch
         from plexconfigcontrol.storage import SetupIncomplete
         with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory)/'Plex Config'
+            root=Path(directory)/'Plex Backup'
             def failed_sync(_):
                 (root/'copied-by-user.txt').write_bytes(b'keep')
                 raise OSError('directory fsync failed')
@@ -103,7 +103,7 @@ class StorageTests(unittest.TestCase):
         from unittest.mock import patch
         from plexconfigcontrol.storage import SetupIncomplete
         with tempfile.TemporaryDirectory() as directory:
-            mkdir=os.mkdir;root=Path(directory)/'Plex Config'
+            mkdir=os.mkdir;root=Path(directory)/'Plex Backup'
             def collision(name,*args,**kwargs):
                 if name=='Logs':
                     mkdir(name,*args,**kwargs)
@@ -122,15 +122,15 @@ class StorageTests(unittest.TestCase):
             def replace(name,*args,**kwargs):
                 result=mkdir(name,*args,**kwargs)
                 if name=='Logs':
-                    (parent/'Plex Config').rename(parent/'Saved Plex Config')
-                    (parent/'Plex Config').mkdir()
-                    (parent/'Plex Config'/'external.txt').write_text('keep')
+                    (parent/'Plex Backup').rename(parent/'Saved Plex Backup')
+                    (parent/'Plex Backup').mkdir()
+                    (parent/'Plex Backup'/'external.txt').write_text('keep')
                 return result
             with patch('plexconfigcontrol.storage.os.mkdir',side_effect=replace):
                 with self.assertRaises(SetupIncomplete):create_destination(parent)
-            self.assertTrue((parent/'Saved Plex Config'/'Logs').is_dir())
-            self.assertEqual((parent/'Plex Config'/'external.txt').read_text(),'keep')
-            self.assertFalse((parent/'Plex Config'/'Logs').exists())
+            self.assertTrue((parent/'Saved Plex Backup'/'Logs').is_dir())
+            self.assertEqual((parent/'Plex Backup'/'external.txt').read_text(),'keep')
+            self.assertFalse((parent/'Plex Backup'/'Logs').exists())
 
     def test_observed_parent_replacement_cannot_return_an_unrelated_path(self):
         from unittest.mock import patch
@@ -144,7 +144,7 @@ class StorageTests(unittest.TestCase):
                 return result
             with patch('plexconfigcontrol.storage.os.mkdir',side_effect=replace):
                 with self.assertRaises(SetupIncomplete):create_destination(parent)
-            self.assertTrue((root/'moved'/'Plex Config'/'Logs').is_dir())
+            self.assertTrue((root/'moved'/'Plex Backup'/'Logs').is_dir())
             self.assertEqual(list(parent.iterdir()),[])
 
     def test_runtime_verification_detects_replaced_root_or_logs_without_recreating_them(self):

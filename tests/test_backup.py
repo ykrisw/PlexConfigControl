@@ -43,20 +43,26 @@ class BackupTests(unittest.TestCase):
             with self.assertRaises(BackupDecisionRequired): backup.run_new()
 
     def test_full_new_backup_with_real_archive_and_fake_host(self):
-        with tempfile.TemporaryDirectory() as d:
-            root=Path(d); state=root/'state'; dest=root/'Plex Config'; (dest/'Logs').mkdir(parents=True)
-            source=root/'snapshot'; source.mkdir()
-            for name in REQUIRED:
-                p=source/name.removeprefix('config/'); p.parent.mkdir(parents=True,exist_ok=True); p.write_bytes(b'test')
-            @contextmanager
-            def reader(identifier): yield source
-            store=StateStore(state); api=API(); history=History(state); progress=Progress(state)
-            name=Backup(api,store,history,progress,state,dest,'test/config',reader).run_new()
-            self.assertTrue((dest/name).is_file()); self.assertEqual(api.present,set())
-            self.assertEqual(len(list((dest/'Logs').iterdir())),1)
-            with store.transaction() as op: self.assertEqual(op.phase,Phase.SUCCESS)
-            self.assertEqual(progress.read()['stage'],'COMPLETED')
-            self.assertFalse(any(m in ('app.start','app.stop') for m,_ in api.calls))
+        from plexconfigcontrol.naming import Naming
+        for naming in (Naming(),Naming('Moje kopie','Dupa')):
+            with tempfile.TemporaryDirectory() as d:
+                root=Path(d); state=root/'state'; dest=root/naming.folder_name; (dest/'Logs').mkdir(parents=True)
+                source=root/'snapshot'; source.mkdir()
+                for name in REQUIRED:
+                    p=source/name.removeprefix('config/'); p.parent.mkdir(parents=True,exist_ok=True); p.write_bytes(b'test')
+                @contextmanager
+                def reader(identifier): yield source
+                store=StateStore(state); api=API(); history=History(state); progress=Progress(state)
+                from plexconfigcontrol.naming import save_naming
+                save_naming(state,naming)
+                name=Backup(api,store,history,progress,state,dest,'test/config',reader).run_new()
+                self.assertTrue(name.startswith(naming.archive_prefix+'_'))
+                self.assertTrue((dest/name).is_file()); self.assertEqual(api.present,set())
+                self.assertEqual(len(list((dest/'Logs').iterdir())),1)
+                with store.transaction() as op: self.assertEqual(op.phase,Phase.SUCCESS)
+                self.assertEqual(progress.read()['stage'],'COMPLETED')
+                self.assertFalse(any(m in ('app.start','app.stop') for m,_ in api.calls))
+    
 
     def test_unconfirmed_running_plex_blocks_new_and_overwrite_without_mutating_files_or_state(self):
         from unittest.mock import Mock

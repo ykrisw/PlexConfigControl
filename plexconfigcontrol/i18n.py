@@ -1,7 +1,7 @@
 """UI translation catalog. Stable machine statuses and filenames stay unchanged."""
 CATALOG = {
 'en': {
-'setup_incomplete':'Folder setup could not be confirmed. Inspect and manually rename the new Plex Config folder before retrying. No files were automatically removed.',
+'setup_incomplete':'Folder setup could not be confirmed. Inspect and manually rename the new backup folder before retrying. No files were automatically removed.',
 'unsafe_destination':'Choose a valid destination outside protected Plex and application storage, without symbolic links.',
 'destination_changed':'The selected folder was replaced or moved. Check the location before continuing; no replacement folder was adopted.',
 'setup_access_required':'Access was denied. Check access for the app and your SMB user. No existing permissions were changed.',
@@ -16,13 +16,13 @@ CATALOG = {
 'waiting_for_plex':'Waiting for Plex to stop…','stop_manually':'Stop Plex manually in TrueNAS Apps to continue.','type_restore':'Type RESTORE to confirm','restore_configuration':'Restore Configuration','start_manually':'Plex remains stopped. Start Plex manually in TrueNAS.',
 'overwrite_existing':'Overwrite Existing','create_dated_copy':'Create New Dated Copy','one_archive_prompt':'One backup archive exists. Overwrite it or create a new dated copy?',
 'operations_events':'Operations & Events','total_operations':'Total Operations','successful':'Successful','all':'All','download_logs':'Download Logs','clear_selected':'Clear Selected','operation_log':'Operation Log','duration':'Duration','elapsed':'Elapsed',
-'clear_history_confirmation':'Permanently delete selected panel history? Files in Plex Config/Logs will remain.','delete_archives_confirmation':'Permanently delete the selected backup archives?',
-'remove_temporary_snapshot':'Remove Temporary Snapshot','remove_emergency_snapshot':'Remove Emergency Snapshot','snapshot_confirmation':'Permanently remove this snapshot? This cannot be undone.','rename_folder':'Plex Config already exists. Rename it manually, then retry setup. Its contents and permissions have not been changed.',
+'clear_history_confirmation':'Permanently delete selected panel history? Files in backup folder/Logs will remain.','delete_archives_confirmation':'Permanently delete the selected backup archives?',
+'remove_temporary_snapshot':'Remove Temporary Snapshot','remove_emergency_snapshot':'Remove Emergency Snapshot','snapshot_confirmation':'Permanently remove this snapshot? This cannot be undone.','rename_folder':'The selected backup folder already exists. Rename it manually, then retry setup. Its contents and permissions have not been changed.',
 'backup_in_progress':'Backup in progress','restore_in_progress':'Restore in progress','preparing':'Preparing','creating_snapshot':'Creating temporary snapshot','creating_archive':'Creating archive','verifying_archive':'Verifying archive','removing_snapshot':'Removing temporary snapshot','backup_completed':'Backup completed successfully','backup_failed':'Backup failed','restore_completed':'Restore completed successfully','restore_failed':'Restore failed','cleanup_required':'Cleanup required before another operation can start.',
 'wrong_password':'Incorrect password','password_mismatch':'New passwords do not match.','sign_in':'Sign In','password':'Password','login_blocked':'Sign-in temporarily blocked','preview':'Development preview',
 },
 'pl': {
-'setup_incomplete':'Nie potwierdzono utworzenia folderów. Sprawdź i ręcznie zmień nazwę nowego folderu Plex Config przed ponowieniem. Nie usunięto automatycznie żadnych plików.',
+'setup_incomplete':'Nie potwierdzono utworzenia folderów. Sprawdź i ręcznie zmień nazwę nowego folderu kopii przed ponowieniem. Nie usunięto automatycznie żadnych plików.',
 'unsafe_destination':'Wybierz poprawną lokalizację poza chronioną konfiguracją Plex i danymi aplikacji, bez linków symbolicznych.',
 'destination_changed':'Wybrany folder został podmieniony lub przeniesiony. Sprawdź lokalizację przed kontynuowaniem; aplikacja nie przejęła innego folderu.',
 'setup_access_required':'Odmówiono dostępu. Sprawdź dostęp aplikacji i swojego użytkownika SMB. Nie zmieniono istniejących uprawnień.',
@@ -37,8 +37,8 @@ CATALOG = {
 'waiting_for_plex':'Oczekiwanie na zatrzymanie Plexa…','stop_manually':'Aby kontynuować, zatrzymaj ręcznie Plexa w aplikacjach TrueNAS.','type_restore':'Wpisz RESTORE, aby potwierdzić','restore_configuration':'Przywróć konfigurację','start_manually':'Plex pozostaje zatrzymany. Uruchom go ręcznie w TrueNAS.',
 'overwrite_existing':'Nadpisz istniejącą kopię','create_dated_copy':'Utwórz kolejną datowaną kopię','one_archive_prompt':'Istnieje jedna kopia zapasowa. Nadpisać ją czy utworzyć kolejną datowaną kopię?',
 'operations_events':'Operacje i zdarzenia','total_operations':'Wszystkie operacje','successful':'Udane','all':'Wszystkie','download_logs':'Pobierz logi','clear_selected':'Wyczyść zaznaczone','operation_log':'Log operacji','duration':'Czas trwania','elapsed':'Upłynęło',
-'clear_history_confirmation':'Trwale usunąć zaznaczoną historię panelu? Pliki w Plex Config/Logs pozostaną.','delete_archives_confirmation':'Trwale usunąć zaznaczone archiwa kopii zapasowych?',
-'remove_temporary_snapshot':'Usuń tymczasowy snapshot','remove_emergency_snapshot':'Usuń snapshot awaryjny','snapshot_confirmation':'Trwale usunąć ten snapshot? Tej operacji nie można cofnąć.','rename_folder':'Folder Plex Config już istnieje. Zmień ręcznie jego nazwę i ponów konfigurację. Jego zawartość i uprawnienia nie zostały zmienione.',
+'clear_history_confirmation':'Trwale usunąć zaznaczoną historię panelu? Pliki w folderze kopii/Logs pozostaną.','delete_archives_confirmation':'Trwale usunąć zaznaczone archiwa kopii zapasowych?',
+'remove_temporary_snapshot':'Usuń tymczasowy snapshot','remove_emergency_snapshot':'Usuń snapshot awaryjny','snapshot_confirmation':'Trwale usunąć ten snapshot? Tej operacji nie można cofnąć.','rename_folder':'Wybrany folder kopii już istnieje. Zmień ręcznie jego nazwę i ponów konfigurację. Jego zawartość i uprawnienia nie zostały zmienione.',
 'backup_in_progress':'Tworzenie kopii w toku','restore_in_progress':'Przywracanie w toku','preparing':'Przygotowanie','creating_snapshot':'Tworzenie tymczasowego snapshotu','creating_archive':'Tworzenie archiwum','verifying_archive':'Weryfikacja archiwum','removing_snapshot':'Usuwanie tymczasowego snapshotu','backup_completed':'Kopia zapasowa zakończona pomyślnie','backup_failed':'Tworzenie kopii nie powiodło się','restore_completed':'Przywracanie zakończone pomyślnie','restore_failed':'Przywracanie nie powiodło się','cleanup_required':'Przed kolejną operacją wymagane jest zakończenie sprzątania.',
 'wrong_password':'Nieprawidłowe hasło','password_mismatch':'Nowe hasła nie są identyczne.','sign_in':'Zaloguj się','password':'Hasło','login_blocked':'Logowanie tymczasowo zablokowane','preview':'Wersja rozwojowa',
 }}

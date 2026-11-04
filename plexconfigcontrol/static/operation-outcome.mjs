@@ -3,7 +3,7 @@ const codes=new Set(['BACKUP_IN_PROGRESS','BACKUP_COMPLETED','BACKUP_FAILED','BA
   'BACKUP_PUBLICATION_UNCERTAIN','BACKUP_RECONCILED','BACKUP_INTERRUPTED',
   'RESTORE_IN_PROGRESS','RESTORE_COMPLETED','RESTORE_FAILED_UNCHANGED','RESTORE_ROLLBACK_VERIFIED',
   'RESTORE_RECOVERY_UNCONFIRMED','RESTORE_VERIFIED_REPORTING_FAILED','RESTORE_INTERRUPTED']);
-const name=/^TrueNASPlexConfig_\d{4}\.\d{2}\.\d{2}_\d{2}\.\d{2}\.\d{2}\.tar\.gz$/;
+const name=/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}_\d{4}\.\d{2}\.\d{2}_\d{2}\.\d{2}\.\d{2}\.tar\.gz$/;
 export function normalizeOutcome(value){
   if(value==null)return null; // Older persisted records have no outcome.
   if(typeof value!=='object'||Array.isArray(value)||Object.keys(value).length!==2||

@@ -30,8 +30,8 @@ export function mountHistoryView(root, client, {language = 'en', timezone = 'Eur
     '[data-heading]':tx('Operations & Events','Operacje i zdarzenia'),
     '[data-download]':tx('Download Logs','Pobierz logi'), '[data-clear]':tx('Clear Selected','Usuń zaznaczone'),
     '[data-confirm-title]':tx('Clear Selected','Usuń zaznaczone'),
-    '[data-confirm-message]':tx('Permanently remove the selected web-history records? Files in Plex Config/Logs will remain untouched.',
-      'Trwale usunąć zaznaczone wpisy historii panelu? Pliki w Plex Config/Logs pozostaną nietknięte.'),
+    '[data-confirm-message]':tx('Permanently remove the selected web-history records? Files in backup folder/Logs will remain untouched.',
+      'Trwale usunąć zaznaczone wpisy historii panelu? Pliki w folderze kopii/Logs pozostaną nietknięte.'),
     '[data-cancel]':tx('Cancel','Anuluj'), '[data-confirm]':tx('Clear Selected','Usuń zaznaczone'),
   })) find(selector).textContent = text;
   const list = find('[data-events]'), dialog = find('dialog');
@@ -59,8 +59,8 @@ export function mountHistoryView(root, client, {language = 'en', timezone = 'Eur
       CLEAR_UNCONFIRMED: tx('Deletion could not be confirmed. Review the refreshed list before trying again.', 'Nie udało się potwierdzić usunięcia. Przed kolejną próbą sprawdź odświeżoną listę.'),
     };
     const logNotice=value.archiveLogs?.pending>0?
-      tx(`Permanent archive-event logs awaiting write: ${value.archiveLogs.pending}. ${value.archiveLogs.enabled?'Check access to Plex Config/Logs.':'Archive storage is read-only in this installation.'}`,
-         `Trwałe logi zdarzeń archiwów oczekujące na zapis: ${value.archiveLogs.pending}. ${value.archiveLogs.enabled?'Sprawdź dostęp do Plex Config/Logs.':'Folder archiwów w tej instalacji jest tylko do odczytu.'}`):'';
+      tx(`Permanent archive-event logs awaiting write: ${value.archiveLogs.pending}. ${value.archiveLogs.enabled?'Check access to backup folder/Logs.':'Archive storage is read-only in this installation.'}`,
+         `Trwałe logi zdarzeń archiwów oczekujące na zapis: ${value.archiveLogs.pending}. ${value.archiveLogs.enabled?'Sprawdź dostęp do folderu kopii/Logs.':'Folder archiwów w tej instalacji jest tylko do odczytu.'}`):'';
     const message = value.error || notices[value.notice] || logNotice;
     find('[data-notice]').hidden = !message; find('[data-notice]').textContent = message;
     const empty = find('[data-empty]');

@@ -4,6 +4,7 @@ import errno
 import stat
 from dataclasses import dataclass
 from pathlib import Path
+from .naming import DEFAULT_FOLDER, folder_component
 
 FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
 
@@ -48,9 +49,10 @@ def _absolute(value):
     return path
 
 
-def _parent(parent, forbidden_paths):
+def _parent(parent, forbidden_paths, folder_name=DEFAULT_FOLDER):
     parent = _absolute(parent)
-    target = parent / 'Plex Config'
+    folder_name=folder_component(folder_name)
+    target = parent / folder_name
     for forbidden in forbidden_paths:
         forbidden = _absolute(forbidden)
         if target == forbidden or target in forbidden.parents or forbidden in target.parents:
@@ -68,16 +70,16 @@ def _parent(parent, forbidden_paths):
         raise
 
 
-def inspect_destination(parent, *, forbidden_paths=()):
+def inspect_destination(parent, *, forbidden_paths=(), folder_name=DEFAULT_FOLDER):
     """Read-only setup preflight for a trusted installation-selected parent.
 
     Name availability is not a write/SMB permission check. Actual creation must
     recheck atomically; do not use this result to authorize adopting a folder.
     """
-    parent, fd = _parent(parent, forbidden_paths)
+    parent, fd = _parent(parent, forbidden_paths, folder_name)
     try:
         try:
-            os.stat('Plex Config', dir_fd=fd, follow_symlinks=False)
+            os.stat(folder_name, dir_fd=fd, follow_symlinks=False)
         except FileNotFoundError:
             return {'status': 'NAME_AVAILABLE', 'permission_check': 'NOT_TESTED'}
         return {'status': 'RENAME_REQUIRED', 'permission_check': 'NOT_TESTED'}
@@ -104,7 +106,7 @@ def _bound_parent(path, held_fd):
         os.close(current_fd)
 
 
-def create_destination(parent, *, forbidden_paths=()):
+def create_destination(parent, *, forbidden_paths=(), folder_name=DEFAULT_FOLDER):
     """NEW-install operation, never a restart-time mkdir or an adoption step.
 
     Deployment supplies protected ixVolume/Plex source paths. Existing entries
@@ -112,21 +114,21 @@ def create_destination(parent, *, forbidden_paths=()):
     umask and inherited ACLs. Keep SMB/external directory changes paused during
     setup: the app lock cannot serialize external rename/mount operations.
     """
-    parent, parent_fd = _parent(parent, forbidden_paths)
+    parent, parent_fd = _parent(parent, forbidden_paths, folder_name)
     root_fd = logs_fd = None
     created = False
     try:
         try:
-            os.mkdir('Plex Config', mode=0o777, dir_fd=parent_fd)
+            os.mkdir(folder_name, mode=0o777, dir_fd=parent_fd)
         except FileExistsError as error:
             raise RenameRequired(
-                'Plex Config already exists. Rename it manually, then retry setup. '
+                'The selected backup folder already exists. Rename it manually, then retry setup. '
                 'Its contents and permissions have not been changed.'
             ) from error
         created = True
         os.fsync(parent_fd)
-        root_fd = os.open('Plex Config', FLAGS, dir_fd=parent_fd)
-        identity = _same(parent_fd, 'Plex Config', root_fd)
+        root_fd = os.open(folder_name, FLAGS, dir_fd=parent_fd)
+        identity = _same(parent_fd, folder_name, root_fd)
         if identity.st_dev != os.fstat(parent_fd).st_dev:
             raise DestinationChanged('New output directory crossed a filesystem boundary')
         os.mkdir('Logs', mode=0o777, dir_fd=root_fd)
@@ -135,10 +137,10 @@ def create_destination(parent, *, forbidden_paths=()):
         logs_identity = _same(root_fd, 'Logs', logs_fd)
         if logs_identity.st_dev != identity.st_dev:
             raise DestinationChanged('New Logs directory crossed a filesystem boundary')
-        _same(parent_fd, 'Plex Config', root_fd)
+        _same(parent_fd, folder_name, root_fd)
         _bound_parent(parent, parent_fd)
         os.fsync(parent_fd)
-        return Destination(parent/'Plex Config', parent/'Plex Config'/'Logs',
+        return Destination(parent/folder_name, parent/folder_name/'Logs',
                            identity.st_dev, identity.st_ino,
                            logs_identity.st_dev, logs_identity.st_ino)
     except (OSError, DestinationChanged) as error:
@@ -149,7 +151,7 @@ def create_destination(parent, *, forbidden_paths=()):
         raise SetupIncomplete(
             getattr(error, 'errno', None),
             'Destination setup could not be confirmed. Existing files were not '
-            'removed. Inspect and manually rename the new Plex Config folder '
+            'removed. Inspect and manually rename the new backup folder '
             'before retrying; check access without resetting ACLs.'
         ) from error
     finally:
@@ -168,20 +170,21 @@ def verify_destination(destination):
     these values alone are not a persistent ZFS dataset identifier.
     """
     root = _absolute(destination.root)
-    if root.name != 'Plex Config' or destination.logs != root/'Logs':
+    folder_name=folder_component(root.name)
+    if destination.logs != root/'Logs':
         raise DestinationChanged('Unexpected configured destination paths')
-    parent, parent_fd = _parent(root.parent, ())
+    parent, parent_fd = _parent(root.parent, (), folder_name)
     root_fd = logs_fd = None
     try:
-        root_fd = os.open('Plex Config', FLAGS, dir_fd=parent_fd)
-        identity = _same(parent_fd, 'Plex Config', root_fd)
+        root_fd = os.open(folder_name, FLAGS, dir_fd=parent_fd)
+        identity = _same(parent_fd, folder_name, root_fd)
         if (identity.st_dev, identity.st_ino) != (destination.device, destination.inode):
-            raise DestinationChanged('Configured Plex Config directory was replaced')
+            raise DestinationChanged('Configured backup directory was replaced')
         logs_fd = os.open('Logs', FLAGS, dir_fd=root_fd)
         logs_identity = _same(root_fd, 'Logs', logs_fd)
         if (logs_identity.st_dev, logs_identity.st_ino) != (destination.logs_device, destination.logs_inode):
             raise DestinationChanged('Configured Logs directory was replaced')
-        _same(parent_fd, 'Plex Config', root_fd)
+        _same(parent_fd, folder_name, root_fd)
         _bound_parent(parent, parent_fd)
         return True
     finally:

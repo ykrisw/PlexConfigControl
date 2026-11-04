@@ -1201,3 +1201,48 @@ Opera fixture now uses the existing bounded read-only localhost-bootstrap helper
 and captures failed requests/console errors plus failure HTML. It does not retry
 API mutations or disable product checks; a subsequent Windows Opera pass is
 still required. These UI results do not establish live NAS execution acceptance.
+
+### User-selected archive location and names at installation
+
+This supersedes earlier fixed Plex Config / TrueNASPlexConfig naming requirements.
+Installation configuration now has three independent editable inputs:
+
+- Backup folder location: a manually entered existing absolute host directory on
+  any accessible pool/dataset; there is no default pool or guessed path.
+- Backup folder name: defaults to `Plex Backup` when omitted/empty; custom portable
+  folder names (including spaces and Unicode letters) are supported.
+- Archive prefix: defaults to `PlexConfig` when omitted/empty, or e.g. `Dupa`.
+
+Logs always go in the fixed `Logs` child of the chosen backup folder. Every new
+archive always ends with `_YYYY.MM.DD_HH.MM.SS.tar.gz`, using Europe/London time.
+For example `/mnt/ArchivePool/Backups` plus folder `Moje kopie` and prefix `Dupa`
+produces `/mnt/ArchivePool/Backups/Moje kopie/Dupa_2026.11.04_10.20.30.tar.gz`
+and `/mnt/ArchivePool/Backups/Moje kopie/Logs/`.
+
+The selected folder is created exclusively under the existing parent; setup never
+creates a pool/dataset, renames/adopts an existing output folder or resets ACLs.
+Selecting a different location/name or prefix requires a fresh checked plan and
+invalidates its previous confirmation. Invalid/traversing names are rejected
+before host probes. Prefixes use 1–64 ASCII letters/digits/underscore/hyphen,
+starting with a letter/digit; the timestamp and extension cannot be overridden.
+Folder validation rejects separators, traversal and Windows-reserved names.
+
+Naming choices are saved as a private mode-0600 `output-naming.json` in application
+state (iXVolume), never in the output/Logs folder. The trusted installation flow
+must receive that state directory to complete nondefault naming. Save failures
+leave setup in REVIEW_REQUIRED; existing choices cannot be silently overwritten.
+Backup loads the persisted prefix at construction unless trusted deployment code
+explicitly supplies one. Invalid saved settings fail closed rather than reverting
+to defaults. The output mount/path still has to be bound by deployment; a naming
+record alone never grants access or relocates a directory.
+
+Backend listing, publication, validation selection/outcomes and frontend Backup/
+Restore/recovery name checks recognize custom dated names, the new PlexConfig
+default and existing TrueNASPlexConfig dated archives. They are not renamed when
+preferences change. Full content/database validation and restore confirmations
+remain required; recognizing a filename does not establish archive integrity.
+Checks include real synthetic archive creation from both default/custom saved
+prefixes, private naming persistence, folder identity checks, two manually chosen
+pool/dataset locations, unchanged Logs layout, and frontend selection/outcomes.
+The final TrueNAS installation form/deployment integration remains unfinished;
+these inputs are now in its tested installer model and storage/Backup code.

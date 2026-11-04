@@ -9,6 +9,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 from .archives import archive_name
+from .naming import load_naming, archive_prefix as validate_prefix
 from .archive_store import ArchiveStore, ArchiveChanged
 from .backup_archive import create_archive
 from .eventlog import EventLog
@@ -31,12 +32,13 @@ class ArchiveNameCollision(RuntimeError):
 
 
 class Backup:
-    def __init__(self,api,store,history,progress,state_directory,destination,dataset,snapshot_reader):
+    def __init__(self,api,store,history,progress,state_directory,destination,dataset,snapshot_reader, *, archive_prefix=None):
         self.api,self.store,self.history,self.progress=api,store,history,progress
         self.state=Path(state_directory); self.destination=Path(destination)
         self._operation_guard=operation_lock
         self._execution_request_id=None
         self.dataset=dataset
+        self.archive_prefix=validate_prefix(load_naming(self.state).archive_prefix if archive_prefix is None else archive_prefix)
         # Context manager must expose ONLY this snapshot's immutable contents.
         self.snapshot_reader=snapshot_reader
 
@@ -66,7 +68,7 @@ class Backup:
                     raise ArchiveChanged('Archives changed; refresh and choose again')
             elif len(archives) == 1:
                 raise BackupDecisionRequired(archives[0])
-            started=datetime.now(timezone.utc); name=archive_name(started)
+            started=datetime.now(timezone.utc); name=archive_name(started,prefix=self.archive_prefix)
             if (self.destination/name).exists() or (self.destination/name).is_symlink():
                 raise ArchiveNameCollision('Archive filename already exists; choose another timestamp')
             if PlexStatus(self.api).read()['state'] != 'RUNNING':

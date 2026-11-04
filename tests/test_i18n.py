@@ -18,4 +18,4 @@ class TranslationTests(unittest.TestCase):
             settings.update(language='pl')
             self.assertEqual(Settings(d).read()['language'],'pl')
             self.assertEqual(archive_name(datetime(2026,11,3,4,15,35,tzinfo=timezone.utc)),
-                             'TrueNASPlexConfig_2026.11.03_04.15.35.tar.gz')
+                             'PlexConfig_2026.11.03_04.15.35.tar.gz')

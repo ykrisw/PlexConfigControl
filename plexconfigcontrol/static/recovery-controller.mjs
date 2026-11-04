@@ -1,6 +1,6 @@
 import {normalizeOutcome} from './operation-outcome.mjs';
 // Read-only recovery status. This controller cannot delete snapshots or files.
-const archiveName=/^TrueNASPlexConfig_\d{4}\.\d{2}\.\d{2}_\d{2}\.\d{2}\.\d{2}\.tar\.gz$/;
+const archiveName=/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}_\d{4}\.\d{2}\.\d{2}_\d{2}\.\d{2}\.\d{2}\.tar\.gz$/;
 const temporaryName=/^\.pcc-[0-9a-f]{32}\.tmp$/;
 function publication(value){
   if(!value||typeof value.pending!=='boolean')return null;

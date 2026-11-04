@@ -63,3 +63,10 @@ test('external imports appear on refresh without auto-selection and vanish when 
   assert.deepEqual(view.states.at(-1).entries,[]);assert.deepEqual(view.states.at(-1).selected,[]);
   assert.equal(view.calls.length,0);view.controller.dispose();
 });
+
+test('custom and default archive prefixes remain selectable alongside legacy names',async()=>{
+  const rows=['Dupa','PlexConfig','TrueNASPlexConfig'].map(prefix=>({...archive(),name:`${prefix}_2026.11.03_04.15.35.tar.gz`}));
+  const view=setup({rows});await flush();assert.equal(view.states.at(-1).available,true);
+  for(const row of rows)view.controller.select(row.name,true);
+  assert.equal(view.controller.selection().length,3);view.controller.dispose();
+});
