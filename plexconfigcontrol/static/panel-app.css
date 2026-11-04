@@ -105,3 +105,9 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 @media(prefers-color-scheme:dark){
  .pcc-shell[data-theme=system] :is(.pcc-account-actions button,.pcc-theme-buttons button[aria-pressed=true],.pcc-backup .pcc-primary,.pcc-restore .pcc-primary){background:var(--pcc-selection-accent);border-color:var(--pcc-selection-accent);color:#000!important;-webkit-text-fill-color:#000!important}
 }
+
+/* Restore Refresh matches Backup Refresh in Dark. */
+.pcc-shell[data-theme=dark] .pcc-restore [data-restore-action=refresh]{font:600 13px Arial,sans-serif;padding:10px 14px;background:var(--pcc-bg)}
+@media(prefers-color-scheme:dark){
+ .pcc-shell[data-theme=system] .pcc-restore [data-restore-action=refresh]{font:600 13px Arial,sans-serif;padding:10px 14px;background:var(--pcc-bg)}
+}
