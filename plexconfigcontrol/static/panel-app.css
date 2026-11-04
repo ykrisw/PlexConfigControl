@@ -123,3 +123,9 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 .pcc-shell .pcc-page :is(.pcc-archives,.pcc-archive-card) .pcc-archive-row{min-height:54px;padding:8px 14px;gap:13px;font:400 13px/18px Arial,sans-serif}
 .pcc-shell .pcc-page :is(.pcc-archives,.pcc-archive-card) .pcc-archive-row :is(strong,small){font-size:13px;line-height:18px}
 .pcc-shell .pcc-page>.pcc-plex [data-plex-state]{color:var(--pcc-ink)}
+
+/* Settings uses the same card inset and heading slot as Backup/Restore. */
+.pcc-shell .pcc-page.pcc-settings :is(.pcc-appearance,.pcc-about){padding:18px!important}
+.pcc-shell .pcc-page.pcc-settings .pcc-card>.pcc-section-title{font:600 20px/30px Arial,sans-serif;min-height:40px;display:flex;align-items:center;margin:0}
+.pcc-shell .pcc-page.pcc-settings .pcc-appearance{min-height:178px}
+.pcc-shell .pcc-page.pcc-settings .pcc-theme-row{margin-top:12px;padding-top:14px}
