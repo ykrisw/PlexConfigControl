@@ -111,3 +111,15 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 @media(prefers-color-scheme:dark){
  .pcc-shell[data-theme=system] .pcc-restore [data-restore-action=refresh]{font:600 13px Arial,sans-serif;padding:10px 14px;background:var(--pcc-bg)}
 }
+
+/* Shared Backup/Restore geometry: one set of spacing and typography rules. */
+.pcc-shell .pcc-page .pcc-card.pcc-action-card{padding:18px;display:flex;flex-direction:column;gap:0}
+.pcc-shell .pcc-page .pcc-card.pcc-action-card>.pcc-heading{min-height:40px;margin:0 0 12px;gap:12px}
+.pcc-shell .pcc-page .pcc-card.pcc-action-card>.pcc-heading h2{font:600 20px/30px Arial,sans-serif;margin:0}
+.pcc-shell .pcc-page .pcc-card.pcc-action-card>p{font:400 14px/21px Arial,sans-serif;margin:0 0 14px}
+.pcc-shell .pcc-page .pcc-card.pcc-action-card>.pcc-primary{box-sizing:border-box;min-height:55px;padding:10px 14px;border:0;border-radius:8px;font:600 17px/25px Arial,sans-serif}
+.pcc-shell .pcc-page :is(.pcc-archives,.pcc-archive-card)>.pcc-heading{min-height:40px;margin:0 0 12px;gap:12px}
+.pcc-shell .pcc-page :is(.pcc-archives,.pcc-archive-card)>.pcc-heading h2{font:600 16px/24px Arial,sans-serif;margin:0}
+.pcc-shell .pcc-page :is(.pcc-archives,.pcc-archive-card) .pcc-archive-row{min-height:54px;padding:8px 14px;gap:13px;font:400 13px/18px Arial,sans-serif}
+.pcc-shell .pcc-page :is(.pcc-archives,.pcc-archive-card) .pcc-archive-row :is(strong,small){font-size:13px;line-height:18px}
+.pcc-shell .pcc-page>.pcc-plex [data-plex-state]{color:var(--pcc-ink)}
