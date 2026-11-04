@@ -48,8 +48,8 @@
 .pcc-shell[data-theme=system] [data-plex-state=STOPPED]::before{color:#dc2626!important;-webkit-text-fill-color:#dc2626!important}
 }
 
-/* Active navigation label: yellow in Dark, including System in dark mode. */
-.pcc-shell[data-theme=dark] .pcc-nav button[aria-selected=true] span{color:var(--pcc-selection-accent);-webkit-text-fill-color:var(--pcc-selection-accent)}
+/* Active navigation label and icon: yellow in Dark and System-dark. */
+.pcc-shell[data-theme=dark] .pcc-nav button[aria-selected=true]{color:var(--pcc-selection-accent);-webkit-text-fill-color:var(--pcc-selection-accent)}
 @media(prefers-color-scheme:dark){
- .pcc-shell[data-theme=system] .pcc-nav button[aria-selected=true] span{color:var(--pcc-selection-accent);-webkit-text-fill-color:var(--pcc-selection-accent)}
+ .pcc-shell[data-theme=system] .pcc-nav button[aria-selected=true]{color:var(--pcc-selection-accent);-webkit-text-fill-color:var(--pcc-selection-accent)}
 }
