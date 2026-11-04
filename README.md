@@ -1310,3 +1310,48 @@ pool path, single creation, text-only source rendering and explicit uncertain
 outcomes. These browser results must be read from CI; local syntax/unit checks
 are not a native-browser pass and synthetic receipts never create host folders.
 Installer packaging remains manual-only.
+
+### Authenticated installation service and durable creation receipt
+
+`installation_service.InstallationService` now binds the installer flow to real
+private-state Sessions. Its `check(token, csrf, payload)` accepts only parent,
+manual_source, folder_name and archive_prefix; `create(token, csrf, payload)`
+accepts only an exact checked revision and literal confirmed=true. Callers cannot
+supply API methods, commands, URLs or datasets. The trusted deployment supplies
+the API client and initialized account/session state. Another session cannot
+consume an in-memory checked revision or read its nonce. Logout/credential changes
+invalidate authorization through Sessions. Public methods return fixed safe error
+codes instead of arbitrary private exception text.
+
+The service holds the existing operation file lock and refuses recorded core
+operations/recovery/publication before setup. A private mode-0600
+`installation.sqlite3` commits STARTED before folder creation. Only a confirmed
+flow result and persisted receipt become COMPLETE. Restart with STARTED, unknown
+or corrupt receipt remains REVIEW_REQUIRED: no automatic replay, deletion or
+folder adoption. A repeated exact confirmation by the same authenticated owner
+of a completed request returns its durable receipt without creating again. A
+known pre-write rejection (existing folder or failed source recheck) is NO_WRITE,
+so an explicit new check can proceed after correction. Two service instances with
+different checked plans cannot both create destinations in the same private state.
+
+Tests use actual sessions/CSRF and temporary directories: custom names/Logs,
+private naming persistence, receipt lookup after service restart, wrong/expired
+sessions, stale payloads, competing instances, existing-folder rejection, core
+recovery/busy locks, simulated interruption before mkdir and receipt-persistence
+failure after real folder creation. No test connects to the user's NAS.
+
+This adapter is deliberately not mounted in Web/TestApplication and enables no
+privileged runtime or public setup endpoint. Its transport still needs explicit
+HTTPS, origin/body limits, session-cookie handling and deployment ownership; the
+final TrueNAS installation binding remains unfinished. In-memory checked plans
+are not restored after a restart. State requiring review must not be bypassed by
+silently replacing the service/record or choosing another folder.
+
+Run `41758555734` for revision `4719f9e1` confirmed the installer-component suite
+in actual Linux Chromium, Firefox and Microsoft Edge (intercepted adapter only).
+The Windows Opera job in run `41758555715` instead failed because Chocolatey's
+feed returned HTTP 504 and installed no browser. The disposable Windows setup now
+allows at most three package-install attempts and verifies an actual installed
+Opera executable after each. These retries are limited to ephemeral CI browser
+installation; application POSTs and host operations are not automatically retried.
+A new Opera run is still required to verify the browser itself.

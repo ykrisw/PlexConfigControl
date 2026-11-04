@@ -91,7 +91,15 @@ jobs:
           python-version: '3.12'
       - name: Install Opera on disposable Windows runner
         if: runner.os == 'Windows'
-        run: choco install opera --yes --no-progress
+        shell: pwsh
+        run: |
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            choco install opera --yes --no-progress
+            python -c "import sys; sys.path.insert(0, 'tests'); from retail_opera import opera_binary; print(opera_binary())"
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+            if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
+          }
+          throw 'Retail Opera installation could not be verified on this disposable runner.' 
       - name: Install Opera on disposable macOS runner
         if: runner.os == 'macOS'
         run: brew install --cask opera
