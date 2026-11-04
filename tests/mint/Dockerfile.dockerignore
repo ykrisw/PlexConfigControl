@@ -7,3 +7,5 @@
 !tests/desktop_e2e.py
 !tests/desktop_fixture.py
 !tests/execution_ui_e2e.py
+!tests/retail_opera.py
+!tests/opera_e2e.py

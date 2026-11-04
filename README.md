@@ -1101,3 +1101,37 @@ No new browser/OS pass is claimed until CI completes. The preceding revision
 `41731369439` and browser run `41731369736` successfully, including the corrected
 Android-system transport. Installer packaging remains manual-only and is not
 part of this desktop workflow.
+
+
+### Opera on Windows, macOS and Mint
+
+The desktop workflow additionally installs and launches retail Opera on native
+Windows/macOS runners and in Mint userspace. `tests/opera_e2e.py` uses the
+installed Opera executable through Playwright's Chromium-compatible automation;
+it never falls back to downloaded Chromium. The live user agent must identify
+Opera (`OPR/`) or the check fails. Tests use a fresh temporary browser profile,
+never a user's existing profile. OS, executable, browser version and user agent
+are recorded with screenshots.
+
+Opera checks all five actual panel views over the disposable HTTPS fixture,
+EN/PL, Light/Dark/System, wide/narrow viewports, archive/history scrolling and
+selection, black headings in Light, Plex status transitions, password dialog and
+sign-out. It also runs the existing intercepted-API execution-dialog scenarios:
+one-copy Backup choice, lost submission reply, explicit same-request retry,
+read-only receipt lookup, typed Restore confirmation, stale-validation rejection
+and synthetic completion. These are UI compatibility checks, not actual backups
+or restores on a NAS. Chromium-compatible automation of a custom browser can
+itself fail; only a completed job establishes coverage for its recorded version.
+The same Windows Server/Mint-userspace limitations described above apply.
+
+To run against an already-installed Opera as a regular desktop user, install
+`playwright>=1.56,<2` and `cryptography>=44` in the test virtualenv, set
+`PCC_DESKTOP_TARGET` to `windows`, `macos` or `mint`, and run
+`python tests/opera_e2e.py`. No Playwright browser download is needed.
+
+The first Windows desktop run (`41752659398`, revision `6f2dab92`) reached the
+actual browsers but exposed an incorrect test selector for Restore's archive
+list: it uses `data-archive-list`, while Backup uses `data-archives`. Both the
+Selenium and Opera test paths now use the actual view-specific selectors; checks
+still require 13 rows and real overflow. New Opera/desktop results remain pending
+until the updated jobs complete. No installer is built by this workflow.

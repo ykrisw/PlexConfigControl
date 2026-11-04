@@ -80,7 +80,7 @@ def exercise(driver, api, url, output):
         for key in ('dashboard','backup','restore','history','settings'):
             tab(key);root=f'[data-panel={key}]';geometry(root)
             if key in ('backup','restore','history'):
-                attribute='data-events' if key=='history' else 'data-archives'
+                attribute={'history':'data-events','restore':'data-archive-list','backup':'data-archives'}[key]
                 row='.pcc-event-row' if key=='history' else '.pcc-archive-row'
                 scroller=root+f' [{attribute}]'
                 count(scroller+' '+row,20 if key=='history' else 13)
@@ -90,7 +90,7 @@ def exercise(driver, api, url, output):
                 assert driver.execute_script('return arguments[0].scrollTop>0',scroll)
                 driver.execute_script('arguments[0].scrollTop=0',scroll)
                 check=visible(scroller+' input');check.click()
-                wait.until(lambda _:len(driver.find_elements(By.CSS_SELECTOR,scroller+' .pcc-selected'))==1)
+                wait.until(lambda _:sum(item.is_selected() for item in driver.find_elements(By.CSS_SELECTOR,scroller+' input'))==1)
                 if key=='history':
                     click(root+' [data-clear]');visible(root+' dialog[open]');click(root+' [data-cancel]')
             if theme=='Light':
