@@ -17,7 +17,6 @@ export function mountDashboardView(root, client, {onSignedOut, language = 'en'} 
           </div>
         </div>
         <input data-photo-file type="file" accept="image/jpeg,image/png" hidden>
-        <div class="pcc-account-state"><span data-account-active></span></div>
       </div>
       <div class="pcc-account-actions"><button type="button" data-password></button><button type="button" data-logout></button></div>
     </section>
@@ -41,7 +40,6 @@ export function mountDashboardView(root, client, {onSignedOut, language = 'en'} 
   const labels = {
     '[data-server]': tx('Plex Server', 'Serwer Plex'),
     '[data-account]': tx('Account', 'Konto'),
-    '[data-account-active]': tx('ACTIVE', 'AKTYWNE'),
     '[data-password]': tx('Change Password', 'Zmień hasło'),
     '[data-logout]': tx('Log Out', 'Wyloguj'),
     '#pcc-password-title': tx('Change Password', 'Zmień hasło'),

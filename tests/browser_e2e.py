@@ -85,7 +85,7 @@ def main():
             page.get_by_role('button',name='Sign In',exact=True).click()
             expect(page.locator('.pcc-nav')).to_be_visible()
             dashboard=page.locator('[data-panel=dashboard]')
-            expect(dashboard.locator('[data-account-active]')).to_have_text('ACTIVE')
+            expect(dashboard.locator('[data-account-active]')).to_have_count(0)
             expect(dashboard.locator('[data-photo-upload]')).to_be_enabled()
             expect(dashboard.locator('.pcc-photo-tools')).to_have_css('opacity','0')
             dashboard.locator('.pcc-avatar').hover()

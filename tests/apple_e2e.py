@@ -111,7 +111,7 @@ def exercise(driver, fixture, output, *, mobile):
     visible('.pcc-nav')
     driver.execute_script("window.__pccAppleErrors=[];addEventListener('error',e=>window.__pccAppleErrors.push(String(e.message)));addEventListener('unhandledrejection',e=>window.__pccAppleErrors.push(String(e.reason)));")
     print('Browser UA:',driver.execute_script('return navigator.userAgent'),flush=True)
-    text('[data-account-active]','ACTIVE')
+    assert not driver.find_elements(By.CSS_SELECTOR,'[data-account-active]')
     # Upload through the actual file input change handler, avoiding native pickers.
     image=io.BytesIO();Image.new('RGB',(48,36),'#2a70af').save(image,format='PNG')
     driver.execute_script("""const bytes=Uint8Array.from(atob(arguments[0]),c=>c.charCodeAt(0));

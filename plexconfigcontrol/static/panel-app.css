@@ -14,12 +14,12 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 .pcc-shell .pcc-photo-tools button:disabled{cursor:not-allowed}
 @media(hover:none){.pcc-shell .pcc-photo-tools{opacity:1}.pcc-shell[data-theme] .pcc-avatar .pcc-photo-tools button{min-height:44px;min-width:44px}}
 @media(prefers-reduced-motion:reduce){.pcc-shell .pcc-photo-tools{transition:none}}
-.pcc-shell [data-plex-state],.pcc-shell [data-account-active]{font-size:13px;font-weight:600}
-.pcc-shell [data-plex-state]::before,.pcc-shell [data-account-active]::before{content:'●';display:inline-block;margin-right:8px;color:#8596ac;-webkit-text-fill-color:currentColor}
-.pcc-shell [data-plex-state=RUNNING]::before,.pcc-shell [data-account-active]::before{color:#158843;animation:pcc-live-dot 2s ease-in-out infinite}
+.pcc-shell [data-plex-state]{font-size:13px;font-weight:600}
+.pcc-shell [data-plex-state]::before{content:'●';display:inline-block;margin-right:8px;color:#8596ac;-webkit-text-fill-color:currentColor}
+.pcc-shell [data-plex-state=RUNNING]::before{color:#158843;animation:pcc-live-dot 2s ease-in-out infinite}
 .pcc-shell [data-plex-state=STOPPED]::before{color:#dc2626;animation:pcc-live-dot 2s ease-in-out infinite}
 @keyframes pcc-live-dot{50%{opacity:.6;text-shadow:0 0 9px currentColor}}
-@media(prefers-reduced-motion:reduce){.pcc-shell [data-plex-state]::before,.pcc-shell [data-account-active]::before{animation:none}}
+@media(prefers-reduced-motion:reduce){.pcc-shell [data-plex-state]::before{animation:none}}
 .pcc-shell .pcc-password-dialog{color:var(--pcc-ink);border-radius:14px;padding:24px;width:calc(100% - 40px);max-width:440px;max-height:90%;box-sizing:border-box}
 .pcc-shell .pcc-password-dialog::backdrop{background:#10182788}
 .pcc-shell .pcc-password-dialog label,.pcc-shell .pcc-login label{display:grid;gap:8px;margin:16px 0}
@@ -99,3 +99,9 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 @media(max-width:420px){.pcc-shell .pcc-integration dl{grid-template-columns:minmax(0,1fr)}.pcc-shell .pcc-integration dd{margin-bottom:10px}}
 
 .pcc-shell .pcc-notification-dialog .pcc-dialog-actions{flex-wrap:wrap}
+
+/* Filled yellow controls in Dark; navigation and row selections keep their own styles. */
+.pcc-shell[data-theme=dark] :is(.pcc-account-actions button,.pcc-theme-buttons button[aria-pressed=true]){background:var(--pcc-selection-accent);border-color:var(--pcc-selection-accent);color:#000!important;-webkit-text-fill-color:#000!important}
+@media(prefers-color-scheme:dark){
+ .pcc-shell[data-theme=system] :is(.pcc-account-actions button,.pcc-theme-buttons button[aria-pressed=true]){background:var(--pcc-selection-accent);border-color:var(--pcc-selection-accent);color:#000!important;-webkit-text-fill-color:#000!important}
+}
