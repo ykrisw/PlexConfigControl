@@ -44,7 +44,7 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 .pcc-shell .pcc-history h2{font-size:16px;font-weight:600;margin:0}
 .pcc-shell .pcc-history-actions{display:flex;gap:8px;flex-wrap:wrap}
 .pcc-shell .pcc-event-row{display:flex;align-items:center;gap:13px;min-height:52px;border:1px solid var(--pcc-line);border-radius:9px;padding:8px 14px;background:var(--pcc-card);cursor:pointer}
-.pcc-shell .pcc-event-row.pcc-selected{background:var(--pcc-selected);border-color:var(--pcc-selection-accent)}
+.pcc-shell .pcc-event-row.pcc-selected{background:var(--pcc-row-selected,var(--pcc-selected));border-color:var(--pcc-selection-accent)}
 .pcc-shell .pcc-event-text{flex:1;min-width:0;font-size:13px;overflow-wrap:anywhere}
 .pcc-shell .pcc-event-text small{display:block;margin-top:3px;font-size:12px}
 .pcc-shell .pcc-event-status{font-size:12px;border-radius:20px;padding:3px 10px;white-space:nowrap}
@@ -58,7 +58,7 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 .pcc-shell .pcc-backup button:disabled{cursor:not-allowed;opacity:1}
 .pcc-shell .pcc-backup .pcc-primary{width:100%;min-height:55px;background:#2a70af;color:#fff;border:0;font-size:17px}
 .pcc-shell .pcc-backup .pcc-archive-row{display:flex;align-items:center;gap:13px;min-height:54px;border:1px solid var(--pcc-line);border-radius:9px;padding:8px 14px;background:var(--pcc-card);cursor:pointer}
-.pcc-shell .pcc-backup .pcc-archive-row.pcc-selected{background:var(--pcc-selected);border-color:var(--pcc-selection-accent)}
+.pcc-shell .pcc-backup .pcc-archive-row.pcc-selected{background:var(--pcc-row-selected,var(--pcc-selected));border-color:var(--pcc-selection-accent)}
 .pcc-shell .pcc-backup .pcc-archive-row>span{min-width:0}
 .pcc-shell .pcc-backup .pcc-archive-row strong{display:block;font-size:13px;overflow-wrap:anywhere}
 .pcc-shell .pcc-backup .pcc-archive-row small{display:block;font-size:13px}
