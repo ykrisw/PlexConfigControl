@@ -1,154 +1,72 @@
-# PlexConfigControl — first test installation
+# PlexConfigControl — restricted test installation for TrueNAS SCALE
 
-This is a test build, not a complete backup/restore product. To prepare a current
-package, open **Actions → Build test installation → Run workflow**, select **main**,
-and wait for the image/browser checks to pass. Installer artifacts are generated
-only for manual workflow runs; ordinary code pushes run tests without another image package.
+This package installs the HTTPS web panel: sign-in/password changes, profile
+photo, web history, English/Polish and Light/Dark/System preferences. Private
+state and the application certificate persist across application restarts.
 
-Download **PlexConfigControl-test-installation** from that run's **Artifacts**.
-It includes the Docker image, this guide and SHA256SUMS. GitHub sign-in may be
-required; artifacts expire after 30 days. The source ZIP is not an installation
-image. Check the actual Chromium, Firefox and Microsoft Edge interface test steps,
-not only the server smoke test: early images predate browser sign-in fixes.
+**Backup/Restore host execution is disabled.** Plex control, snapshot mutations
+and archive deletion are unavailable. The new storage-setup component is present
+in source but is not mounted by this restricted installation. Do not attach live
+Plex configuration, a Docker socket, devices or API credentials for the first test.
 
-## What this build can test
+1. Extract the package on your computer. Copy `PlexConfigControl-test-image.tar.gz`
+   to a chosen ordinary location on your NAS (never protected PBS storage).
+2. In TrueNAS shell, substitute the actual image path:
 
-- Password-only login, no inactivity logout, password changes and explicit logout.
-- The approved shared panel shell, Dashboard, History and Restore validation view.
-- Persistent preferences, sessions, history and TLS identity across app restarts.
-- Optional Plex status reads using a separately configured read-only connection.
-- Optional archive selection/validation with a read-only archive host-path mount.
+   ```sh
+   sudo docker load --input '/YOUR/PATH/PlexConfigControl-test-image.tar.gz'
+   ```
 
-Backup creation, config restoration, snapshot operations and archive deletion are
-blocked by the test runtime. Later builds show Backup archives/planning but keep
-creation and deletion disabled. Settings is connected in builds after the first
-test image; the first image still has its Backup/Settings placeholders.
-History downloads export stored event text, not full permanent operation files.
-No Docker socket, ZFS device, host shell, live Plex config or Plex container mounts
-are needed or permitted by this test configuration. Do not change Plex ACLs.
+   Expect `Loaded image: plexconfigcontrol:test`. Do not extract the image tarball.
+3. Generate the salted initial password verifier:
 
-## 1. Load the image once
+   ```sh
+   sudo docker run --rm -it --entrypoint python plexconfigcontrol:test -m plexconfigcontrol.installation
+   ```
 
-Download and unzip **PlexConfigControl-test-installation** from the successful
-GitHub Actions run. Place `PlexConfigControl-test-image.tar.gz` on an accessible
-SMB directory. In the TrueNAS shell, use its actual path:
+   Enter and confirm your password. Copy the full `pbkdf2-sha256$...` output;
+   treat it as sensitive and do not paste it into chat.
+4. In **Apps → Discover Apps → Custom App**, use the form, not Install via YAML:
 
-```sh
-sudo docker load --input '/YOUR/ACTUAL/PATH/PlexConfigControl-test-image.tar.gz'
-```
+   | Field | Value |
+   | --- | --- |
+   | Application Name | `plexconfigcontrol-test` |
+   | Image Repository / Tag | `plexconfigcontrol` / `test` |
+   | Pull Policy | Never pull image even if it’s not present on host |
+   | Restart Policy | Unless Stopped |
+   | Privileged | off |
+   | User if requested | UID 568, GID 568 |
+   | Host IP / Port | your NAS IP, e.g. `192.168.1.120` / `8787` |
+   | Container Port | `8443`, TCP |
+   | Portal Protocol / Path | HTTPS / `/` |
 
-The loaded image is `plexconfigcontrol:test`. Image import and the password
-helper below are installation steps. No backup/restore shell scripts
-are installed. The archive can be removed manually after the installation works.
+   Keep the image's default Entrypoint and Command. Add environment variables:
+   `PCC_PUBLIC_HOST` = your NAS IP; `PCC_BOOTSTRAP_VERIFIER` = the entire verifier.
+   Never supply a plaintext password variable.
+5. Add one new **ixVolume** named `state`, mounted at `/var/lib/plexconfigcontrol`.
+   It must be writable by UID/GID 568. If needed, configure ACL only on this new
+   app volume. Never force ACLs or alter existing datasets. Add no other mounts.
+6. Install, wait for RUNNING, then visit `https://YOUR_NAS_IP:8787`. The app's
+   self-signed certificate produces a browser warning. Verify the NAS address
+   before accepting the exception. Sign in with your chosen password.
 
-## 2. Prepare the initial password without storing it in Apps configuration
+Check preferences/language, photo upload/change/removal, password changes,
+sign-out, web history and a restart of this application only. UNKNOWN Plex state,
+empty archive lists and disabled execution buttons are expected without optional
+integration. This does not mean Plex is stopped. No inactivity logout is intended.
 
-The test packaging uses a salted password verifier, not a plaintext environment
-password. Generate it using the loaded image:
+After first successful sign-in, `PCC_BOOTSTRAP_VERIFIER` may be removed from app
+configuration. It does not reset an existing account. Preserve the iXVolume to
+retain settings, account, sessions, photo, history and certificate.
 
-```sh
-sudo docker run --rm -it --entrypoint python plexconfigcontrol:test -m plexconfigcontrol.installation
-```
+If startup fails, inspect this app's logs and check the complete verifier, public
+host, non-root identity and new state-volume write access. Do not enable root,
+privileged mode or Docker socket access as a workaround.
 
-Enter and confirm the desired password. Input is hidden. Copy the single line
-beginning `pbkdf2-sha256$`. This is a sensitive password verifier, not a password;
-do not post it in chat or screenshots. The temporary helper container is removed.
-This extra step is temporary: the final installation form still needs a verified
-password/secret integration. No default password is supplied.
+Uninstall only `plexconfigcontrol-test` through Apps. Deleting its iXVolume removes
+its private state; preserving it retains that state. Production Plex data is not
+modified by this first-test configuration.
 
-## 3. TrueNAS Apps → Discover Apps → Custom App
-
-Use the guided **Custom App** wizard, not Install via YAML. This allows a real
-TrueNAS-managed ixVolume, rather than substituting an ordinary Docker volume.
-
-| Setting | Value |
-| --- | --- |
-| Application name | `plexconfigcontrol-test` |
-| Image repository | `plexconfigcontrol` |
-| Image tag | `test` |
-| Pull policy | Never (use the image imported above) |
-| Restart policy | Unless Stopped |
-| Privileged | Off |
-| Custom user/group, if needed | UID `568`, GID `568` (same as the image) |
-| Host IP | `192.168.1.120` |
-| Host port | `8787`, or another free port selected by you |
-| Container port | `8443`, TCP |
-| Portal protocol/path | HTTPS, `/` |
-
-Keep the image's default entrypoint and command. Add these environment variables:
-
-| Name | Value |
-| --- | --- |
-| `PCC_PUBLIC_HOST` | `192.168.1.120` (or the actual NAS address used in the browser) |
-| `PCC_BOOTSTRAP_VERIFIER` | The complete verifier from step 2 |
-
-Add **Storage → ixVolume** with dataset name `state` and mount path
-`/var/lib/plexconfigcontrol`. It must be writable by UID/GID 568. If the wizard
-requires an ACL entry for this new app volume, grant that identity access only
-on the app volume. Do not enable any force-ACL option or change existing datasets.
-Do not use a broad host-path mount as a replacement for this state volume.
-
-No additional storage is required for the first UI test. Install and wait for
-the app to run, then open `https://192.168.1.120:8787`. The app generates its own
-certificate in its ixVolume. Your browser will warn because it is self-signed.
-Confirm only the NAS address you selected. The certificate persists on restart.
-
-Changing the NAS address later requires an explicit TLS-certificate migration;
-this test runtime intentionally does not silently replace its saved certificate.
-
-## 4. What to check first
-
-1. Sign in with the password chosen in step 2.
-2. Check Dashboard layout and Change Password; changing the password signs all
-   sessions out. Log back in with the new password.
-3. Check History, filters, selecting entries, downloading and confirmed clearing.
-   In newer builds, also test profile-photo upload/replacement, restart persistence
-   and confirmed removal. The first image does not include this feature.
-4. Restart only this test app through TrueNAS Apps. Check the password, session,
-   history and TLS certificate survive.
-5. Plex state is **UNKNOWN** until a verified read-only connection is configured.
-   This is expected; the app never invents a RUNNING state.
-
-The original bootstrap verifier is ignored once the account exists. It cannot
-reset the password after an app restart. Removing it from Apps configuration
-after the first successful sign-in is supported.
-
-## Optional archive-validation test
-
-Add one host-path mount containing test archives at `/archives`, **Read Only**,
-and set `PCC_ARCHIVE_DIRECTORY=/archives`. Keep Enable ACL/Force ACL off. The app
-does not adopt this directory as its managed output destination, create folders
-there or change its permissions. It only lists recognized dated archive names
-and validates their content. Leave the live Plex config dataset unmounted.
-
-For a Plex status connection, the runtime accepts `PCC_TRUENAS_URL`,
-`PCC_API_USERNAME`, `PCC_API_KEY_FILE`, and optional `PCC_CA_FILE`. Credentials
-must be privately mounted files readable only by the application identity.
-TLS verification is mandatory. Configure this separately; never paste keys into
-chat. The runtime accepts only app.query filtered to Plex, with no snapshot or
-app start/stop methods. This connection still needs end-to-end TrueNAS testing.
-
-## Removing the test app
-
-Use TrueNAS Apps deletion. Removing the app ixVolume removes account/settings,
-sessions, web history and generated certificate. Keeping the volume retains that
-state; a new installation requires removing the old state volume. Read-only
-external archives and their permanent Logs directory are never deleted by this
-test build. TrueNAS controls its Remove ixVolumes/Images options.
-
-## References
-
-- https://www.truenas.com/docs/scale/25.10/scaleuireference/apps/installcustomappscreens/
-- https://apps.truenas.com/managing-apps/installing-custom-apps/
-- https://gunicorn.org/reference/settings/
-
-
-For optional recovery snapshot status, `PCC_PLEX_CONFIG_DATASET` may be supplied
-alongside the existing read-only TrueNAS connection. It scopes exact application
-snapshot queries to that dataset and does not grant any snapshot mutation or Plex
-control capability. Leave it unset until the read-only account and its metadata
-permissions are configured and verified. An unavailable or unauthorized read
-continues to show UNKNOWN; no snapshot is inferred absent.
-
-`BUILD-INFO.txt` identifies the exact source commit and restricted test mode.
-SHA256SUMS covers the image, both guides and build information.
+`BUILD-INFO.txt` identifies the exact source commit and build time. `SHA256SUMS`
+covers the image, both installation guides and build information. The image is
+built for the Linux x86_64 CI runner; this package is not an ARM image.

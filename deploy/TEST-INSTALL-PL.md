@@ -1,162 +1,129 @@
-# PlexConfigControl — instalacja testowa na TrueNAS SCALE 25.10.7
+# PlexConfigControl — instalacja testowa dla TrueNAS SCALE
 
-To pierwsza wersja do sprawdzania panelu, logowania, historii i trwałości ustawień.
-Nie wykonuje Backup ani właściwego Restore. Nie tworzy i nie usuwa snapshotów.
-Nie podłączaj do niej konfiguracji Plex, urządzeń ZFS ani gniazda Dockera.
+## Co zawiera ta paczka
 
-## Pobranie
+To instalowalna wersja testowa panelu WWW: konto i logowanie, zmiana hasła,
+zdjęcie konta, historia, język polski/angielski i motywy Light/Dark/System.
+Ustawienia, sesje i certyfikat pozostają po restarcie aplikacji.
 
-W repozytorium GitHub otwórz **Actions → Build test installation → Run workflow**
-i wybierz gałąź **main**. Aktualna paczka instalacyjna jest przygotowywana tylko
-przy takim ręcznym uruchomieniu. Zwykłe aktualizacje kodu uruchamiają testy,
-ale nie tworzą kolejnej instalki.
+**Ta paczka NIE tworzy kopii Plex ani nie wykonuje Restore.** Nie steruje Plexem,
+nie tworzy snapshotów i nie usuwa archiwów. Nowy formularz konfiguracji magazynu
+jest w kodzie, ale nie został jeszcze podłączony do tej instalacji. Pierwszy test
+wykonaj bez dostępu do danych Plex, bez klucza API, bez montowania konfiguracji
+Plex i bez gniazda Dockera. Możesz testować panel, konto, zdjęcie i ustawienia.
 
-Poczekaj na zakończenie testów obrazu i przeglądarek, a następnie pobierz z sekcji
-**Artifacts** paczkę **PlexConfigControl-test-installation**. Pobieranie może wymagać
-zalogowania do GitHuba. Paczka zawiera obraz kontenera, instrukcje i sumę SHA256;
-wygasa po 30 dniach. Zwykły ZIP ze źródłami repozytorium nie jest instalką.
-Nie wybieraj starego obrazu na podstawie samego testu serwera — testy rzeczywistego
-interfejsu obejmują osobne kroki Chromium, Firefox i Microsoft Edge.
+Paczkę rozpakuj na swoim komputerze. W środku znajdziesz:
 
-## 1. Wczytaj obraz
+- `PlexConfigControl-test-image.tar.gz` — gotowy obraz, nie trzeba go kompilować.
+- tę instrukcję oraz wersję angielską;
+- `BUILD-INFO.txt` — dokładny commit źródłowy i data budowania;
+- `SHA256SUMS` — sumy kontrolne.
 
-Rozpakuj paczkę na komputerze. Skopiuj `PlexConfigControl-test-image.tar.gz`
-przez SMB do wybranego folderu na NAS-ie. W shellu TrueNAS wpisz polecenie,
-zastępując przykładową ścieżkę faktyczną lokalizacją pliku:
+## 1. Wczytaj gotowy obraz na TrueNAS
+
+Skopiuj **tylko plik obrazu** przez SMB do dowolnego wybranego folderu na NAS-ie.
+Nie używaj chronionego PBS-Data. W terminalu TrueNAS uruchom polecenie,
+wpisując rzeczywistą ścieżkę do skopiowanego pliku:
 
 ```sh
-sudo docker load --input '/TU/WPISZ/SWOJA/SCIEZKE/PlexConfigControl-test-image.tar.gz'
+sudo docker load --input '/TU/WPISZ/SCIEZKE/PlexConfigControl-test-image.tar.gz'
 ```
 
-Powinien zostać załadowany obraz `plexconfigcontrol:test`. To jednorazowy import
-obrazu. Po sprawdzeniu instalacji plik instalacyjny można ręcznie usunąć.
+Oczekiwany wynik zawiera `Loaded image: plexconfigcontrol:test`.
+Nie rozpakowuj samego pliku obrazu `.tar.gz`; `docker load` odczyta go bezpośrednio.
 
-## 2. Wybierz hasło
+## 2. Ustal hasło do panelu
 
-Ta paczka testowa używa dodatkowego kroku, żeby nie zapisywać jawnego hasła
-w zmiennych kontenera. Uruchom:
+W tym samym terminalu uruchom:
 
 ```sh
 sudo docker run --rm -it --entrypoint python plexconfigcontrol:test -m plexconfigcontrol.installation
 ```
 
-Wpisz hasło i powtórz je. Podczas wpisywania nic się nie wyświetla. Skopiuj
-wygenerowany wiersz zaczynający się od `pbkdf2-sha256$`. Nie wklejaj go do
-rozmowy — to wrażliwy weryfikator hasła. Kontener pomocniczy usunie się sam.
-Docelowy formularz wyboru hasła bezpośrednio przy instalacji nadal wymaga pracy.
+Wpisz wybrane hasło i powtórz je. Podczas wpisywania nic się nie wyświetla.
+Polecenie wypisze jeden wiersz zaczynający się od `pbkdf2-sha256$`.
+Skopiuj CAŁY ten wiersz. To weryfikator hasła potrzebny w następnym kroku;
+nie wklejaj go do rozmowy. Kontener pomocniczy usunie się po zakończeniu.
 
-## 3. Zainstaluj w Apps
+## 3. Dodaj aplikację w TrueNAS Apps
 
-Otwórz **Apps → Discover Apps → Custom App**. Użyj formularza, nie Install via YAML.
+Otwórz **Apps → Discover Apps → Custom App** i użyj formularza instalacji
+(**nie** opcji Install via YAML). Wpisz:
 
 | Pole | Wartość |
 | --- | --- |
 | Application Name | `plexconfigcontrol-test` |
 | Image Repository | `plexconfigcontrol` |
 | Tag | `test` |
-| Pull Policy | **Never pull image even if it’s not present on host** |
-| Restart Policy | **Unless Stopped** |
-| Privileged | Wyłączone |
-| Custom User, jeśli potrzebny | UID `568`, GID `568` |
-| Host IP | `192.168.1.120` |
-| Host Port | `8787` lub inny wolny port |
-| Container Port | `8443`, TCP |
-| Portal Protocol / Path | HTTPS / `/` |
+| Pull Policy | `Never pull image even if it’s not present on host` |
+| Restart Policy | `Unless Stopped` |
+| Privileged | wyłączone |
+| Custom User, jeśli formularz tego wymaga | UID `568`, GID `568` |
+| Host IP dla portu | `192.168.1.120` — albo adres Twojego TrueNAS |
+| Host Port | `8787` — albo inny wolny port |
+| Container Port / Protocol | `8443` / TCP |
+| Web Portal Protocol / Path | HTTPS / `/` |
 
 Pozostaw domyślne Entrypoint i Command. Dodaj zmienne środowiskowe:
 
 | Name | Value |
 | --- | --- |
-| `PCC_PUBLIC_HOST` | `192.168.1.120` |
-| `PCC_BOOTSTRAP_VERIFIER` | Cały wiersz wygenerowany w kroku 2 |
+| `PCC_PUBLIC_HOST` | `192.168.1.120` — ten sam adres TrueNAS |
+| `PCC_BOOTSTRAP_VERIFIER` | CAŁY wiersz `pbkdf2-sha256$...` z kroku 2 |
 
-W **Storage** dodaj **ixVolume**, nazwij dataset `state`, a jako Mount Path wpisz:
+Hasło w postaci jawnej nie jest wpisywane do zmiennych kontenera.
+
+## 4. Dodaj jeden nowy iXVolume na ustawienia
+
+W sekcji **Storage** dodaj **ixVolume**, nazwij go `state` i ustaw Mount Path:
 
 ```text
 /var/lib/plexconfigcontrol
 ```
 
-Nowy wolumen aplikacji musi być zapisywalny przez UID/GID 568. Jeśli formularz
-wymaga wpisu ACL, nadaj go wyłącznie temu nowemu wolumenowi aplikacji. Nie używaj
-Force ACL i nie zmieniaj uprawnień istniejących datasetów ani konfiguracji Plex.
-Nie dodawaj żadnych innych montowań do pierwszego testu.
+Nowy wolumen musi umożliwiać zapis UID/GID 568. Jeśli formularz wymaga wpisu ACL,
+nadaj go wyłącznie temu NOWEMU wolumenowi aplikacji. Nie włączaj Force ACL i nie
+zmieniaj uprawnień istniejących datasetów. Nie dodawaj innych montowań do tego testu.
 
-Po uruchomieniu aplikacji otwórz **https://192.168.1.120:8787**. Przeglądarka
-ostrzeże o certyfikacie aplikacji, ponieważ jest samopodpisany. Certyfikat
-pozostaje w iXVolume i nie zmienia się po restarcie aplikacji.
+## 5. Zainstaluj i otwórz panel
 
-## Co sprawdzić
+Kliknij **Install** i poczekaj na RUNNING. Otwórz:
 
-1. Logowanie wybranym hasłem i wygląd Dashboard.
-2. Change Password: po zmianie następuje wylogowanie wszystkich sesji.
-3. History: zdarzenia, zaznaczanie, filtry, pobieranie i potwierdzenie usuwania.
-   W nowszych paczkach sprawdź też dodanie, zastąpienie i usunięcie zdjęcia konta
-   oraz jego zachowanie po restarcie. Pierwsza paczka nie zawiera tej funkcji.
-4. Restart wyłącznie tej aplikacji przez Apps: hasło, sesja, historia i certyfikat
-   powinny pozostać zachowane.
+**https://192.168.1.120:8787**
 
-**UNKNOWN przy Plex jest oczekiwane**, dopóki osobno nie skonfigurujemy odczytu
-statusu z TrueNAS. Aplikacja nie zgaduje jego stanu. W nowszych paczkach Backup
-pokazuje archiwa i plan następnej kopii, ale tworzenie oraz usuwanie są zablokowane.
-Settings jest podłączony w paczkach nowszych od pierwszej wersji testowej;
-pierwsza paczka zawiera jeszcze jego placeholder. Pobieranie logów dotyczy tekstu zapisanego przy zdarzeniach historii,
-a nie pełnych operacyjnych plików `.log` z katalogu użytkownika.
+Jeżeli wybrałeś inny adres/port, użyj ich w tym adresie. Panel ma własny
+samopodpisany certyfikat, więc przeglądarka wyświetli ostrzeżenie. Sprawdź, że
+adres jest Twoim TrueNAS, i zaakceptuj wyjątek dla tej aplikacji.
+Zaloguj się hasłem wybranym w kroku 2, a nie wierszem weryfikatora.
 
-Przy testowaniu usuwania historii pliki w `Plex Config/Logs` pozostają nietknięte.
-Opcjonalną walidację archiwów opisuje `TEST-INSTALL.md`: katalog archiwów wolno
-podłączyć wyłącznie do odczytu, bez zmieniania jego ACL i bez montowania live config.
+## Czego oczekiwać i co sprawdzić
 
-Weryfikator startowy nie resetuje hasła przy kolejnych uruchomieniach. Po pierwszym
-udanym logowaniu można usunąć zmienną `PCC_BOOTSTRAP_VERIFIER` w ustawieniach Apps.
+- Domyślnie motyw System. Sprawdź też Light/Dark i zmianę języka na polski.
+- Dodaj zdjęcie konta, zmień je, a potem usuń.
+- Change Password/Zmień hasło otwiera okno; poprawna zmiana kończy sesje.
+- Wylogowanie i ponowne logowanie powinny działać. Brak automatycznego wylogowania
+  za bezczynność jest celowy.
+- Zrestartuj WYŁĄCZNIE `plexconfigcontrol-test` przez Apps: hasło, ustawienia,
+  zdjęcie, historia i certyfikat powinny pozostać zachowane.
+- **UNKNOWN/NIEZNANY przy Plex jest oczekiwane.** W tej konfiguracji nie ma
+  połączenia API z TrueNAS. Nie oznacza to, że Plex przestał działać.
+- Puste listy archiwów i zablokowane Create Backup/Restore są oczekiwane.
+- Czyszczenie historii usuwa tylko zaznaczone wpisy panelu. Pobierane logi
+  dotyczą tych wpisów, nie plików z produkcyjnej konfiguracji Plex.
+
+Po pierwszym udanym logowaniu możesz usunąć `PCC_BOOTSTRAP_VERIFIER` z ustawień
+tej aplikacji. Istniejące hasło nie jest resetowane przy kolejnych uruchomieniach.
+Nie usuwaj iXVolume podczas aktualizacji/restartu, jeśli chcesz zachować dane panelu.
+
+## Gdy aplikacja się nie uruchomi
+
+W Apps otwórz logi `plexconfigcontrol-test`. Sprawdź adres `PCC_PUBLIC_HOST`,
+pełny weryfikator, UID/GID oraz zapis do nowego iXVolume. Nie rozwiązuj problemu
+przez nadanie roota, trybu Privileged, montowanie Docker socket ani zmianę ACL
+danych Plex. Wklej komunikat błędu bez sekretów do rozmowy.
 
 ## Odinstalowanie
 
-Usuń `plexconfigcontrol-test` przez TrueNAS Apps. Usunięcie iXVolume usuwa konto,
-ustawienia, sesje, historię WWW i certyfikat tej aplikacji. Zachowanie wolumenu
-zachowuje te dane. Testowa aplikacja nie usuwa zewnętrznych archiwów ani ich logów.
-
-
-### Przechowywanie archiwum poza aplikacją
-
-Gotowy plik `TrueNASPlexConfig_YYYY.MM.DD_HH.MM.SS.tar.gz` jest samodzielną kopią.
-Możesz skopiować go w całości, np. przez SMB, na dysk zewnętrzny lub inny NAS.
-Nie rozpakowuj go i zachowaj oryginalną nazwę. Nie potrzebuje dodatkowego pliku
-z sumą kontrolną, historii panelu ani logu operacji. Uprawnienia plików konfiguracji
-Plex są zapisane wewnątrz archiwum, niezależnie od uprawnień samego pliku `.tar.gz`.
-
-Aby użyć kopii później, wklej ją do skonfigurowanego folderu `Plex Config`, zaczekaj
-na zakończenie kopiowania, kliknij **Refresh / Odśwież**, wybierz plik i uruchom
-**Validate Archive / Zweryfikuj archiwum**. Walidacja odbywa się ponownie, gdy Plex
-działa. Po nowej instalacji wklej kopię do nowego folderu utworzonego przez program.
-Nie zmieniaj na siłę uprawnień folderu ani konfiguracji Plex. Plik musi być dostępny
-do odczytu dla aplikacji zgodnie z ustawieniami wybranej lokalizacji.
-
-Niedokończona lub uszkodzona kopia zostanie odrzucona. Jeśli podmienisz plik już po
-walidacji, anuluj przygotowanie i zweryfikuj wklejony plik ponownie. Ręczne zatrzymanie
-Plex oraz potwierdzenie tekstem `RESTORE` nadal będą wymagane przed przywróceniem.
-Ograniczona wersja testowa nadal blokuje właściwe wykonanie Restore; ta instrukcja
-nie odblokowuje operacji na działającym serwerze.
-
-
-Wykrycie nowego archiwum pojawia się w **History / Historia** jako
-**Archive detected / Wykryto archiwum**, ze statusem informacyjnym. Wpis zawiera nazwę
-pliku i czas wykrycia; nie potwierdza poprawności kopii. Możesz pobrać jego treść
-przyciskiem **Download Logs / Pobierz logi**. Kolejne odświeżenia i restart nie
-powielają tego samego wpisu. Usunięcie historii nie usuwa trwałego logu zdarzenia.
-
-W tej ograniczonej instalacji folder archiwów jest tylko do odczytu. Trwały log
-importu czeka więc w kolejce w ixVolume na zapis do `Plex Config/Logs`; program
-nie zapisuje go w przypadkowym miejscu ani nie zmienia uprawnień. Pełna instalacja
-z poprawnie skonfigurowanym zapisem będzie zapisywała tam pliki
-`ArchiveImport_YYYY.MM.DD_HH.MM.SS_<unikalny-identyfikator>.log`.
-
-
-Opcjonalny odczyt stanu pozostawionego snapshotu można skonfigurować przez
-`PCC_PLEX_CONFIG_DATASET` wraz z istniejącym połączeniem TrueNAS tylko do odczytu.
-Pozwala to sprawdzać wyłącznie konkretny snapshot aplikacji we wskazanym datasecie.
-Nie odblokowuje tworzenia, usuwania ani rollbacku snapshotów i nie steruje Plexem.
-Brak uprawnień lub problem z odczytem oznacza stan nieznany, a nie potwierdzenie
-usunięcia. To opcja wdrożeniowa; aplikacja nie tworzy sama uprawnień ani konta API.
-
-Plik `BUILD-INFO.txt` wskazuje dokładny commit źródłowy i tryb testowy.
-`SHA256SUMS` obejmuje obraz, obie instrukcje oraz informacje o wydaniu.
+Usuń wyłącznie `plexconfigcontrol-test` przez TrueNAS Apps. Usunięcie jego iXVolume
+usuwa konto, sesje, ustawienia, zdjęcie, historię i certyfikat tej aplikacji.
+Pozostawienie iXVolume zachowuje je. Ten test nie modyfikuje danych Plex.

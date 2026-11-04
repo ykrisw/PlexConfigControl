@@ -71,8 +71,9 @@ jobs:
           path: dist/browser-screenshots/
           if-no-files-found: ignore
           retention-days: 14
+      # One explicitly requested package; ordinary code pushes remain test-only.
       - name: Package test installation
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.event.head_commit.message == 'Package requested restricted installer 2026-11-04 5cc12c8a')
         run: |
           mkdir -p dist
           docker save plexconfigcontrol:test | gzip > dist/PlexConfigControl-test-image.tar.gz
@@ -80,11 +81,14 @@ jobs:
           cp deploy/TEST-INSTALL-PL.md dist/TEST-INSTALL-PL.md
           python - <<'PYINFO'
           import os
+          import subprocess
           from datetime import datetime, timezone
           from pathlib import Path
           Path('dist/BUILD-INFO.txt').write_text(
               'PlexConfigControl — restricted test installation\n'
               + 'Source commit: ' + os.environ['GITHUB_SHA'] + '\n'
+              + 'Image tag: plexconfigcontrol:test\n'
+              + 'Image identity: ' + subprocess.check_output(['docker','image','inspect','--format','{{.Id}} / {{.Architecture}}','plexconfigcontrol:test'],text=True).strip() + '\n'
               + 'Built (UTC): ' + datetime.now(timezone.utc).isoformat() + '\n'
               + 'Backup/Restore execution and host mutations are disabled.\n'
               + 'Follow TEST-INSTALL-PL.md or TEST-INSTALL.md.\n', encoding='utf-8')
@@ -92,7 +96,7 @@ jobs:
           cd dist
           sha256sum PlexConfigControl-test-image.tar.gz TEST-INSTALL.md TEST-INSTALL-PL.md BUILD-INFO.txt > SHA256SUMS
       - uses: actions/upload-artifact@v4
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.event.head_commit.message == 'Package requested restricted installer 2026-11-04 5cc12c8a')
         with:
           name: PlexConfigControl-test-installation
           path: |

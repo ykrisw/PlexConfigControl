@@ -1355,3 +1355,20 @@ allows at most three package-install attempts and verifies an actual installed
 Opera executable after each. These retries are limited to ephemeral CI browser
 installation; application POSTs and host operations are not automatically retried.
 A new Opera run is still required to verify the browser itself.
+
+
+### User-requested restricted test package — 4 November 2026
+
+Kris explicitly requested an installer from the current code. This supersedes the
+earlier cancellation for this one package only. The existing tested-image job
+may now package on workflow_dispatch or the exact one-off commit message
+`Package requested restricted installer 2026-11-04 5cc12c8a`. Ordinary pushes still
+run tests without producing installer packages. Packaging follows the unit,
+HTTPS/restart and Linux browser/component checks in the test-image job.
+
+The package remains the restricted test runtime: no host Backup/Restore,
+snapshot writes or archive deletion, and no mounted storage-setup form. Updated
+EN/PL instructions give a first installation with only a private new iXVolume,
+no live Plex config, API credentials or Docker socket. BUILD-INFO includes the
+source commit and image ID/architecture. This is an explicitly requested test
+artifact, not a claim of production readiness or full installer integration.
