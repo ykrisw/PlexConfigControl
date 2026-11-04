@@ -101,7 +101,7 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 .pcc-shell .pcc-notification-dialog .pcc-dialog-actions{flex-wrap:wrap}
 
 /* Filled yellow controls in Dark; navigation and row selections keep their own styles. */
-.pcc-shell[data-theme=dark] :is(.pcc-account-actions button,.pcc-theme-buttons button[aria-pressed=true]){background:var(--pcc-selection-accent);border-color:var(--pcc-selection-accent);color:#000!important;-webkit-text-fill-color:#000!important}
+.pcc-shell[data-theme=dark] :is(.pcc-account-actions button,.pcc-theme-buttons button[aria-pressed=true],.pcc-backup .pcc-primary,.pcc-restore .pcc-primary){background:var(--pcc-selection-accent);border-color:var(--pcc-selection-accent);color:#000!important;-webkit-text-fill-color:#000!important}
 @media(prefers-color-scheme:dark){
- .pcc-shell[data-theme=system] :is(.pcc-account-actions button,.pcc-theme-buttons button[aria-pressed=true]){background:var(--pcc-selection-accent);border-color:var(--pcc-selection-accent);color:#000!important;-webkit-text-fill-color:#000!important}
+ .pcc-shell[data-theme=system] :is(.pcc-account-actions button,.pcc-theme-buttons button[aria-pressed=true],.pcc-backup .pcc-primary,.pcc-restore .pcc-primary){background:var(--pcc-selection-accent);border-color:var(--pcc-selection-accent);color:#000!important;-webkit-text-fill-color:#000!important}
 }
