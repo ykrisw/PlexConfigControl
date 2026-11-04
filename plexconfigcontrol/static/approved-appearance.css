@@ -1,4 +1,5 @@
 /* Approved appearance baseline. Simulation data is not production state. */
+.pcc-shell,.pcc-restore{--pcc-selection-accent:#ffbf00}
 .pcc-shell{--pcc-scrollbar-width:23.52px;--pcc-notice-border:3px;--pcc-strip-height:56px;--pcc-avatar-size:188.9085px}
 .pcc-shell .pcc-logo{width:21px!important;height:23.1px!important;min-width:21px!important;min-height:23.1px!important;flex:0 0 21px!important}
 .pcc-shell .pcc-page>.pcc-plex,.pcc-shell .pcc-language,
@@ -24,7 +25,7 @@
 .pcc-shell :is(.pcc-archive-row,.pcc-event-row) input,
 .pcc-restore .pcc-archive-row input{appearance:none;width:18px;height:18px;min-width:18px;border:2px solid #9dafc5;border-radius:50%;background:#fff;margin:0;flex-shrink:0}
 .pcc-shell :is(.pcc-archive-row,.pcc-event-row) input:checked,
-.pcc-restore .pcc-archive-row input:checked{border-color:#158843;background:radial-gradient(circle,#158843 0 4px,transparent 5px)}
+.pcc-restore .pcc-archive-row input:checked{border-color:var(--pcc-selection-accent);background:radial-gradient(circle,var(--pcc-selection-accent) 0 4px,transparent 5px)}
 .pcc-shell[data-theme=dark] :is(.pcc-archive-row,.pcc-event-row) input:not(:checked),
 .pcc-restore[data-theme=dark] .pcc-archive-row input:not(:checked){background:var(--pcc-card);border-color:#b4bfce}
 @media(prefers-color-scheme:dark){
