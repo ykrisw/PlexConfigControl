@@ -13,13 +13,13 @@
 .pcc-shell .pcc-important{padding:10px 18px!important;flex-shrink:0}
 .pcc-shell .pcc-important .pcc-heading{min-height:28px;margin-bottom:6px}
 .pcc-shell .pcc-important p{margin:6px 0 0}
-.pcc-shell .pcc-scroll-list,.pcc-restore [data-archive-list]{display:flex;flex-direction:column;gap:8px;flex:1 1 0;height:0;min-height:0;max-height:none;overflow-y:scroll;overflow-x:hidden;scrollbar-gutter:stable;padding-right:8px;scrollbar-width:auto;scrollbar-color:#8596ac var(--pcc-bg);background:var(--pcc-card)}
+.pcc-shell .pcc-scroll-list,.pcc-restore [data-archive-list]{display:flex;flex-direction:column;gap:8px;flex:1 1 0;height:0;min-height:0;max-height:none;overflow-y:scroll;overflow-x:hidden;scrollbar-gutter:stable;padding-right:8px;scrollbar-width:auto;scrollbar-color:#8596ac var(--pcc-bg);background:var(--pcc-card);clip-path:inset(0 round 0 12px 12px 0)}
 .pcc-shell .pcc-scroll-list>*,.pcc-restore [data-archive-list]>*{flex-shrink:0}
 .pcc-restore [data-archive-list]>.pcc-archive-row{margin-bottom:0}
 .pcc-shell .pcc-scroll-list::-webkit-scrollbar,
-.pcc-restore [data-archive-list]::-webkit-scrollbar{width:23.52px;background:var(--pcc-bg)}
+.pcc-restore [data-archive-list]::-webkit-scrollbar{width:23.52px;background:transparent;border-radius:999px}
 .pcc-shell .pcc-scroll-list::-webkit-scrollbar-track,
-.pcc-restore [data-archive-list]::-webkit-scrollbar-track{background:var(--pcc-bg);border-radius:8px}
+.pcc-restore [data-archive-list]::-webkit-scrollbar-track{background:var(--pcc-bg);border-radius:999px}
 .pcc-shell .pcc-scroll-list::-webkit-scrollbar-thumb,
 .pcc-restore [data-archive-list]::-webkit-scrollbar-thumb{background:#8596ac;border:5.88px solid var(--pcc-bg);border-radius:8px;min-height:36px}
 .pcc-shell :is(.pcc-archive-row,.pcc-event-row) input,
