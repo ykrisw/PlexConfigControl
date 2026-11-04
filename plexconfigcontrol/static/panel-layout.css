@@ -47,3 +47,9 @@
 .pcc-shell[data-theme=system] [data-plex-state=RUNNING]::before{color:#158843!important;-webkit-text-fill-color:#158843!important}
 .pcc-shell[data-theme=system] [data-plex-state=STOPPED]::before{color:#dc2626!important;-webkit-text-fill-color:#dc2626!important}
 }
+
+/* Active navigation label: yellow in Dark, including System in dark mode. */
+.pcc-shell[data-theme=dark] .pcc-nav button[aria-selected=true] span{color:var(--pcc-selection-accent);-webkit-text-fill-color:var(--pcc-selection-accent)}
+@media(prefers-color-scheme:dark){
+ .pcc-shell[data-theme=system] .pcc-nav button[aria-selected=true] span{color:var(--pcc-selection-accent);-webkit-text-fill-color:var(--pcc-selection-accent)}
+}
