@@ -22,6 +22,8 @@
 .pcc-shell .pcc-page[data-panel=history]>.pcc-events,
 .pcc-shell .pcc-page[data-panel=settings]>.pcc-about{flex:1}
 .pcc-shell .pcc-account{display:flex;flex-direction:column;align-items:center}
+/* Account content stays in place, directly on the page background. */
+.pcc-shell .pcc-page[data-panel=dashboard]>.pcc-account{background:transparent}
 .pcc-shell .pcc-account-actions{align-self:stretch;margin-top:auto}
 .pcc-shell button:focus-visible{outline:3px solid #55b9f4;outline-offset:3px}
 .pcc-shell[data-theme=dark]{--pcc-bg:#151d28;--pcc-card:#222d3b;--pcc-ink:#f1f4f8;--pcc-line:#435268;--pcc-selected:#203b56}

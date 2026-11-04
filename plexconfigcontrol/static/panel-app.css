@@ -2,6 +2,7 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 #pcc-app{width:100%;margin:auto}
 .pcc-shell button,.pcc-shell input{font:inherit}
 .pcc-shell .pcc-account-actions button,.pcc-shell .pcc-dialog-actions button,.pcc-shell .pcc-login button{border:1px solid var(--pcc-line);background:var(--pcc-bg);color:var(--pcc-ink);border-radius:9px;min-height:54px;padding:10px 16px;font-weight:600;cursor:pointer}
+.pcc-shell .pcc-account-actions button{background:var(--pcc-line)}
 .pcc-shell button:disabled{cursor:wait}
 .pcc-shell .pcc-avatar{display:grid;place-items:center}
 .pcc-shell .pcc-avatar svg{width:24px;height:24px;fill:none;stroke:#fff;stroke-width:1.5}
@@ -71,7 +72,7 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 .pcc-shell .pcc-theme-row>strong{font-size:16px}
 .pcc-shell .pcc-theme-buttons{display:flex;gap:10px;flex-wrap:wrap}
 .pcc-shell .pcc-theme-buttons button{cursor:pointer;min-width:96px}
-.pcc-shell .pcc-theme-buttons button[aria-pressed=true]{background:var(--pcc-selected);border-color:#69aeff}
+.pcc-shell .pcc-theme-buttons button[aria-pressed=true]{background:var(--pcc-selected);border-color:var(--pcc-selection-accent)}
 .pcc-shell .pcc-settings .pcc-about{padding:24px}
 .pcc-shell .pcc-about-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 0;border-bottom:1px solid var(--pcc-line);font-size:13px;font-weight:600;overflow-wrap:anywhere}
 .pcc-shell .pcc-about-row>span:last-child{text-align:right}
