@@ -1135,3 +1135,44 @@ list: it uses `data-archive-list`, while Backup uses `data-archives`. Both the
 Selenium and Opera test paths now use the actual view-specific selectors; checks
 still require 13 rows and real overflow. New Opera/desktop results remain pending
 until the updated jobs complete. No installer is built by this workflow.
+
+
+### Installation-time Plex Configuration Storage discovery
+
+The installer-side `plex_storage.discover_plex_storage` reads the installed Plex
+app's `storage.config` setting and the actual `/config` mount reported by
+`app.query`, then resolves its filesystem through `filesystem.statfs`. Both
+ixVolume and Host Path are recognized; no pool, dataset or ix-apps mountpoint is
+hardcoded as the Plex source. `/data`, logs and transcode mounts are not mistaken
+for configuration. ACL-enabled Host Path settings use their configured ACL path.
+The result retains only storage type, config source, dataset, dataset mount and
+relative path, never the complete app config (which may contain a claim token).
+
+This belongs to installation configuration, not a new Settings panel/control.
+The installer form model always offers `manual_plex_config_path` when automatic
+detection fails, with EN/PL labels and an explicit Check path action. Supplying
+`manual_source` bypasses the app.config read, but still verifies the actual Plex
+/config mount and its ZFS identity. A manually entered path is never permission
+to use a different directory or to proceed without verification. The installer
+can accept corrected input and repeat checks without automatically changing ACLs.
+
+`installation_storage.plan_storage` performs discovery before output-directory
+setup. `create_storage` rechecks its immutable plan immediately before exclusive
+Plex Config/Logs creation using the existing no-adoption/no-permission-repair
+storage routines. Repeated reads detect observed storage changes; they do not
+lock external TrueNAS app edits. The worker must recheck storage binding before
+every operation; discovery alone never enables execution. Ambiguous/missing
+mounts, unsupported settings, non-ZFS storage and changed identities fail closed.
+A stopped Plex can be inspected if TrueNAS still reports its container mounts;
+otherwise manual entry still requires those mounts to be verifiable, without
+automatically starting Plex.
+
+A Host Path subdirectory in a shared dataset is identified, but the current
+whole-dataset emergency rollback cannot safely accept it for installation.
+The gate returns DEDICATED_PLEX_DATASET_REQUIRED before directory creation rather
+than risking unrelated files. Dedicated dataset roots work for either storage
+type. No storage is moved, renamed, snapshotted or assigned different permissions
+by discovery. Protected PBS storage is rejected. These are tested installation
+components and a form model; the final TrueNAS installation form/deployment
+integration and host acceptance remain unfinished. The restricted WWW runtime
+has not gained arbitrary app.config/filesystem API access.
