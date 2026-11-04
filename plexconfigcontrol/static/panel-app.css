@@ -129,3 +129,6 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 .pcc-shell .pcc-page.pcc-settings .pcc-card>.pcc-section-title{font:600 20px/30px Arial,sans-serif;min-height:40px;display:flex;align-items:center;margin:0}
 .pcc-shell .pcc-page.pcc-settings .pcc-appearance{min-height:178px}
 .pcc-shell .pcc-page.pcc-settings .pcc-theme-row{margin-top:12px;padding-top:14px}
+
+/* Enlarge only the Plex status lamp by 120% (2.2x), retaining label geometry. */
+.pcc-shell [data-plex-state]::before,.pcc-restore [data-plex-state]::before{transform:scale(2.2);transform-origin:center}
