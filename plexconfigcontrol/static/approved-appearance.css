@@ -33,9 +33,9 @@
  .pcc-restore:not([data-theme=light]):not([data-theme=dark]) .pcc-archive-row input:not(:checked){background:var(--pcc-card);border-color:#b4bfce}
 }
 .pcc-shell .pcc-page>.pcc-account{position:relative;min-height:585px;container-type:size;padding:24px}
-.pcc-shell .pcc-account-content{position:absolute;left:24px;right:24px;top:40%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;padding-bottom:60px}
+.pcc-shell .pcc-account-content{position:absolute;left:24px;right:24px;top:calc(40% - 20px);transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;padding-bottom:60px}
 .pcc-shell .pcc-account-content h3{font:600 24px/1.5 Arial,sans-serif;margin:0 0 32px;transform:translateY(-5cqh)}
 .pcc-shell .pcc-avatar{width:188.9085px;height:188.9085px;min-width:188.9085px;min-height:188.9085px;flex-shrink:0;transform:none;border:6px solid var(--pcc-line);border-radius:50%;background:#a6b5c9;margin:-19.45425px 0;overflow:hidden}
-.pcc-shell .pcc-account-actions{margin-top:auto;display:grid;gap:10px;width:100%}
+.pcc-shell .pcc-account-actions{margin-top:auto;margin-bottom:64px;display:grid;gap:54px;width:100%}
 .pcc-shell .pcc-about>h3{margin-bottom:0;flex-shrink:0}
 .pcc-shell .pcc-about-info{width:100%;margin-block:auto;padding:24px 0}
