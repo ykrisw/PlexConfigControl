@@ -1176,3 +1176,28 @@ by discovery. Protected PBS storage is rejected. These are tested installation
 components and a form model; the final TrueNAS installation form/deployment
 integration and host acceptance remain unfinished. The restricted WWW runtime
 has not gained arbitrary app.config/filesystem API access.
+
+### Installer storage flow and observed desktop results
+
+`InstallationStorageFlow` now joins read-only detection/manual retry, output-name
+inspection, exact-plan confirmation and one folder-creation attempt. A fresh
+check invalidates the previous revision. Unconfirmed or stale confirmations do
+not write. The actual create rechecks Plex storage and the exclusive destination
+creation still refuses an existing folder. An existing Plex Config is reported
+as RENAME_REQUIRED already during planning, before READY; the old contents and
+permissions remain unchanged. After the user renames it manually, a fresh check
+may proceed. Unexpected errors after a possible mkdir enter REVIEW_REQUIRED,
+retain any partial folder and do not permit automatic retry/adoption. COMPLETE
+also cannot create a second folder on a repeated confirmation. The controller
+returns only a copied form model with EN/PL messages; trusted plans/API clients
+remain internal. This remains installer-side integration code, not a mounted
+public WWW setup endpoint or a completed TrueNAS installation form.
+
+Browser run `41753807162` (revision `2c3b9cb8`) passed installed retail Chrome,
+Firefox and Edge on Windows Server 2025, Chrome/Firefox in Mint userspace, and
+Opera on macOS and Mint userspace. The Windows Opera job launched actual Opera
+but timed out awaiting the login input, with no reported JavaScript error. The
+Opera fixture now uses the existing bounded read-only localhost-bootstrap helper
+and captures failed requests/console errors plus failure HTML. It does not retry
+API mutations or disable product checks; a subsequent Windows Opera pass is
+still required. These UI results do not establish live NAS execution acceptance.

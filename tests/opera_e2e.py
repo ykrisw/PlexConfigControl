@@ -9,6 +9,7 @@ from pathlib import Path
 from desktop_fixture import desktop_fixture
 from execution_ui_e2e import backup_case, restore_case
 from retail_opera import opera_binary
+from browser_navigation import open_fixture
 
 
 def panels(browser, output):
@@ -18,9 +19,11 @@ def panels(browser, output):
         with opener.open(url,timeout=10) as response:assert response.status==200
         context=browser.new_context(ignore_https_errors=True,viewport={'width':1100,'height':1150},service_workers='block')
         page=context.new_page();page.set_default_timeout(15000)
-        errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
+        errors=[];network_errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
+        page.on('requestfailed',lambda request:network_errors.append({'url':request.url,'failure':request.failure}))
+        page.on('console',lambda message:network_errors.append({'console':message.text}) if message.type=='error' else None)
         try:
-            page.goto(url)
+            open_fixture(page,url,ready_selector='.pcc-login input')
             ua=page.evaluate('navigator.userAgent')
             if 'OPR/' not in ua:raise RuntimeError('Browser is not identifiable as retail Opera: '+ua)
             (output/'environment.json').write_text(json.dumps({'os':platform.platform(),'binary':opera_binary(),'version':browser.version,'user_agent':ua,'coverage':'actual Opera; synthetic API; no NAS execution'},indent=2),encoding='utf-8')
@@ -57,7 +60,9 @@ def panels(browser, output):
         except BaseException:
             try:page.screenshot(path=str(output/'failure.png'),full_page=True)
             except Exception:pass
+            (output/'failure.html').write_text(page.content(),encoding='utf-8')
             print('Opera page errors:',errors,flush=True)
+            print('Opera network errors:',network_errors,flush=True)
             raise
         finally:context.close()
 

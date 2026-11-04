@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from .plex_storage import PlexStorage, StorageDiscoveryError, discover_plex_storage
-from .storage import inspect_destination, create_destination
+from .storage import inspect_destination, create_destination, RenameRequired
 
 
 @dataclass(frozen=True)
@@ -18,7 +18,9 @@ def plan_storage(api, parent, *, manual_source=None):
     if not plex.dedicated_dataset_root:
         raise StorageDiscoveryError('DEDICATED_PLEX_DATASET_REQUIRED')
     parent=str(Path(parent))
-    inspect_destination(parent,forbidden_paths=(plex.source,'/mnt/TrueNAS/TrueNAS/PBS-Data'))
+    inspected=inspect_destination(parent,forbidden_paths=(plex.source,'/mnt/TrueNAS/TrueNAS/PBS-Data'))
+    if inspected.get('status')=='RENAME_REQUIRED':
+        raise RenameRequired('Rename the existing Plex Config directory before continuing')
     return InstallationStoragePlan(parent,plex)
 
 

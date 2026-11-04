@@ -17,7 +17,7 @@ RUN python3 -m venv /opt/browser-test \
     && useradd --create-home --uid 10001 pcc-browser
 WORKDIR /work
 COPY --chown=10001:10001 plexconfigcontrol/static /work/plexconfigcontrol/static
-COPY --chown=10001:10001 tests/desktop_e2e.py tests/desktop_fixture.py tests/execution_ui_e2e.py tests/retail_opera.py tests/opera_e2e.py /work/tests/
+COPY --chown=10001:10001 tests/desktop_e2e.py tests/desktop_fixture.py tests/execution_ui_e2e.py tests/retail_opera.py tests/opera_e2e.py tests/browser_navigation.py /work/tests/
 RUN mkdir -p /work/dist && chown 10001:10001 /work/dist
 USER 10001
 ENV PATH="/opt/browser-test/bin:${PATH}" CI=true PCC_DESKTOP_TARGET=mint PCC_MINT_CONTAINER_CI_ONLY=1
