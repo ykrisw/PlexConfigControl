@@ -1273,3 +1273,40 @@ A local regression test opens 16 queued TCP connections before TLS handshakes to
 exercise that burst condition. This is a test-server change, not a product TLS,
 permission or retry-policy change. A subsequent Windows Opera pass is required
 before treating it as a verified correction.
+
+### Installer form component and explicit adapter boundary
+
+`static/installation-view.mjs` now renders the actual installer storage form using
+the trusted initial field model: accepted descriptions, editable parent/folder/
+prefix, full local path preview, fixed Logs, manual Plex-source fallback, checked
+source/dataset, and a native folder-creation confirmation dialog. English/Polish
+copy and scoped Light/Dark/System styling are included. It is a separate component;
+the approved five-tab application has not been changed or given setup privileges.
+
+`installation-controller.mjs` accepts an injected adapter with `check(inputs,
+signal)` and `create({revision,confirmed:true})`. It does not select an endpoint or
+host command. The future trusted installer host must bind those calls to its own
+`InstallationStorageFlow`, supply a fresh UNVERIFIED initial model, hold the
+private API/state configuration, and enforce authentication/origin/CSRF/session
+ownership before exposing any transport. No new public setup route has been
+registered in Web/TestApplication, and no privileged backend has been enabled.
+The final TrueNAS install-form/deployment integration remains unfinished.
+
+Typing updates only a local example preview, never probes the host. Editing
+invalidates prior readiness; creation needs a checked response whose output path,
+folder name, prefix and revision match current inputs. Confirmation displays the
+exact folder/Logs/prefix and can be cancelled without a write. Fields are locked
+while checking/creating. Repeated clicks cannot submit creation twice. Unknown
+write outcomes block further writes/checks until review; leaving the view does
+not cancel or retry an already submitted write. Paths/error text are inserted as
+text, not HTML. Completion reports configured storage, never a completed backup.
+
+Unit tests cover custom/default names, London timestamps, Unicode folders,
+manual fallback, stale/mismatched plans, malformed/lost receipts and disposal
+races. `tests/installation_ui_e2e.py` adds actual-component tests in Chromium,
+Firefox and Edge with a fully intercepted adapter, EN/PL and desktop/narrow
+Light/Dark/System cases. It checks previews, manual entry, cancellation, changed
+pool path, single creation, text-only source rendering and explicit uncertain
+outcomes. These browser results must be read from CI; local syntax/unit checks
+are not a native-browser pass and synthetic receipts never create host folders.
+Installer packaging remains manual-only.

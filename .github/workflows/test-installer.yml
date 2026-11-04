@@ -52,6 +52,16 @@ jobs:
         env:
           PCC_TEST_BROWSER: msedge
         run: python tests/execution_ui_e2e.py
+      - name: Test installer form in Chromium
+        run: python tests/installation_ui_e2e.py
+      - name: Test installer form in Firefox
+        env:
+          PCC_TEST_BROWSER: firefox
+        run: python tests/installation_ui_e2e.py
+      - name: Test installer form in Microsoft Edge
+        env:
+          PCC_TEST_BROWSER: msedge
+        run: python tests/installation_ui_e2e.py
       - name: Test Android touch emulation
         run: python tests/mobile_e2e.py
       - uses: actions/upload-artifact@v4
