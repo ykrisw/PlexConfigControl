@@ -53,3 +53,6 @@
 @media(prefers-color-scheme:dark){
  .pcc-shell[data-theme=system] .pcc-nav button[aria-selected=true]{color:var(--pcc-selection-accent);-webkit-text-fill-color:var(--pcc-selection-accent)}
 }
+
+/* Own the page surface explicitly, including transparent areas between cards. */
+.pcc-shell .pcc-main,.pcc-shell .pcc-page{background:var(--pcc-bg)}
