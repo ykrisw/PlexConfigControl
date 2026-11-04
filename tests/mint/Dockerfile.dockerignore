@@ -1,0 +1,9 @@
+# Explicit context for the browser-test image; independent of product ignores.
+*
+!plexconfigcontrol/
+!plexconfigcontrol/static/
+!plexconfigcontrol/static/**
+!tests/
+!tests/desktop_e2e.py
+!tests/desktop_fixture.py
+!tests/execution_ui_e2e.py

@@ -1043,3 +1043,61 @@ CI-only/emulator-only checks. The mapping uses --no-rebind and is removed on
 normal exit or test failure; no application request is retried. Host-side health
 checks still validate the synthetic certificate normally. The revised Android
 transport has local regression checks but still requires a new emulator CI pass.
+
+
+### Windows and Linux Mint retail-browser UI checks
+
+`.github/workflows/desktop-browsers.yml` adds three independent native Windows
+jobs for installed Microsoft Edge, Mozilla Firefox and Google Chrome, plus two
+Mint-userspace container jobs for Firefox and Google Chrome. Installed browser
+binaries are required explicitly: the suite does not substitute Chromium for
+Chrome or Playwright Firefox for retail Firefox. Selenium manages matching
+drivers. `environment.json` records actual OS/browser capabilities alongside
+screenshots, with failure HTML when available.
+
+`tests/desktop_e2e.py` loads actual product HTML/CSS/modules against a disposable
+loopback HTTPS fixture (`desktop_fixture.py`) with synthetic API data. It checks
+all five panels, EN/PL, Light/Dark/System, wide/narrow browser windows, 13 archives,
+20 history entries, actual list overflow/scrolling, selected rows, light-theme
+black headings, Plex status transitions, password-dialog opening/cancellation,
+History-clear cancellation, sign-out, one-copy Backup choice and typed Restore
+confirmation/completion. The latter operations are fixture receipts only: no
+snapshot, archive, production authentication or NAS operation is exercised here.
+A separate verified-TLS health probe trusts only the generated fixture cert;
+WebDriver accepts that disposable identity without changing product TLS policy.
+
+Windows CI uses Windows Server 2025, not a Windows 11 desktop. Mint CI uses the
+pinned `linuxmintd/mint22.3-amd64` userspace with Firefox, Chrome and Mint metadata,
+sharing the runner kernel; it is not a complete Mint Xfce desktop session or VM.
+Chrome's sandbox flag is limited to this disposable Mint CI container. The
+suite remains runnable on actual Windows 11 and Linux Mint desktops, as a
+regular user, to close those environment-specific gaps. Native file pickers,
+physical desktop/GPU integration and real NAS acceptance remain separate checks.
+
+Developer commands from the source checkout (these install test tools in a
+virtualenv, not PlexConfigControl on the client OS):
+
+Windows PowerShell, with the requested retail browser already installed:
+
+```powershell
+py -3 -m venv .venv-pcc-ui
+.\.venv-pcc-ui\Scripts\python.exe -m pip install 'selenium>=4.27,<5' 'cryptography>=44'
+$env:PCC_DESKTOP_TARGET = 'windows'
+$env:PCC_DESKTOP_BROWSER = 'firefox' # Repeat with chrome and msedge.
+.\.venv-pcc-ui\Scripts\python.exe tests/desktop_e2e.py
+```
+
+Linux Mint, with Firefox/Google Chrome already installed:
+
+```sh
+python3 -m venv .venv-pcc-ui
+.venv-pcc-ui/bin/pip install 'selenium>=4.27,<5' 'cryptography>=44'
+PCC_DESKTOP_TARGET=mint PCC_DESKTOP_BROWSER=firefox .venv-pcc-ui/bin/python tests/desktop_e2e.py
+PCC_DESKTOP_TARGET=mint PCC_DESKTOP_BROWSER=chrome .venv-pcc-ui/bin/python tests/desktop_e2e.py
+```
+
+No new browser/OS pass is claimed until CI completes. The preceding revision
+`f6a104b60576d970fcdaee498d9bfb9f789ce4a6` completed both application-tests run
+`41731369439` and browser run `41731369736` successfully, including the corrected
+Android-system transport. Installer packaging remains manual-only and is not
+part of this desktop workflow.
