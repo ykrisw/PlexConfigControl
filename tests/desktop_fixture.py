@@ -12,6 +12,12 @@ from urllib.parse import urlsplit
 from execution_ui_e2e import FixtureAPI, STATIC
 
 
+class DesktopServer(ThreadingHTTPServer):
+    # Opera/Windows opens a burst of parallel TLS asset connections. Keep the
+    # disposable fixture's listen backlog bounded but above the default five.
+    request_queue_size = 64
+
+
 class DesktopAPI(FixtureAPI):
     def __init__(self):
         super().__init__('backup', 'en', 'system')
@@ -103,7 +109,7 @@ def desktop_fixture():
         cert_path = root/'fixture.crt'; key_path = root/'fixture.key'
         cert_path.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
         key_path.write_bytes(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
-        server = ThreadingHTTPServer(('127.0.0.1',0), Handler)
+        server = DesktopServer(('127.0.0.1',0), Handler)
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(cert_path, key_path)
         server.socket = context.wrap_socket(server.socket, server_side=True)

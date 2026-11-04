@@ -1246,3 +1246,30 @@ prefixes, private naming persistence, folder identity checks, two manually chose
 pool/dataset locations, unchanged Logs layout, and frontend selection/outcomes.
 The final TrueNAS installation form/deployment integration remains unfinished;
 these inputs are now in its tested installer model and storage/Backup code.
+
+### Accepted installer wording and non-writing path preview
+
+Installer fields now use the approved Polish wording: “Miejsce przechowywania
+kopii zapasowych Plex”, with help explaining a dataset root or an existing child
+folder; “Nazwa nowego folderu na kopie i logi”; and “Początek nazwy plików kopii
+zapasowych”. Equivalent English copy is included. Defaults remain Plex Backup /
+PlexConfig, with fixed Logs and timestamp/extension. The Polish format legend uses
+GG for the hour while actual files retain the same two-digit 24-hour timestamp.
+
+`installation_preview` and the flow's `edit` action produce full output-folder,
+Logs and example-archive paths without API calls or filesystem probes. These are
+explicitly marked as examples, unchecked and uncreated. Editing an input clears
+the prior plan/revision and disables creation immediately; an old confirmation
+cannot create at the previous location. Check results retain current field values.
+Only successful checks mark a preview checked, and only confirmed folder creation
+marks it created; the archive remains an example, never a claimed backup. Errors
+clear stale previews or checked state. These are the installer controller/form
+model; the final TrueNAS install-form/deployment binding remains unfinished.
+
+The latest Windows Opera logs showed ERR_CONNECTION_REFUSED for parallel static
+asset GETs, rather than JavaScript errors. The disposable HTTPS desktop fixture
+now uses a bounded listen backlog of 64 instead of the server default of five.
+A local regression test opens 16 queued TCP connections before TLS handshakes to
+exercise that burst condition. This is a test-server change, not a product TLS,
+permission or retry-policy change. A subsequent Windows Opera pass is required
+before treating it as a verified correction.

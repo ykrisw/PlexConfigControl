@@ -67,3 +67,29 @@ class InstallationFlowTests(unittest.TestCase):
             view['storage']['source']='/mnt/other';view['revision']='bad'
             self.assertEqual(flow.view()['storage']['source'],'/mnt/tank/plex')
             self.assertNotEqual(flow.view()['revision'],'bad')
+
+
+    def test_approved_copy_and_preview_are_host_free_and_invalidate_previous_check(self):
+        from datetime import datetime, timezone
+        from plexconfigcontrol.installation_flow import installation_preview, installation_fields
+        fields={field['name']:field for field in installation_fields('pl')}
+        self.assertEqual(fields['parent']['label'],'Miejsce przechowywania kopii zapasowych Plex')
+        self.assertIn('bezpośrednio dataset',fields['parent']['description'])
+        self.assertEqual(fields['folder_name']['label'],'Nazwa nowego folderu na kopie i logi')
+        preview=installation_preview('/mnt/Archiwum/Kopie',language='pl',instant=datetime(2026,11,4,10,20,30,tzinfo=timezone.utc))
+        self.assertEqual(preview['folder'],'/mnt/Archiwum/Kopie/Plex Backup')
+        self.assertEqual(preview['logs'],'/mnt/Archiwum/Kopie/Plex Backup/Logs')
+        self.assertEqual(preview['archive'],'PlexConfig_2026.11.04_10.20.30.tar.gz')
+        self.assertTrue(preview['example']);self.assertFalse(preview['checked']);self.assertFalse(preview['created'])
+        api=Mock()
+        with patch('plexconfigcontrol.installation_flow.plan_storage',return_value=self.plan()) as plan,patch('plexconfigcontrol.installation_flow.create_storage') as create:
+            flow=InstallationStorageFlow(api,'pl');ready=flow.check('/mnt/tank/backups')
+            edited=flow.edit('/mnt/Pool_B',folder_name='Moje kopie',archive_prefix='Dupa')
+            self.assertEqual(edited['preview']['folder'],'/mnt/Pool_B/Moje kopie')
+            self.assertTrue(edited['preview']['archive'].startswith('Dupa_'))
+            self.assertFalse(edited['can_create']);self.assertIsNone(edited['revision'])
+            flow.create(ready['revision'],confirmed=True)
+            create.assert_not_called();api.call.assert_not_called();plan.assert_called_once()
+            invalid=flow.edit('../wrong')
+            self.assertIsNone(invalid['preview'])
+            self.assertIsNone(invalid['storage'])

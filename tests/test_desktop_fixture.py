@@ -42,3 +42,17 @@ class DesktopFixtureTests(unittest.TestCase):
             with request('/api/logout', {}, {'X-CSRF-Token':'fixture-only-csrf'}) as response:
                 self.assertFalse(json.load(response)['authenticated'])
             self.assertFalse(api.authenticated)
+
+
+    def test_tls_fixture_accepts_parallel_connection_burst_before_handshake(self):
+        import socket
+        from urllib.parse import urlsplit
+        with desktop_fixture() as (_,url,_):
+            address=urlsplit(url)
+            sockets=[]
+            try:
+                for _ in range(16):
+                    sockets.append(socket.create_connection((address.hostname,address.port),timeout=1))
+                self.assertEqual(len(sockets),16)
+            finally:
+                for connection in sockets:connection.close()
