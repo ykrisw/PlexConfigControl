@@ -130,5 +130,21 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 .pcc-shell .pcc-page.pcc-settings .pcc-appearance{min-height:178px}
 .pcc-shell .pcc-page.pcc-settings .pcc-theme-row{margin-top:12px;padding-top:14px}
 
-/* Enlarge only the Plex status lamp to 1.32x its original size, retaining label geometry. */
-.pcc-shell [data-plex-state]::before,.pcc-restore [data-plex-state]::before{transform:scale(1.32);transform-origin:center}
+/* Enlarge only the Plex status lamp to 1.4388x its original size, retaining label geometry. */
+.pcc-shell [data-plex-state]::before,.pcc-restore [data-plex-state]::before{transform:scale(1.4388);transform-origin:center}
+
+.pcc-shell {
+  --pcc-running-green: #15b716;
+}
+.pcc-shell .pcc-page > .pcc-plex [data-plex-state=RUNNING]::before,
+.pcc-shell .pcc-event-status[data-status=SUCCESS] {
+  color: var(--pcc-running-green) !important;
+  -webkit-text-fill-color: var(--pcc-running-green) !important;
+}
+.pcc-refresh-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+  margin-inline-end: 0.4em;
+}
