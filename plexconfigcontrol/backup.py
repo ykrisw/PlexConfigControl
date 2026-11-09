@@ -95,7 +95,8 @@ class Backup:
                     output=Path(workspace)/'archive.tar.gz'
                     self.progress.update('CREATING_ARCHIVE')
                     with self.snapshot_reader(identifier) as snapshot_path:
-                        result=create_archive(snapshot_path,output)
+                        result=create_archive(snapshot_path,output,verification_progress=lambda done,total:
+                            self.progress.update('VERIFYING_ARCHIVE',done=done,total=total))
                     log.write('Archive verified against snapshot contents.')
                     self.progress.update('REMOVING_SNAPSHOT')
                     snapshots.remove()
@@ -110,6 +111,7 @@ class Backup:
                             publication_intent.record_replacement(
                                 self.state, stage, name, result.sha256,
                                 overwrite.name, original_identity)
+                    self.progress.update('PUBLISHING_ARCHIVE')
                     publish_new(output,self.destination,name,result.sha256,intent)
                     published=True
                     ArchiveDiscovery(self.destination,self.state,self.history).remember_created(name)

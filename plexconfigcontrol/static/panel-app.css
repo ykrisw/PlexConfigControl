@@ -165,6 +165,9 @@ html{color-scheme:light dark;background:light-dark(#b5b9be,#151d28)}body{margin:
 }
 .pcc-shell .pcc-operation-workspace h2 {margin: 0 0 14px}
 .pcc-shell .pcc-operation-workspace button {margin-top: 8px}
+.pcc-shell .pcc-backup-progress {display:flex;align-items:center;gap:12px;margin-block:12px}
+.pcc-shell .pcc-backup-progress progress {width:100%;min-width:0;height:16px;accent-color:var(--pcc-selection-accent)}
+.pcc-shell .pcc-backup-progress span {font-variant-numeric:tabular-nums;white-space:nowrap}
 .pcc-shell .pcc-backup-name {
   display: grid;
   gap: 6px;

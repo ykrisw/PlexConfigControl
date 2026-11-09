@@ -18,6 +18,10 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
     <section class="pcc-card pcc-operation-workspace" hidden>
       <h2 data-operation-heading></h2>
       <p data-backup-progress role="status" aria-live="polite" hidden></p>
+      <div class="pcc-backup-progress" hidden>
+        <progress max="100" aria-label="${tx('Current backup stage progress','Postęp bieżącego etapu kopii')}"></progress>
+        <span data-backup-percent aria-hidden="true" hidden></span>
+      </div>
       <section data-recovery hidden></section>
       <div data-submission class="pcc-notice" role="status" aria-live="polite" hidden><p data-submission-text></p>
         <button type="button" data-submission-check hidden></button><button type="button" data-submission-retry hidden></button></div><p data-operation-result class="pcc-notice" role="status" aria-live="polite" hidden></p>
@@ -55,6 +59,7 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
   dialog.setAttribute('aria-label',tx('Confirm archive deletion','Potwierdź usunięcie archiwów'));
   backupDialog.setAttribute('aria-label',tx('Choose Backup Action','Wybierz działanie kopii zapasowej'));
   const dateFormat=new Intl.DateTimeFormat(pl?'pl-PL':'en-GB',{dateStyle:'medium',timeZone:timezone});
+  const percentFormat=new Intl.NumberFormat(pl?'pl-PL':'en-GB',{style:'percent',maximumFractionDigits:1});
   const recovery=mountRecoveryView(find('[data-recovery]'),client,{language});
   const lifecycle=new AbortController();let state,confirmation=[],backupConfirmation=null,disposed=false;
   const prefix=find('[data-backup-prefix]');
@@ -62,9 +67,10 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
   const stages={
     PREPARING:tx('Preparing backup…','Przygotowywanie kopii…'),
     CREATING_SNAPSHOT:tx('Creating a temporary snapshot…','Tworzenie tymczasowej migawki…'),
-    CREATING_ARCHIVE:tx('Creating and verifying the archive…','Tworzenie i weryfikowanie archiwum…'),
+    CREATING_ARCHIVE:tx('Creating the archive…','Tworzenie archiwum…'),
     VERIFYING_ARCHIVE:tx('Verifying the archive…','Weryfikowanie archiwum…'),
     REMOVING_SNAPSHOT:tx('Removing the temporary snapshot…','Usuwanie tymczasowej migawki…'),
+    PUBLISHING_ARCHIVE:tx('Saving the verified archive…','Zapisywanie zweryfikowanego archiwum…'),
   };
   function render(value){
     state=value;recovery.observe(value.operation);
@@ -99,6 +105,14 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
           : find('[data-submission]').hidden?tx('Waiting for backup status…','Oczekiwanie na stan kopii…'):''
       : '';
     progress.hidden=!progress.textContent;
+    const meter=find('.pcc-backup-progress'),bar=meter.querySelector('progress');
+    const percent=find('[data-backup-percent]');
+    const measured=stage?.operation==='BACKUP'&&stage.active===true&&Number.isFinite(stage.stage_percent);
+    meter.hidden=!locked||recoveryVisible;
+    if(measured)bar.value=stage.stage_percent;
+    else bar.removeAttribute('value');
+    percent.hidden=!measured;
+    percent.textContent=measured?percentFormat.format(stage.stage_percent/100):'';
     prefix.disabled=locked||backupDialog.open;
     find('[data-plan]').hidden=locked;
     find('[data-submission-check]').hidden=!value.submission.canCheck;

@@ -1,5 +1,5 @@
 /* Approved appearance baseline. Simulation data is not production state. */
-.pcc-shell,.pcc-restore{--pcc-selection-accent:#ffbf00}
+.pcc-restore{--pcc-selection-accent:#ffbf00}
 .pcc-shell{--pcc-notice-border:3px;--pcc-strip-height:56px;--pcc-avatar-size:188.9085px}
 .pcc-shell .pcc-logo{width:21px!important;height:23.1px!important;min-width:21px!important;min-height:23.1px!important;flex:0 0 21px!important}
 .pcc-shell .pcc-page>.pcc-plex,.pcc-shell .pcc-language,

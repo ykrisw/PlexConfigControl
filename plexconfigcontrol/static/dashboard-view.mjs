@@ -109,7 +109,7 @@ export function mountDashboardView(root, client, {onSignedOut, language = 'en'} 
     if (!event.isPrimary) return;
     photoPress = {
       id: event.pointerId, x: event.clientX, y: event.clientY,
-      timer: setTimeout(() => avatar.setAttribute('data-photo-tools-open', ''), 3000),
+      timer: setTimeout(() => avatar.setAttribute('data-photo-tools-open', ''), 2000),
     };
   }, options);
   avatar.addEventListener('pointermove', event => {
