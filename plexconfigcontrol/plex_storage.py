@@ -1,4 +1,5 @@
-"""Installation-only Plex storage discovery. No Docker socket or host mutations."""
+"""Read-only Plex storage discovery and verification on TrueNAS."""
+import re
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
@@ -72,14 +73,55 @@ def _mounts(row):
         raise StorageDiscoveryError('CONFIG_MOUNT_NOT_CONFIRMED') from None
 
 
-def discover_plex_storage(api, *, manual_source=None):
+def _zfs(api, source):
+    fs = api.call('filesystem.statfs', source)
+    if not isinstance(fs, dict) or fs.get('fstype') != 'zfs':
+        raise StorageDiscoveryError('CONFIG_NOT_ON_ZFS')
+    dataset = fs.get('source')
+    if (not isinstance(dataset, str) or not dataset or dataset.startswith('/')
+            or any(part in ('', '.', '..') for part in dataset.split('/'))
+            or any(ord(c) < 33 for c in dataset) or '@' in dataset or '#' in dataset):
+        raise StorageDiscoveryError('INVALID_CONFIG_DATASET')
+    if dataset == 'TrueNAS/TrueNAS/PBS-Data' or dataset.startswith('TrueNAS/TrueNAS/PBS-Data/'):
+        raise StorageDiscoveryError('PROTECTED_STORAGE')
+    return dataset, _path(fs.get('dest'))
+
+
+def _stopped_source(api, expected_source, expected_dataset):
+    # Stopping a catalog app can remove its containers and their mount list.
+    # Resolve only the configured Plex storage, with the trusted install binding.
+    config = api.call('app.config', 'plex')
+    kind, source = _setting(config)
+    if kind == 'host_path':
+        if source != expected_source:
+            raise StorageDiscoveryError('SETTINGS_MOUNT_MISMATCH')
+        return source
+    name = config['storage']['config'].get('ix_volume_config', {}).get('dataset_name')
+    if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]*', name):
+        raise StorageDiscoveryError('CONFIG_VOLUME_NOT_CONFIRMED')
+    rows = api.call('app.ix_volume.query', [['app_name', '=', 'plex'], ['name', '=', name]])
+    if rows != [{'app_name': 'plex', 'name': name}]:
+        raise StorageDiscoveryError('CONFIG_VOLUME_NOT_CONFIRMED')
+    root = '/mnt/.ix-apps'
+    suffix = f'/app_mounts/plex/{name}'
+    if expected_source != root + suffix:
+        raise StorageDiscoveryError('SETTINGS_MOUNT_MISMATCH')
+    apps_dataset, apps_mount = _zfs(api, root)
+    if apps_mount != root or expected_dataset != apps_dataset + suffix:
+        raise StorageDiscoveryError('DATASET_MOUNT_MISMATCH')
+    return expected_source
+
+
+def discover_plex_storage(api, *, manual_source=None, stopped_dataset=None):
     """Read settings + actual /config mapping + ZFS identity, then recheck.
 
-    This trusted installer function accepts an API client, never a client-supplied
-    dataset. An explicit manual path still has to match the actual /config mount.
-    It does not grant the restricted WWW runtime broader reads.
+    Only an execution owner with the installer-verified path and dataset can
+    enable the stopped-app fallback. Installer discovery requires real mounts.
     """
     manual = _path(manual_source) if manual_source is not None else None
+    if stopped_dataset is not None and manual is None:
+        raise StorageDiscoveryError('EXECUTION_STORAGE_BINDING_REQUIRED')
+
     def read():
         if manual is None:
             config = api.call('app.config','plex')
@@ -90,24 +132,22 @@ def discover_plex_storage(api, *, manual_source=None):
         if (not isinstance(rows,list) or len(rows)!=1 or not isinstance(rows[0],dict)
                 or rows[0].get('name')!='plex'):
             raise StorageDiscoveryError('PLEX_NOT_CONFIRMED')
-        if rows[0].get('state') not in ('RUNNING','STOPPED'):
+        row = rows[0]
+        if row.get('state') not in ('RUNNING','STOPPED'):
             raise StorageDiscoveryError('PLEX_CONFIGURATION_CHANGING')
-        source = _mounts(rows[0])
+        workloads = row.get('active_workloads')
+        if (stopped_dataset is not None and row['state'] == 'STOPPED'
+                and isinstance(workloads, dict) and workloads.get('volumes') == []):
+            source = _stopped_source(api, manual, stopped_dataset)
+        else:
+            source = _mounts(row)
         if declared is not None and source!=declared:
             raise StorageDiscoveryError('SETTINGS_MOUNT_MISMATCH')
-        fs = api.call('filesystem.statfs',source)
-        if not isinstance(fs,dict) or fs.get('fstype')!='zfs':
-            raise StorageDiscoveryError('CONFIG_NOT_ON_ZFS')
-        dataset = fs.get('source')
-        if (not isinstance(dataset,str) or not dataset or dataset.startswith('/')
-                or any(part in ('','.','..') for part in dataset.split('/'))
-                or any(ord(c)<33 for c in dataset) or '@' in dataset or '#' in dataset):
-            raise StorageDiscoveryError('INVALID_CONFIG_DATASET')
-        if dataset=='TrueNAS/TrueNAS/PBS-Data' or dataset.startswith('TrueNAS/TrueNAS/PBS-Data/'):
-            raise StorageDiscoveryError('PROTECTED_STORAGE')
-        mount = _path(fs.get('dest'))
+        dataset, mount = _zfs(api, source)
         try: relative = str(PurePosixPath(source).relative_to(mount))
         except ValueError:raise StorageDiscoveryError('DATASET_MOUNT_MISMATCH') from None
+        if stopped_dataset is not None and (dataset != stopped_dataset or relative != '.'):
+            raise StorageDiscoveryError('DATASET_MOUNT_MISMATCH')
         return PlexStorage(kind,source,dataset,mount,relative)
     try:
         first=read()

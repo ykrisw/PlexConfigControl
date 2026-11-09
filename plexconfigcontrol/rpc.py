@@ -15,7 +15,7 @@ class RPCError(RuntimeError):
     pass
 
 class TrueNASClient:
-    ALLOWED={'app.query','filesystem.statfs','pool.snapshot.query','pool.snapshot.create',
+    ALLOWED={'app.query','app.config','app.ix_volume.query','filesystem.statfs','pool.snapshot.query','pool.snapshot.create',
              'pool.snapshot.delete','pool.snapshot.rollback'}
     def __init__(self,url,username,api_key,connection_factory,timeout=30,*,clock=time.monotonic):
         if not 0<timeout<=600: raise ValueError('Invalid request timeout')

@@ -14,7 +14,7 @@ from .execution_worker import ExecutionWorker
 from .history import History
 from .operations import OperationDenied
 from .plex import PlexStatus
-from .plex_storage import PlexStorage, discover_plex_storage
+from .plex_storage import PlexStorage, StorageDiscoveryError, discover_plex_storage
 from .progress import Progress
 from .restore import Restore
 from .rollback_verification import RollbackVerifier
@@ -69,7 +69,11 @@ class ExecutionStorage:
         return self._identities[self.config]
 
     def verify(self):
-        current = discover_plex_storage(self.api, manual_source=self.plan.source)
+        try:
+            current = discover_plex_storage(self.api, manual_source=self.plan.source,
+                                            stopped_dataset=self.plan.dataset)
+        except StorageDiscoveryError:
+            raise OperationDenied('Plex configuration storage changed after installation or cannot be verified') from None
         if (current.source, current.dataset, current.dataset_mount, current.relative_path) != (
                 self.plan.source, self.plan.dataset, self.plan.dataset_mount, self.plan.relative_path):
             raise OperationDenied('Plex configuration storage changed after installation')
