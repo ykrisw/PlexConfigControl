@@ -8,6 +8,7 @@ from plexconfigcontrol.locking import operation_lock, OperationBusy
 from plexconfigcontrol.state import StateStore
 from plexconfigcontrol.publication_intent import record
 from plexconfigcontrol.web import Web
+from plexconfigcontrol.naming import Naming, save_naming
 
 NAMES = ['TrueNASPlexConfig_2026.11.03_04.15.35.tar.gz',
          'TrueNASPlexConfig_2026.11.03_05.15.35.tar.gz']
@@ -54,4 +55,7 @@ class BackupPlanTests(unittest.TestCase):
             token,_=app.sessions.create()
             code,body=request(token)
             self.assertEqual(code,'200 OK'); self.assertEqual(body['archive_count'],0)
+            self.assertEqual(body['archive_prefix'],'PlexConfig')
+            save_naming(root/'state',Naming(archive_prefix='DomowyPlex'))
+            self.assertEqual(request(token)[1]['archive_prefix'],'DomowyPlex')
             self.assertEqual(list(dest.iterdir()),[])

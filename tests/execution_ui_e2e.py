@@ -68,6 +68,7 @@ class FixtureAPI:
             if path == '/api/backup/plan':
                 if self.operation['phase']=='RUNNING': return 409, {'error':'Operation active'}
                 return 200, {'archive_count':len(self.rows),
+                    'archive_prefix':'PlexConfig' if self.language=='pl' else 'HomePlex',
                     'action':'ASK_OVERWRITE_OR_NEW' if len(self.rows)==1 else 'CREATE_NEW',
                     'existing_archive':self.rows[0] if len(self.rows)==1 else None,'overwrite_available':True}
             if path == '/api/restore/readiness':
@@ -146,6 +147,11 @@ def backup_case(browser, output, language, theme, width, *, check_only=False):
     try:
         page.goto(ORIGIN)
         create=page.locator('[data-create]');expect(create).to_be_enabled()
+        expect(page.locator('[data-create-heading]')).to_have_text('Utwórz kopię zapasową' if language=='pl' else 'Create Backup')
+        expect(page.locator('[data-prefix-label]')).to_have_text(
+            'Nazwa archiwum (Pozostaw puste dla nazwy PlexConfig)' if language=='pl'
+            else 'Archive name (Leave blank to use HomePlex)')
+        expect(page.locator('[data-description], [data-plan]')).to_have_count(0)
         page.locator('[data-backup-prefix]').fill('Plex_Living-Room');create.click()
         dialog=page.locator('[data-backup-dialog]');check_dialog(page,dialog,theme)
         expect(dialog.locator('[data-backup-archive]')).to_have_text(NAME)

@@ -10,10 +10,10 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
   root.innerHTML=`
     <section class="pcc-plex"><strong data-server></strong><span data-plex-state="UNKNOWN">UNKNOWN</span></section>
     <section class="pcc-card pcc-backup-action pcc-action-card"><div class="pcc-heading"><h2 data-create-heading></h2><button type="button" data-refresh></button></div>
-      <p data-description></p><label class="pcc-backup-name"><span data-prefix-label></span>
+      <label class="pcc-backup-name"><span data-prefix-label></span>
         <input data-backup-prefix type="text" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_\\-]{0,63}" aria-describedby="pcc-backup-prefix-help" autocomplete="off" spellcheck="false"></label>
       <p id="pcc-backup-prefix-help" data-prefix-help></p><button type="button" class="pcc-primary" data-create disabled></button>
-      <p data-execution-note></p><p data-plan></p>
+      <p data-execution-note></p>
     </section>
     <section class="pcc-card pcc-operation-workspace" hidden>
       <h2 data-operation-heading></h2>
@@ -37,16 +37,15 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
       <div class="pcc-dialog-actions"><button type="button" data-backup-cancel></button><button type="button" data-backup-another></button><button type="button" data-backup-overwrite></button></div></dialog>`;
   const find=selector=>root.querySelector(selector),list=find('[data-archives]'),dialog=find('dialog'),backupDialog=find('[data-backup-dialog]');
   const labels={
-    '[data-server]':tx('Plex Server','Serwer Plex'),'[data-create-heading]':tx('Create a new backup','Utwórz nową kopię zapasową'),
-    '[data-refresh]':tx('Refresh','Odśwież'),'[data-description]':tx('Create and verify a new copy of your Plex configuration.','Utwórz i zweryfikuj nową kopię konfiguracji Plex.'),
+    '[data-server]':tx('Plex Server','Serwer Plex'),'[data-create-heading]':tx('Create Backup','Utwórz kopię zapasową'),
+    '[data-refresh]':tx('Refresh','Odśwież'),
     '[data-operation-heading]':tx('Backup status','Stan kopii zapasowej'),
     '[data-return-to-archives]':tx('Return to archives','Wróć do listy kopii'),
-    '[data-prefix-label]':tx('Archive name prefix','Początek nazwy archiwum'),
-    '[data-prefix-help]':tx('Optional. Use 1–64 letters A–Z, digits, underscores or hyphens. Start with a letter or digit. The date and .tar.gz are added automatically.','Opcjonalnie. Użyj 1–64 liter A–Z, cyfr, podkreśleń lub myślników. Zacznij od litery lub cyfry. Data i rozszerzenie .tar.gz zostaną dodane automatycznie.'),
+    '[data-prefix-label]':tx('Archive name','Nazwa archiwum'),
+    '[data-prefix-help]':tx('The current date and the .tar.gz extension will be added automatically.','Aktualna data z rozszerzeniem .tar.gz zostaną dodane automatycznie.'),
     '[data-create]':tx('Create Backup','Utwórz kopię zapasową'),'[data-existing]':tx('Existing Backups','Istniejące kopie zapasowe'),
     '[data-delete]':tx('Delete Selected Archives','Usuń zaznaczone archiwa'),'[data-important]':tx('Important','Ważne'),
     '[data-important-text]':tx('Existing backups will not be deleted automatically. Each completed backup is verified before it becomes available.','Istniejące kopie nie są usuwane automatycznie. Każda nowa kopia jest weryfikowana, zanim stanie się dostępna.'),
-    '[data-execution-note]':tx('Backup creation is not connected in this development build. Plex will not be stopped.','Tworzenie kopii nie jest jeszcze podłączone w tej wersji. Plex nie zostanie zatrzymany.'),
     '[data-confirm-heading]':tx('Delete Selected Archives','Usuń zaznaczone archiwa'),
     '[data-confirm-text]':tx('Permanently delete these archive files? Permanent logs and other archives will remain untouched.','Trwale usunąć te pliki archiwów? Trwałe logi i pozostałe archiwa pozostaną nietknięte.'),
     '[data-cancel]':tx('Cancel','Anuluj'),'[data-confirm]':tx('Delete','Usuń'),
@@ -75,13 +74,19 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
   };
   function render(value){
     state=value;recovery.observe(value.operation);
+    const defaultName=value.plan?.archive_prefix;
+    if(typeof defaultName==='string'&&/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(defaultName)){
+      find('[data-prefix-label]').textContent=tx(
+        `Archive name (Leave blank to use ${defaultName})`,
+        `Nazwa archiwum (Pozostaw puste dla nazwy ${defaultName})`);
+    }
     const result=find('[data-operation-result]');result.textContent=value.submission.blocked?'':backupResult(value.operation,language);result.hidden=!result.textContent;
     const status=find('[data-plex-state]');status.dataset.plexState=value.plex;
     status.textContent=pl?({RUNNING:'DZIAŁA',STOPPED:'ZATRZYMANY',UNKNOWN:'NIEZNANY'})[value.plex]:value.plex;
     find('[data-refresh]').disabled=value.loading||value.busy||dialog.open||backupDialog.open;
     find('[data-create]').disabled=!value.canCreate||dialog.open||backupDialog.open;
-    find('[data-execution-note]').textContent=value.creationEnabled?tx('Plex will keep running. The archive is read only from a temporary snapshot.','Plex będzie działał. Archiwum jest odczytywane wyłącznie z tymczasowego snapshotu.'):
-      tx('Backup creation is disabled in this installation. Plex will not be stopped.','Tworzenie kopii jest wyłączone w tej instalacji. Plex nie zostanie zatrzymany.');
+    find('[data-execution-note]').textContent=value.creationEnabled?tx('The archive is read only from a temporary snapshot.','Archiwum jest odczytywane wyłącznie z tymczasowego snapshotu.'):
+      tx('Backup creation is disabled in this installation.','Tworzenie kopii jest wyłączone w tej instalacji.');
     const draftMatches=backupConfirmation&&value.entries.length===1&&archiveIdentity(backupConfirmation)===archiveIdentity(value.entries[0]);
     find('[data-backup-another]').disabled=!value.canCreate||!draftMatches;
     find('[data-backup-overwrite]').disabled=!value.canCreate||!draftMatches||!value.overwriteEnabled;
@@ -108,7 +113,6 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
     progress.hidden=!progress.textContent;
     showProgress(locked&&!recoveryVisible,stage);
     prefix.disabled=locked||backupDialog.open;
-    find('[data-plan]').hidden=locked;
     const checking=value.manualCheck==='CHECKING',checkButton=find('[data-submission-check]');
     checkButton.hidden=!value.submission.canCheck&&!checking;
     checkButton.disabled=checking;
@@ -133,9 +137,6 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
     find('[data-notice]').textContent=value.error||messages[value.notice]||'';find('[data-notice]').hidden=!find('[data-notice]').textContent;
     find('[data-empty]').hidden=value.entries.length>0;
     find('[data-empty]').textContent=value.loading?tx('Loading archives…','Wczytywanie archiwów…'):value.available?tx('No backup archives found.','Nie znaleziono archiwów.'):tx('Archive location is not available.','Lokalizacja archiwów jest niedostępna.');
-    const plans={CREATE_NEW:tx('The next backup will create a new dated copy.','Następna kopia otrzyma nową nazwę z datą.'),
-      ASK_OVERWRITE_OR_NEW:tx('One archive exists: before the next backup, choose whether to overwrite it or create another dated copy.','Istnieje jedno archiwum: przed następną kopią wybierzesz nadpisanie albo utworzenie kolejnej kopii z datą.')};
-    find('[data-plan]').textContent=value.plan?plans[value.plan.action]||'':value.available?tx('Backup planning is unavailable while another operation or recovery is pending.','Planowanie kopii jest niedostępne podczas innej operacji lub oczekiwania na odzyskanie.'):'';
     const scroll=list.scrollTop;const focus=list.contains(document.activeElement)?document.activeElement.dataset.archiveName:null;
     list.replaceChildren();
     for(const archive of value.entries){

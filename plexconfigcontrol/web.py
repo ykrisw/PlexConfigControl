@@ -21,6 +21,7 @@ from .state import StateStore
 from dataclasses import asdict as operation_dict
 from .publication_intent import describe as describe_publication
 from .backup_plan import plan_backup
+from .naming import InvalidNaming
 from .restore_validation import RestoreValidation
 from .archives import InvalidArchive
 from .operations import OperationDenied
@@ -303,6 +304,8 @@ class Web:
                 return respond('409 Conflict',{'error':'Another operation or recovery must finish'})
             except OSError:
                 return respond('503 Service Unavailable',{'error':'Archive location is unavailable'})
+            except InvalidNaming:
+                return respond('503 Service Unavailable',{'error':'Archive naming is unavailable'})
             plan['overwrite_available']=self.execution is not None
             if plan['existing_archive'] is not None:
                 plan['existing_archive']=archive_wire(plan['existing_archive'])
