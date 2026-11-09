@@ -13,7 +13,7 @@
 .pcc-shell .pcc-important{padding:10px 18px!important;flex-shrink:0}
 .pcc-shell .pcc-important .pcc-heading{min-height:28px;margin-bottom:6px}
 .pcc-shell .pcc-important p{margin:6px 0 0}
-.pcc-shell .pcc-scroll-list,.pcc-restore [data-archive-list]{display:flex;flex-direction:column;gap:8px;flex:1 1 0;height:0;min-height:0;max-height:none;overflow-y:scroll;overflow-x:hidden;scrollbar-gutter:stable;padding-right:8px;scrollbar-width:auto;scrollbar-color:#8596ac var(--pcc-bg);background:var(--pcc-card);clip-path:inset(0 round 0 12px 12px 0)}
+.pcc-shell .pcc-scroll-list,.pcc-restore [data-archive-list]{display:flex;flex-direction:column;gap:8px;flex:1 1 0;height:0;min-height:0;max-height:none;overflow-y:scroll;overflow-x:hidden;scrollbar-gutter:stable;padding-right:8px;scrollbar-width:auto;scrollbar-color:#8596ac var(--pcc-bg);background:var(--pcc-card)}
 .pcc-shell .pcc-scroll-list>*,.pcc-restore [data-archive-list]>*{flex-shrink:0}
 .pcc-restore [data-archive-list]>.pcc-archive-row{margin-bottom:0}
 .pcc-shell .pcc-scroll-list::-webkit-scrollbar,
@@ -41,3 +41,18 @@
 .pcc-shell .pcc-about-info{width:100%;margin-block:auto;padding:24px 0}
 
 .pcc-shell .pcc-scroll-list::-webkit-scrollbar-corner,.pcc-restore [data-archive-list]::-webkit-scrollbar-corner{background:var(--pcc-bg)}
+
+/* Round both ends of the measured native gutter without masking list rows. */
+.pcc-shell .pcc-scroll-list,
+.pcc-restore [data-archive-list] {
+  --pcc-gutter: 0px;
+  mask:
+    linear-gradient(black, black) left / calc(100% - var(--pcc-gutter)) 100% no-repeat,
+    linear-gradient(black, black) right center / var(--pcc-gutter) max(0px, calc(100% - var(--pcc-gutter))) no-repeat,
+    radial-gradient(circle closest-side, black 98%, transparent) right top / var(--pcc-gutter) var(--pcc-gutter) no-repeat,
+    radial-gradient(circle closest-side, black 98%, transparent) right bottom / var(--pcc-gutter) var(--pcc-gutter) no-repeat;
+}
+
+.pcc-shell .pcc-account-actions [data-logout] {
+  transform: translateY(-20px);
+}

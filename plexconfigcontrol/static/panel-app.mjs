@@ -42,6 +42,12 @@ export function mountPanelApp(root) {
     if (epoch !== generation || stopped) return;
     reset();
     const viewDisposers = new Map();
+    const scrollGutters = new ResizeObserver(entries => {
+      for (const {target} of entries) {
+        const gutter = target.offsetWidth - target.clientWidth;
+        target.style.setProperty('--pcc-gutter', gutter + 'px');
+      }
+    });
     const signedOut = reason => showLogin(reason === 'password_changed_history_pending' ? 'Password changed. Sign in with your new password. The History entry could not be confirmed.' : reason === 'password_changed' ? 'Password changed. Sign in with your new password.' : '');
     const shell = mountPanelShell(root, {theme: prefs.theme, onNavigate(key, section) {
       if (viewDisposers.has(key)) return;
@@ -66,10 +72,19 @@ export function mountPanelApp(root) {
         text.textContent = prefs.language === 'pl' ? 'Ten panel wymaga jeszcze podłączenia do funkcji aplikacji.' : 'This panel still needs integration with the application.';
         card.append(text); section.append(card); viewDisposers.set(key, () => section.replaceChildren());
       }
+      const list = section.querySelector('.pcc-scroll-list, [data-archive-list]');
+      if (list) {
+        const dispose = viewDisposers.get(key);
+        scrollGutters.observe(list);
+        viewDisposers.set(key, () => {
+          scrollGutters.unobserve(list);
+          dispose();
+        });
+      }
     }});
     shell.setLanguage(prefs.language);
     root.ownerDocument.documentElement.lang = prefs.language;
-    cleanup = () => { for (const dispose of viewDisposers.values()) dispose(); shell.dispose(); };
+    cleanup = () => { scrollGutters.disconnect(); for (const dispose of viewDisposers.values()) dispose(); shell.dispose(); };
   }
   const initial = epoch;
   void client.restoreSession().then(() => {
