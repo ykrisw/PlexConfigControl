@@ -42,22 +42,23 @@ class Backup:
         # Context manager must expose ONLY this snapshot's immutable contents.
         self.snapshot_reader=snapshot_reader
 
-    def run_new(self, *, create_another=None):
+    def run_new(self, *, create_another=None, prefix=None):
         """Create a dated copy after resolving the current single-copy prompt.
 
         create_another is the exact Archive identity displayed by that prompt,
         not a reusable boolean. Recount under the operation lock every time.
         Overwriting is a separate workflow and is not enabled by this method.
         """
-        return self._run(create_another=create_another)
+        return self._run(create_another=create_another,prefix=prefix)
 
-    def run_overwrite(self, selected):
+    def run_overwrite(self, selected, *, prefix=None):
         """The exact Archive selected in the overwrite confirmation is required."""
         if selected is None:
             raise ValueError('Select and confirm the existing archive')
-        return self._run(overwrite=selected)
+        return self._run(overwrite=selected,prefix=prefix)
 
-    def _run(self, *, create_another=None, overwrite=None):
+    def _run(self, *, create_another=None, overwrite=None, prefix=None):
+        prefix = self.archive_prefix if prefix is None else validate_prefix(prefix)
         with self._operation_guard(self.state):
             if publication_intent.pending(self.state):
                 raise RuntimeError('Unresolved archive publication requires recovery')
@@ -68,7 +69,7 @@ class Backup:
                     raise ArchiveChanged('Archives changed; refresh and choose again')
             elif len(archives) == 1:
                 raise BackupDecisionRequired(archives[0])
-            started=datetime.now(timezone.utc); name=archive_name(started,prefix=self.archive_prefix)
+            started=datetime.now(timezone.utc); name=archive_name(started,prefix=prefix)
             if (self.destination/name).exists() or (self.destination/name).is_symlink():
                 raise ArchiveNameCollision('Archive filename already exists; choose another timestamp')
             if PlexStatus(self.api).read()['state'] != 'RUNNING':
@@ -94,7 +95,8 @@ class Backup:
                     output=Path(workspace)/'archive.tar.gz'
                     self.progress.update('CREATING_ARCHIVE')
                     with self.snapshot_reader(identifier) as snapshot_path:
-                        result=create_archive(snapshot_path,output)
+                        result=create_archive(snapshot_path,output,verification_progress=lambda done,total:
+                            self.progress.update('VERIFYING_ARCHIVE',done=done,total=total))
                     log.write('Archive verified against snapshot contents.')
                     self.progress.update('REMOVING_SNAPSHOT')
                     snapshots.remove()
@@ -109,6 +111,7 @@ class Backup:
                             publication_intent.record_replacement(
                                 self.state, stage, name, result.sha256,
                                 overwrite.name, original_identity)
+                    self.progress.update('PUBLISHING_ARCHIVE')
                     publish_new(output,self.destination,name,result.sha256,intent)
                     published=True
                     ArchiveDiscovery(self.destination,self.state,self.history).remember_created(name)

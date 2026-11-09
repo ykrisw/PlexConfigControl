@@ -1,0 +1,139 @@
+name: Verify production worker image
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - Dockerfile.worker
+      - .github/workflows/production-worker.yml
+      - plexconfigcontrol/**
+      - pyproject.toml
+      - deploy/**
+      - design/truenas-installation/**
+  push:
+    branches: [main, 'work/approved-panel-goldeye']
+    paths:
+      - Dockerfile
+      - Dockerfile.worker
+      - .github/workflows/production-worker.yml
+      - plexconfigcontrol/**
+      - pyproject.toml
+      - deploy/**
+      - design/truenas-installation/**
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Reported by the target NAS. Build and test locally in this job only.
+      PLEX_IMAGE: plexinc/pms-docker@sha256:531ad94c469748dcaa9d6f3d6c6160ad3598617a55319d389e7d08216bc680a7
+      PLEX_SQLITE_VERSION: '3.53.3'
+      # Previous default Plex release, pinned to its amd64 manifest.
+      PLEX_PREVIOUS_IMAGE: plexinc/pms-docker@sha256:32dead43c01e8ff6189504ff0d048b16cf084a1dc37d8906fef8f3537d067e4d
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the panel and worker images
+        run: |
+          # Reproduce a source ZIP extracted under umask 077.
+          chmod -R go-rwx plexconfigcontrol
+          docker build --tag plexconfigcontrol:panel-check .
+          docker build --file Dockerfile.worker --tag plexconfigcontrol:worker-check \
+            --build-arg PCC_PANEL_IMAGE=plexconfigcontrol:panel-check \
+            --build-arg "PLEX_IMAGE=$PLEX_IMAGE" .
+      - name: Check that the unprivileged panel can import its source
+        run: |
+          docker run --rm --network none --read-only --user 568:568 \
+            --security-opt no-new-privileges:true --cap-drop ALL \
+            --entrypoint python plexconfigcontrol:panel-check \
+            -c 'import plexconfigcontrol.runtime'
+      - name: Detect Plex and its SQLite from an isolated container
+        run: |
+          trap 'docker rm -f pcc-plex-runtime-fixture >/dev/null 2>&1 || true' EXIT
+          docker run -d --name pcc-plex-runtime-fixture --network none --read-only --cap-drop ALL \
+            --label com.docker.compose.project=ix-plex --label com.docker.compose.service=plex \
+            --entrypoint /bin/sleep "$PLEX_IMAGE" infinity
+          python3 - <<'PY'
+          import os
+          from plexconfigcontrol.plex_runtime import detect_plex_runtime
+
+          reference, version, _, _ = detect_plex_runtime()
+          assert reference.rsplit('@', 1)[-1] == os.environ['PLEX_IMAGE'].rsplit('@', 1)[-1]
+          assert version == os.environ['PLEX_SQLITE_VERSION']
+          PY
+      - name: Check the real worker entrypoint without a NAS or host mounts
+        run: |
+          docker run --rm --network none --read-only --tmpfs /tmp \
+            --security-opt no-new-privileges:true --cap-drop ALL \
+            --cap-add SETUID --cap-add SETGID --cap-add SETPCAP \
+            --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER --cap-add FSETID \
+            plexconfigcontrol:worker-check \
+            --check-runtime --panel-uid 568 --plex-sqlite /usr/local/bin/pcc-plex-sqlite \
+            --sqlite-version "$PLEX_SQLITE_VERSION"
+      - name: Check a worker image with SQLite supplied separately
+        run: |
+          docker build --file Dockerfile.worker --target worker-base \
+            --build-arg PCC_PANEL_IMAGE=plexconfigcontrol:panel-check \
+            --tag plexconfigcontrol:worker-base-check .
+          docker run --rm --network none --read-only --cap-drop ALL --entrypoint /bin/sh \
+            plexconfigcontrol:worker-base-check -ec 'test ! -e /opt/pcc-plex'
+          fixture=$(mktemp --suffix=.json)
+          trap 'docker compose -p pcc-sqlite-check -f "$fixture" down -v >/dev/null 2>&1 || true; rm -f "$fixture"' EXIT
+          for image in "$PLEX_IMAGE" "$PLEX_PREVIOUS_IMAGE"; do
+            version_output=$(docker run --rm --network none --read-only --user 0:0 --cap-drop ALL \
+              --security-opt no-new-privileges:true \
+              --entrypoint '/usr/lib/plexmediaserver/Plex SQLite' "$image" -version)
+            sqlite_version=${version_output%% *}
+            python3 - "$image" "$sqlite_version" > "$fixture" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          from plexconfigcontrol.catalog_bundle import with_plex_sqlite
+
+          image, version = sys.argv[1:]
+          worker = {
+              'image': 'plexconfigcontrol:worker-base-check', 'pull_policy': 'never',
+              'network_mode': 'none', 'read_only': True, 'tmpfs': ['/tmp'], 'volumes': [],
+              'security_opt': ['no-new-privileges:true'], 'cap_drop': ['ALL'],
+              'cap_add': ['SETUID', 'SETGID', 'SETPCAP', 'CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'FSETID'],
+              'command': ['--check-runtime', '--panel-uid', '568', '--plex-sqlite',
+                          '/usr/local/bin/pcc-plex-sqlite', '--sqlite-version', version],
+          }
+          initializer = Path('design/truenas-installation/initialize-plex-sqlite.sh').read_text()
+          print(json.dumps(with_plex_sqlite({'services': {'worker': worker}}, image, version, initializer)))
+          PY
+            docker compose -p pcc-sqlite-check -f "$fixture" up -d --no-build
+            worker_id=$(docker compose -p pcc-sqlite-check -f "$fixture" ps --all -q worker)
+            test "$(docker wait "$worker_id")" = 0 || {
+              docker compose -p pcc-sqlite-check -f "$fixture" logs
+              exit 1
+            }
+            docker compose -p pcc-sqlite-check -f "$fixture" down -v
+          done
+      - name: Check initialization of the managed state directory
+        run: |
+          docker volume create pcc-state-check
+          docker run --rm --network none --read-only --user 0:0 \
+            --security-opt no-new-privileges:true --cap-drop ALL \
+            --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER \
+            --mount source=pcc-state-check,target=/var/lib/plexconfigcontrol \
+            --entrypoint python plexconfigcontrol:panel-check \
+            -m plexconfigcontrol.catalog_init --folder 'Moje kopie Plex' --prefix PlexDom
+          docker run --rm --network none --read-only \
+            --mount source=pcc-state-check,target=/var/lib/plexconfigcontrol,readonly \
+            --entrypoint python plexconfigcontrol:panel-check -c \
+            "from plexconfigcontrol.naming import Naming, load_naming; assert load_naming('/var/lib/plexconfigcontrol') == Naming('Moje kopie Plex', 'PlexDom')"
+      - name: Assemble installer source bundle
+        run: |
+          mkdir -p dist
+          git archive --format=tar --prefix=PlexConfigControl/ HEAD \
+            Dockerfile Dockerfile.worker pyproject.toml plexconfigcontrol \
+            deploy/install.sh deploy/installation-settings.example.json design/truenas-installation \
+            | gzip -n > dist/PlexConfigControl-installer.tar.gz
+          (cd dist && sha256sum PlexConfigControl-installer.tar.gz > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PlexConfigControl-installer-candidate
+          path: dist/

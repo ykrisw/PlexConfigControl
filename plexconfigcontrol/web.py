@@ -4,7 +4,7 @@ from importlib.resources import files
 from pathlib import Path
 from urllib.parse import parse_qs
 from http.cookies import SimpleCookie, CookieError
-from .execution import ExecutionGateway, InvalidExecutionRequest
+from .execution import ExecutionGateway, InvalidExecutionRequest, SubmissionUnconfirmed
 from .auth import Account
 from .sessions import Sessions, SessionChanged
 from .settings import Settings
@@ -31,7 +31,7 @@ from .outcome import describe_outcome
 from .profile_photo import ProfilePhoto,InvalidPhoto,PhotoChanged,MAX_UPLOAD
 
 class Web:
-    def __init__(self,state_directory,archive_directory=None,truenas_api=None,*,archive_deletion_enabled=True,archive_logs_enabled=True,recovery_inspector=None,execution_service=None):
+    def __init__(self,state_directory,archive_directory=None,truenas_api=None,*,archive_deletion_enabled=True,archive_logs_enabled=True,recovery_inspector=None,execution_service=None,archive_deleter=None):
         if execution_service is not None:
             if (not isinstance(execution_service, ExecutionGateway) or archive_directory is None
                     or execution_service.state != Path(state_directory).resolve()
@@ -52,6 +52,7 @@ class Web:
         self.discovery=ArchiveDiscovery(archive_directory,state_directory,self.history,
             permanent_logs=archive_logs_enabled) if archive_directory else None
         self.archive_deletion_enabled=archive_deletion_enabled
+        self.archive_deleter=archive_deleter
         self.photo=ProfilePhoto(state_directory)
 
     def __call__(self,environ,start_response):
@@ -84,6 +85,7 @@ class Web:
                 '/assets/recovery-view.mjs':'recovery-view.mjs',
                 '/assets/recovery-controller.mjs':'recovery-controller.mjs',
                 '/assets/operation-outcome.mjs':'operation-outcome.mjs',
+                '/assets/operation-workspace.mjs':'operation-workspace.mjs',
                 '/assets/backup-controller.mjs':'backup-controller.mjs',
                 '/assets/submission-controller.mjs':'submission-controller.mjs',
                 '/assets/backup-view.mjs':'backup-view.mjs',
@@ -363,14 +365,15 @@ class Web:
                         raise ValueError('Invalid identity')
                     items.append(Archive(name=item['name'],**{
                         key:archive_integer(item[key]) for key in ('size','device','inode','modified_ns')}))
-                removed=self.archives.delete(items,confirmed=True)
+                removed=(self.archive_deleter(items) if self.archive_deleter is not None
+                         else self.archives.delete(items,confirmed=True))
             except (ValueError,TypeError):
                 return respond('400 Bad Request',{'error':'Invalid archive selection'})
             except OperationBusy:
                 return respond('409 Conflict',{'error':'Another operation is running'})
-            except (ArchiveChanged,FileNotFoundError):
+            except (ArchiveChanged,FileNotFoundError,OperationDenied):
                 return respond('409 Conflict',{'error':'Archive selection changed; refresh the list'})
-            except OSError:
+            except (OSError,SubmissionUnconfirmed):
                 # Some prior selected files may have been removed. Do not claim
                 # batch atomicity; the UI must refresh after any deletion error.
                 return respond('503 Service Unavailable',{'error':'Deletion incomplete; refresh archive list'})

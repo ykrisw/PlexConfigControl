@@ -10,13 +10,19 @@ class BackupArchiveTests(unittest.TestCase):
             root=Path(d); snapshot=root/'snapshot'; snapshot.mkdir()
             for name in REQUIRED:
                 p=snapshot/name.removeprefix('config/'); p.parent.mkdir(parents=True,exist_ok=True); p.write_bytes(b'example')
-            (snapshot/'extra.txt').write_bytes(b'extra')
+            (snapshot/'extra.txt').write_bytes(b'x' * (17 * 1024 * 1024))
             output=root/'new.tar.gz'
-            result=create_archive(snapshot,output)
+            progress=[]
+            result=create_archive(snapshot,output,
+                                  verification_progress=lambda done,total: progress.append((done,total)))
             self.assertEqual(result.files,4)
+            self.assertEqual(progress[:2],[(0,None),(0,result.bytes_read)])
+            self.assertTrue(any(0<done<result.bytes_read for done,_ in progress))
+            self.assertEqual(progress[-1],(result.bytes_read,result.bytes_read))
             with self.assertRaises(FileExistsError): create_archive(snapshot,output)
             self.assertTrue(output.exists())
-            (snapshot/'extra.txt').write_bytes(b'other')
+            with (snapshot/'extra.txt').open('r+b') as changed:
+                changed.write(b'other')
             with self.assertRaises(BackupArchiveError): compare_contents(snapshot,output)
     def test_failed_creation_cleans_only_owned_output(self):
         with tempfile.TemporaryDirectory() as d:

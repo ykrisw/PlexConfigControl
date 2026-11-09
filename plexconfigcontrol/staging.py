@@ -1,6 +1,5 @@
 """Private restore staging with no writes to live Plex configuration."""
 import os
-import shutil
 import stat
 import subprocess
 import tempfile
@@ -12,7 +11,7 @@ class StagingError(RuntimeError):
     pass
 
 @contextmanager
-def stage_archive(archive_path,state_directory,expected_sha256,*,runner=subprocess.run):
+def stage_archive(archive_path,state_directory,expected_sha256,*,runner=subprocess.run,progress_callback=None):
     """Copy archive privately, validate identity, then extract with GNU tar.
 
     Links, special files, duplicate paths and traversal are rejected by the
@@ -27,12 +26,29 @@ def stage_archive(archive_path,state_directory,expected_sha256,*,runner=subproce
         private=workspace/'source.tar.gz'
         fd=os.open(archive_path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
         with os.fdopen(fd,'rb') as source:
-            if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
+            info=os.fstat(source.fileno())
+            if not stat.S_ISREG(info.st_mode):
                 raise StagingError('Archive must be a regular file')
+            total=info.st_size or None
+            if progress_callback:
+                progress_callback('STAGING_ARCHIVE',0,total)
             # Workspace is private (0700); source copy is never user-accessible.
             with private.open('xb') as output:
-                shutil.copyfileobj(source,output,length=1024*1024)
+                done=reported=0
+                while chunk:=source.read(1024*1024):
+                    output.write(chunk)
+                    done+=len(chunk)
+                    if done>info.st_size:
+                        raise StagingError('Archive changed since selection was validated')
+                    if progress_callback and done<info.st_size and done-reported>=16*1024*1024:
+                        progress_callback('STAGING_ARCHIVE',done,total)
+                        reported=done
+                if done!=info.st_size:
+                    raise StagingError('Archive changed since selection was validated')
                 output.flush(); os.fsync(output.fileno())
+            if progress_callback:
+                progress_callback('STAGING_ARCHIVE',done,total)
+                progress_callback('PREPARING')
         result=validate_archive(private)
         if result.sha256!=expected_sha256:
             raise StagingError('Archive changed since selection was validated')

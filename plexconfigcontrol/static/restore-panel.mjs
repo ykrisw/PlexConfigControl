@@ -7,6 +7,7 @@ export class RestoreController {
     this.state = {selected: null, busy: false, snapshot: null, error: null};
     this.disposed = false;
     this.refreshSerial = 0;
+    this.archiveNames = null;
     this.submission=createSubmission((request,signal)=>client.executeRestore(request,signal),
       (id,signal)=>client.executionStatus(id,signal),value=>{this.state.submission=value;this.emit();},
       {kind:'RESTORE',...(makeId?{makeId}:{})});
@@ -22,9 +23,23 @@ export class RestoreController {
   }
   reconcileSelection(names) {
     if(this.disposed)return;
-    if(this.state.selected&&!names.includes(this.state.selected)){
-      this.state.selected=null;this.emit();
-    }
+    this.archiveNames = new Set(names);
+    if (this.syncSelection()) this.emit();
+  }
+  syncSelection() {
+    if (!this.archiveNames) return false;
+    const snapshot = this.state.snapshot;
+    const operation = snapshot?.operation?.operation;
+    const details = operation?.validation_details;
+    const archive = snapshot?.readiness?.archive;
+    const resumable = operation?.kind === 'RESTORE' &&
+      ['WAITING_FOR_PLEX_STOP', 'READY'].includes(operation.phase) &&
+      details?.status === 'VALID' && details.archive === archive;
+    const selected = resumable ? archive : this.state.selected;
+    const next = this.archiveNames.has(selected) ? selected : null;
+    if (next === this.state.selected) return false;
+    this.state.selected = next;
+    return true;
   }
   async refresh(signal, force=false) {
     if(this.disposed||(this.state.busy&&!force))return;
@@ -33,6 +48,7 @@ export class RestoreController {
       const snapshot = await this.client.restoreView(signal);
       if (this.disposed || serial!==this.refreshSerial) return;
       this.state.snapshot = snapshot;
+      this.syncSelection();
       this.submission.observe(snapshot?.operation?.execution);
       this.state.error = null;
       this.emit();

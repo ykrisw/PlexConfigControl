@@ -53,8 +53,8 @@ class RestoreFaultTests(unittest.TestCase):
         with self.fixture() as (restore,api,*_):
             cleaned=[]
             @contextmanager
-            def stage(*args):
-                with stage_archive(*args) as source:yield source
+            def stage(*args,**kwargs):
+                with stage_archive(*args,**kwargs) as source:yield source
                 cleaned.append(True)
             original=api.call
             def call(method,*args):
@@ -68,8 +68,8 @@ class RestoreFaultTests(unittest.TestCase):
     def test_staging_cleanup_failure_retains_snapshot_and_attempts_verified_rollback(self):
         with self.fixture() as (restore,api,write,_,rollback):
             @contextmanager
-            def stage(*args):
-                with stage_archive(*args) as source:yield source
+            def stage(*args,**kwargs):
+                with stage_archive(*args,**kwargs) as source:yield source
                 raise OSError('injected staging cleanup failure')
             with patch('plexconfigcontrol.restore.stage_archive',stage):
                 with self.assertRaisesRegex(OSError,'staging cleanup failure'):restore.run(NAME,'RESTORE')
@@ -152,8 +152,8 @@ class RestoreFaultTests(unittest.TestCase):
         with self.fixture() as (restore,api,*_):
             started=[];original=api.call
             @contextmanager
-            def stage(*args):
-                with stage_archive(*args) as source:yield source
+            def stage(*args,**kwargs):
+                with stage_archive(*args,**kwargs) as source:yield source
                 started.append(True)
             def call(method,*args):
                 if method=='app.query' and started:

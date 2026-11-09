@@ -16,6 +16,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from .archive_store import Archive
+from .naming import archive_prefix, InvalidNaming
 from .execution import (AcceptedOperation, BackupRequest, RestoreRequest,
                         InvalidExecutionRequest, _identity, _request_id)
 from .locking import OperationBusy, operation_lock
@@ -44,6 +45,14 @@ def request_fingerprint(request):
     _request_id(payload)
     if isinstance(request, BackupRequest):
         kind = 'BACKUP'
+        if request.prefix is None:
+            # Keep the fingerprints of pre-existing requests valid across upgrades.
+            del payload['prefix']
+        else:
+            try:
+                archive_prefix(request.prefix)
+            except InvalidNaming as error:
+                raise InvalidExecutionRequest(str(error)) from None
         if request.mode not in ('NEW', 'ANOTHER', 'OVERWRITE'):
             raise InvalidExecutionRequest('Invalid Backup mode')
         if request.mode == 'NEW':

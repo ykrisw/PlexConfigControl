@@ -1,3 +1,4 @@
+import {mountOperationWorkspace,activeExecution,mountStageProgress} from './operation-workspace.mjs';
 import {submissionText} from './submission-controller.mjs';
 import {restoreResult} from './operation-outcome.mjs';
 import {mountRecoveryView} from './recovery-view.mjs';
@@ -18,15 +19,23 @@ export function mountRestoreView(root, client, {language='en'}={}) {
         <button type="button" data-restore-action="refresh">${tx('Refresh','Odśwież')}</button></div>
       <p>${tx('Select an archive and start validation.','Wybierz archiwum i rozpocznij weryfikację.')}</p>
       <button type="button" class="pcc-primary" data-restore-action="validate" disabled>${tx('Validate Archive','Zweryfikuj archiwum')}</button>
+    </section>
+    <section class="pcc-card pcc-operation-workspace" hidden>
+      <h2>${tx('Restore status','Stan przywracania')}</h2>
+      <section data-recovery hidden></section>
       <div data-operation-result class="pcc-notice" role="status" aria-live="polite" hidden></div>
       <div data-validation-progress hidden role="status" aria-live="polite"></div>
+      <div class="pcc-stage-progress" hidden>
+        <progress max="100" aria-label="${tx('Current restore stage progress','Postęp bieżącego etapu przywracania')}"></progress>
+        <span data-stage-percent aria-hidden="true" hidden></span>
+      </div>
       <div data-validation-notice class="pcc-notice" hidden role="status" aria-live="polite"></div>
       <div data-submission class="pcc-notice" role="status" aria-live="polite" hidden><p data-submission-text></p>
         <button type="button" data-submission-check hidden></button><button type="button" data-submission-retry hidden></button></div>
       <button type="button" class="pcc-primary" data-restore-execute hidden disabled>${tx('Restore Configuration','Przywróć konfigurację')}</button>
       <button type="button" data-restore-action="cancel" hidden>${tx('Cancel Restore Preparation','Anuluj przygotowanie przywracania')}</button>
+      <button type="button" data-return-to-archives hidden>${tx('Return to archives','Wróć do listy kopii')}</button>
     </section>
-    <section data-recovery hidden></section>
     <section class="pcc-card pcc-archive-card"><div class="pcc-heading"><h2>${tx('Select Backup Archive','Wybierz archiwum kopii zapasowej')}</h2></div>
       <div data-archive-list role="group" aria-label="${tx('Backup archives','Archiwa kopii zapasowych')}"></div>
       <p data-archive-message role="status">${tx('Loading archives…','Wczytywanie archiwów…')}</p>
@@ -46,6 +55,8 @@ export function mountRestoreView(root, client, {language='en'}={}) {
   const status = find('[data-plex-state]');
   const recovery=mountRecoveryView(find('[data-recovery]'),client,{language});
   const lifecycle = new AbortController();
+  const showWorkspace=mountOperationWorkspace(root,find('.pcc-archive-card'),lifecycle.signal);
+  const showProgress=mountStageProgress(find('.pcc-stage-progress'),'RESTORE',language);
   const dialog=find('[data-restore-dialog]'),confirmationInput=find('[data-confirm-restore]');
   let confirmed=null,disposeControls;
   find('[data-submission-check]').textContent=tx('Check Status','Sprawdź stan');
@@ -54,7 +65,7 @@ export function mountRestoreView(root, client, {language='en'}={}) {
 
   const render = state => {
     currentState = state;recovery.observe(state.snapshot?.operation);
-    const result=find('[data-operation-result]');result.textContent=restoreResult(state.snapshot?.operation,language);result.hidden=!result.textContent;
+    const result=find('[data-operation-result]');result.textContent=state.submission?.blocked?'':restoreResult(state.snapshot?.operation,language);result.hidden=!result.textContent;
     selected = state.selected;
     const view=restorePresentation(state,language);
     validate.disabled = view.validateDisabled||loading||!archiveAvailable;
@@ -67,7 +78,7 @@ export function mountRestoreView(root, client, {language='en'}={}) {
       !confirmed||confirmed.archive!==candidate.archive||confirmed.sha256!==candidate.sha256;
     find('[data-restore-dialog-cancel]').disabled=state.submission?.busy===true;
     find('[data-submission-text]').textContent=submissionText(state.submission,language);
-    find('[data-submission]').hidden=!find('[data-submission-text]').textContent||(state.submission?.phase==='RUNNING'&&Boolean(view.notice));
+    find('[data-submission]').hidden=!find('[data-submission-text]').textContent||Boolean(result.textContent)||(state.submission?.phase==='RUNNING'&&Boolean(view.notice));
     find('[data-submission-check]').hidden=!state.submission?.canCheck;
     find('[data-submission-retry]').hidden=!state.submission?.canRetry;
     for (const input of list.querySelectorAll('input')) {
@@ -77,8 +88,16 @@ export function mountRestoreView(root, client, {language='en'}={}) {
     }
     notice.textContent = view.notice;
     notice.hidden = !view.notice;
-    progress.hidden = !view.progressText;
-    progress.textContent = view.progressText;
+    const snapshot=state.snapshot?.operation;
+    const operation=snapshot?.operation;
+    const active=state.busy||state.submission?.blocked===true||view.waiting||activeExecution(snapshot,'RESTORE')||
+      (operation?.kind==='RESTORE'&&view.active)||!find('[data-recovery]').hidden;
+    const locked=showWorkspace({active,snapshot,result:result.textContent||view.notice||find('[data-submission-text]').textContent});
+    progress.textContent=view.progressText||
+      (locked&&!view.notice&&find('[data-recovery]').hidden&&find('[data-submission]').hidden
+        ? tx('Waiting for restore status…','Oczekiwanie na stan przywracania…'):'');
+    progress.hidden=!progress.textContent;
+    showProgress(locked&&!view.waiting&&find('[data-recovery]').hidden,snapshot?.progress);
   };
   disposeControls = bindRestoreControls(root, client, render);
   find('[data-restore-execute]').addEventListener('click',()=>{

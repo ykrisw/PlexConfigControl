@@ -1,5 +1,7 @@
 import copy
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 from plexconfigcontrol.plex_storage import discover_plex_storage, StorageDiscoveryError
@@ -61,6 +63,60 @@ class PlexStorageTests(unittest.TestCase):
             if scenario=='transition':row['state']='DEPLOYING'
             with self.subTest(scenario=scenario),self.assertRaises(StorageDiscoveryError):discover_plex_storage(api)
 
+    def test_execution_rechecks_stopped_ixvolume_without_container_mounts(self):
+        source = '/mnt/.ix-apps/app_mounts/plex/config'
+        dataset = 'MediaPool/ix-apps/app_mounts/plex/config'
+        api, config, row, fs = self.fixture(source=source)
+        config['storage']['config']['ix_volume_config'] = {'dataset_name': 'config'}
+        fs['source'] = dataset
+        row['state'] = 'STOPPED'
+        row['active_workloads']['volumes'] = []
+        original = api.call.side_effect
+        owner = {'app_name': 'plex', 'name': 'config'}
+        volumes = [owner]
+        apps_filesystem = {'fstype': 'zfs', 'source': 'MediaPool/ix-apps', 'dest': '/mnt/.ix-apps'}
+
+        def call(method, *args):
+            if method == 'app.ix_volume.query':
+                self.assertEqual(args, ([['app_name', '=', 'plex'], ['name', '=', 'config']],))
+                return volumes
+            if method == 'filesystem.statfs' and args == ('/mnt/.ix-apps',):
+                return apps_filesystem
+            return original(method, *args)
+
+        api.call.side_effect = call
+
+        def check():
+            return discover_plex_storage(api, manual_source=source, stopped_dataset=dataset)
+
+        self.assertEqual(check().dataset, dataset)
+        self.assertTrue(check().dedicated_dataset_root)
+        with self.assertRaisesRegex(StorageDiscoveryError, 'CONFIG_MOUNT_NOT_CONFIRMED'):
+            discover_plex_storage(api, manual_source=source)
+        row['state'] = 'RUNNING'
+        with self.assertRaisesRegex(StorageDiscoveryError, 'CONFIG_MOUNT_NOT_CONFIRMED'):
+            check()
+        row['state'] = 'STOPPED'
+        volumes[:] = [owner, owner]
+        with self.assertRaisesRegex(StorageDiscoveryError, 'CONFIG_VOLUME_NOT_CONFIRMED'):
+            check()
+        volumes[:] = [owner]
+        apps_filesystem['source'] = 'ChangedPool/ix-apps'
+        with self.assertRaisesRegex(StorageDiscoveryError, 'DATASET_MOUNT_MISMATCH'):
+            check()
+
+    def test_stopped_host_path_must_still_match_the_verified_binding(self):
+        source = '/mnt/MediaPool/PlexData'
+        api, config, row, fs = self.fixture('host_path', source)
+        fs['source'] = 'MediaPool/PlexData'
+        row['state'] = 'STOPPED'
+        row['active_workloads']['volumes'] = []
+        self.assertEqual(discover_plex_storage(
+            api, manual_source=source, stopped_dataset='MediaPool/PlexData').source, source)
+        config['storage']['config']['host_path_config']['path'] = '/mnt/MediaPool/NewPlexData'
+        with self.assertRaisesRegex(StorageDiscoveryError, 'SETTINGS_MOUNT_MISMATCH'):
+            discover_plex_storage(api, manual_source=source, stopped_dataset='MediaPool/PlexData')
+
     def test_path_change_during_detection_is_not_accepted(self):
         api,_,_,_=self.fixture();base=api.call.side_effect;reads=0
         def changing(method,*args):
@@ -97,6 +153,19 @@ class PlexStorageTests(unittest.TestCase):
             with self.assertRaisesRegex(StorageDiscoveryError,'PLEX_STORAGE_CHANGED'):create_storage(api,plan)
             create.assert_not_called()
             fs['source']='tank/plex-config';create_storage(api,plan);create.assert_called_once()
+
+    def test_dedicated_plex_and_backup_storage_can_use_separate_custom_pools(self):
+        api, _, _, fs = self.fixture('host_path', '/mnt/MediaPool/Services/PlexData')
+        fs['source'] = 'MediaPool/Services/PlexData'
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary) / 'ArchivePool' / 'Home Backups'
+            parent.mkdir(parents=True)
+            plan = plan_storage(api, parent, folder_name='Plex Config')
+            self.assertEqual(plan.plex.dataset, 'MediaPool/Services/PlexData')
+            self.assertEqual(plan.parent, str(parent))
+            destination = create_storage(api, plan)
+            self.assertEqual(destination.root, parent / 'Plex Config')
+            self.assertTrue(destination.logs.is_dir())
 
     def test_raw_api_errors_do_not_disclose_credentials(self):
         api=Mock();api.call.side_effect=RuntimeError('SECRET from API')

@@ -131,11 +131,11 @@ class ReplacementTests(unittest.TestCase):
     def test_external_change_even_with_restored_mtime_keeps_both_archives(self):
         with self.fixture() as (backup, selected, old, api, store, *_):
             original_stat = old.stat()
-            def build(*args):
+            def build(*args, **kwargs):
                 # Keep length/mtime unchanged; ctime must still invalidate selection.
                 old.write_bytes(b'X'*selected.size)
                 os.utime(old, ns=(original_stat.st_atime_ns, selected.modified_ns))
-                return create_archive(*args)
+                return create_archive(*args, **kwargs)
             with patch('plexconfigcontrol.backup.create_archive', side_effect=build):
                 with self.assertRaises(ArchiveChanged):
                     backup.run_overwrite(selected)
@@ -191,9 +191,9 @@ class ReplacementTests(unittest.TestCase):
 
     def test_filename_created_externally_during_backup_is_never_overwritten(self):
         with self.fixture() as (backup, selected, old, api, store, *_):
-            def build(*args):
+            def build(*args, **kwargs):
                 (backup.destination/NEW).write_bytes(b'externally created archive')
-                return create_archive(*args)
+                return create_archive(*args, **kwargs)
             with patch('plexconfigcontrol.backup.create_archive', side_effect=build):
                 with self.assertRaises(FileExistsError):
                     backup.run_overwrite(selected)

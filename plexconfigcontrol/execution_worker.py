@@ -43,7 +43,8 @@ class _Handoff:
 
 class ExecutionWorker:
     def __init__(self, state_directory, archive_directory, dataset, api,
-                 backup_factory, restore_factory, *, thread_factory=threading.Thread):
+                 backup_factory, restore_factory, *, thread_factory=threading.Thread,
+                 verify_archive_storage=None):
         if api is None or not all(callable(factory) for factory in (backup_factory,restore_factory)):
             raise ValueError('Explicit scoped API and fixed coordinator factories required')
         Snapshots(None,None,dataset)
@@ -52,6 +53,7 @@ class ExecutionWorker:
         self.dataset, self.api = dataset, api
         self.backup_factory, self.restore_factory = backup_factory, restore_factory
         self.thread_factory = thread_factory
+        self.verify_archive_storage = verify_archive_storage
         self.store = StateStore(self.state)
         self.journal = ExecutionJournal(self.state)
         self._lifecycle = threading.RLock()
@@ -61,6 +63,13 @@ class ExecutionWorker:
     def gateway(self):
         return ExecutionGateway(self.state,self.destination,self.api,self,
             receipt_lookup=self.journal.lookup,status_reader=self.journal.current,status_lookup=self.journal.status)
+
+    def delete_archives(self, selected):
+        with self._lifecycle:
+            if self._closing or self.verify_archive_storage is None:
+                raise OperationDenied('Archive deletion is unavailable')
+            self.verify_archive_storage()
+            return ArchiveStore(self.destination, self.state).delete(selected, confirmed=True)
 
     def _admit(self, request):
         # Caller owns operation_lock. No network I/O inside SQLite transactions.
@@ -182,8 +191,8 @@ class ExecutionWorker:
         try:
             coordinator = self._coordinator(request,borrowed)
             if isinstance(request,BackupRequest):
-                if request.mode == 'OVERWRITE': result = coordinator.run_overwrite(request.archive)
-                else: result = coordinator.run_new(create_another=request.archive)
+                if request.mode == 'OVERWRITE': result = coordinator.run_overwrite(request.archive,prefix=request.prefix)
+                else: result = coordinator.run_new(create_another=request.archive,prefix=request.prefix)
             else:
                 # Payload-bound digest/name were checked while this same lock
                 # was reserved; validation/cancel routes cannot replace them.

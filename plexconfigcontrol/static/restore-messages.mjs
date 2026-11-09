@@ -66,7 +66,8 @@ export function restorePresentation(state,language='en'){
     progressText=`${stages[progress.stage]||tx('Archive validation','Weryfikacja archiwum')} · ${done.toLocaleString(pl?'pl-PL':'en-GB')} ${tx('bytes read','odczytanych bajtów')} · ${elapsed} s`;
   }
   if(executing&&progress?.operation==='RESTORE'&&progress.active===true){
-    const stages={PREPARING:tx('Preparing Restore','Przygotowanie Restore'),
+    const stages={PREPARING:tx('Preparing Restore','Przygotowanie przywracania'),
+      STAGING_ARCHIVE:tx('Copying the archive to temporary storage','Kopiowanie archiwum do katalogu tymczasowego'),
       CREATING_SNAPSHOT:tx('Creating emergency snapshot','Tworzenie awaryjnego snapshotu'),
       RESTORING:tx('Restoring configuration','Przywracanie konfiguracji'),
       VERIFYING_RESTORE:tx('Verifying restored configuration','Weryfikacja przywróconej konfiguracji'),

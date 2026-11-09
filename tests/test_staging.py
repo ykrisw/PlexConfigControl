@@ -19,12 +19,15 @@ class StagingTests(unittest.TestCase):
             root=Path(d); state=root/'state'; state.mkdir(); archive=root/'a.tar.gz'; self.make(archive)
             digest=validate_archive(archive).sha256
             reached=False
+            updates=[]
             with self.assertRaises(RuntimeError):
-                with stage_archive(archive,state,digest) as config:
+                with stage_archive(archive,state,digest,progress_callback=lambda *update: updates.append(update)) as config:
                     reached=True
                     self.assertTrue((config/'Library/Application Support/Plex Media Server/Preferences.xml').is_file())
                     raise RuntimeError('later validation failed')
             self.assertTrue(reached,'Extraction must succeed before testing later cleanup')
+            size=archive.stat().st_size
+            self.assertEqual(updates,[('STAGING_ARCHIVE',0,size),('STAGING_ARCHIVE',size,size),('PREPARING',)])
             self.assertEqual(list(state.iterdir()),[])
             self.assertEqual(validate_archive(archive).sha256,digest)
     def test_changed_archive_rejected_before_extraction(self):

@@ -1,27 +1,32 @@
-html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:0;font-family:Arial,sans-serif}
+html{color-scheme:light dark;background:light-dark(#b5b9be,#151d28)}body{margin:0;font-family:Arial,sans-serif}
 #pcc-app{width:100%;margin:auto}
 .pcc-shell button,.pcc-shell input{font:inherit}
 .pcc-shell .pcc-account-actions button,.pcc-shell .pcc-dialog-actions button,.pcc-shell .pcc-login button{border:1px solid var(--pcc-line);background:var(--pcc-bg);color:var(--pcc-ink);border-radius:9px;min-height:54px;padding:10px 16px;font-weight:600;cursor:pointer}
 .pcc-shell .pcc-account-actions button{background:var(--pcc-line)}
 .pcc-shell button:disabled{cursor:wait}
 .pcc-shell .pcc-avatar{display:grid;place-items:center}
-.pcc-shell .pcc-avatar svg{width:24px;height:24px;fill:none;stroke:#fff;stroke-width:1.5}
-.pcc-shell .pcc-avatar{position:relative}
+.pcc-shell .pcc-avatar svg{width:24px;height:24px;fill:none;stroke:light-dark(#e8e8e8,#fff);stroke-width:1.5}
+.pcc-shell .pcc-avatar{position:relative;-webkit-touch-callout:none;user-select:none}
 .pcc-shell .pcc-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.pcc-shell .pcc-photo-tools{position:absolute;bottom:0;left:0;right:0;z-index:1;display:flex;justify-content:center;gap:12px;padding:10px;background:#263444cc;opacity:0;transition:opacity .15s}
-.pcc-shell .pcc-avatar:hover .pcc-photo-tools,.pcc-shell .pcc-avatar:focus-within .pcc-photo-tools{opacity:1}
-.pcc-shell[data-theme] .pcc-avatar .pcc-photo-tools button{display:grid;place-items:center;background:none;border:0;padding:4px;min-height:32px;min-width:32px;color:#fff!important;-webkit-text-fill-color:#fff!important;cursor:pointer}
+.pcc-shell .pcc-photo-tools{position:absolute;bottom:0;left:0;right:0;z-index:1;display:flex;justify-content:center;gap:12px;padding:10px;background:light-dark(#222f3ecc,#263444cc);opacity:0;pointer-events:none;transition:opacity .15s}
+@media(any-hover:hover){
+ .pcc-shell .pcc-avatar:not([data-photo-touch]):is(:hover,:focus-within) .pcc-photo-tools{opacity:1;pointer-events:auto}
+}
+.pcc-shell[data-theme] .pcc-avatar .pcc-photo-tools button{display:grid;place-items:center;background:none;border:0;padding:4px;min-height:32px;min-width:32px;color:light-dark(#e8e8e8,#fff);cursor:pointer}
 .pcc-shell .pcc-photo-tools button:disabled{cursor:not-allowed}
-@media(hover:none){.pcc-shell .pcc-photo-tools{opacity:1}.pcc-shell[data-theme] .pcc-avatar .pcc-photo-tools button{min-height:44px;min-width:44px}}
+@media(any-hover:none){.pcc-shell .pcc-photo-tools{visibility:hidden}}
+.pcc-shell .pcc-avatar[data-photo-touch] .pcc-photo-tools{visibility:hidden}
+.pcc-shell .pcc-avatar[data-photo-tools-open] .pcc-photo-tools{visibility:visible;opacity:1;pointer-events:auto}
+.pcc-shell[data-theme] .pcc-avatar[data-photo-touch] .pcc-photo-tools button{min-height:44px;min-width:44px}
 @media(prefers-reduced-motion:reduce){.pcc-shell .pcc-photo-tools{transition:none}}
 .pcc-shell [data-plex-state]{font-size:13px;font-weight:600}
-.pcc-shell [data-plex-state]::before{content:'●';display:inline-block;margin-right:8px;color:#8596ac;-webkit-text-fill-color:currentColor}
+.pcc-shell [data-plex-state]::before{content:'●';display:inline-block;margin-right:8px;color:light-dark(#79899c,#8596ac);-webkit-text-fill-color:currentColor}
 .pcc-shell [data-plex-state=RUNNING]::before{color:#158843;animation:pcc-live-dot 2s ease-in-out infinite}
 .pcc-shell [data-plex-state=STOPPED]::before{color:#dc2626;animation:pcc-live-dot 2s ease-in-out infinite}
 @keyframes pcc-live-dot{50%{opacity:.6;text-shadow:0 0 9px currentColor}}
 @media(prefers-reduced-motion:reduce){.pcc-shell [data-plex-state]::before{animation:none}}
 .pcc-shell .pcc-password-dialog{color:var(--pcc-ink);border-radius:14px;padding:24px;width:calc(100% - 40px);max-width:440px;max-height:90%;box-sizing:border-box}
-.pcc-shell .pcc-password-dialog::backdrop{background:#10182788}
+.pcc-shell .pcc-password-dialog::backdrop{background:light-dark(#0f152388,#10182788)}
 .pcc-shell .pcc-password-dialog label,.pcc-shell .pcc-login label{display:grid;gap:8px;margin:16px 0}
 .pcc-shell .pcc-password-dialog input,.pcc-shell .pcc-login input{width:100%;box-sizing:border-box;background:var(--pcc-card);color:var(--pcc-ink);border:1px solid var(--pcc-line);padding:12px;border-radius:8px;font-size:16px}
 .pcc-shell .pcc-dialog-actions{display:flex;justify-content:flex-end;gap:10px}
@@ -39,7 +44,7 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 .pcc-shell .pcc-history button{font:600 13px Arial,sans-serif;color:var(--pcc-ink);background:var(--pcc-bg);border:1px solid var(--pcc-line);border-radius:8px;padding:9px 12px;cursor:pointer}
 .pcc-shell .pcc-history button:disabled{cursor:not-allowed}
 .pcc-shell .pcc-history-filters button{min-height:45px;border:0;background:var(--pcc-line)}
-.pcc-shell .pcc-history-filters button[aria-pressed=true]{background:var(--pcc-selection-accent);color:#000!important;-webkit-text-fill-color:#000!important}
+.pcc-shell .pcc-history-filters button[aria-pressed=true]{background:var(--pcc-selection-accent);color:light-dark(var(--pcc-ink),#000)}
 .pcc-shell .pcc-history .pcc-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;margin-bottom:12px}
 .pcc-shell .pcc-history h2{font-size:16px;font-weight:600;margin:0}
 .pcc-shell .pcc-history-actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -100,16 +105,21 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 
 .pcc-shell .pcc-notification-dialog .pcc-dialog-actions{flex-wrap:wrap}
 
-/* Filled yellow controls in Dark; navigation and row selections keep their own styles. */
-.pcc-shell[data-theme=dark] :is(.pcc-account-actions button,.pcc-theme-buttons button[aria-pressed=true],.pcc-backup .pcc-primary,.pcc-restore .pcc-primary){background:var(--pcc-selection-accent);border-color:var(--pcc-selection-accent);color:#000!important;-webkit-text-fill-color:#000!important}
-@media(prefers-color-scheme:dark){
- .pcc-shell[data-theme=system] :is(.pcc-account-actions button,.pcc-theme-buttons button[aria-pressed=true],.pcc-backup .pcc-primary,.pcc-restore .pcc-primary){background:var(--pcc-selection-accent);border-color:var(--pcc-selection-accent);color:#000!important;-webkit-text-fill-color:#000!important}
+/* Filled actions share the approved accent in both themes. */
+.pcc-shell[data-theme] :is(.pcc-account-actions button,.pcc-theme-buttons button[aria-pressed=true],.pcc-backup .pcc-primary,.pcc-restore .pcc-primary) {
+  background:var(--pcc-selection-accent);
+  border-color:var(--pcc-selection-accent);
+  color:light-dark(var(--pcc-ink),#000);
 }
-
-/* Restore Refresh matches Backup Refresh in Dark. */
-.pcc-shell[data-theme=dark] .pcc-restore [data-restore-action=refresh]{font:600 13px Arial,sans-serif;padding:10px 14px;background:var(--pcc-bg)}
-@media(prefers-color-scheme:dark){
- .pcc-shell[data-theme=system] .pcc-restore [data-restore-action=refresh]{font:600 13px Arial,sans-serif;padding:10px 14px;background:var(--pcc-bg)}
+.pcc-shell[data-theme] .pcc-restore [data-restore-action=refresh] {
+  font:600 13px Arial,sans-serif;
+  padding:10px 14px;
+  background:var(--pcc-bg);
+}
+.pcc-shell .pcc-avatar {background:light-dark(#97a5b7,#a6b5c9)}
+.pcc-shell :is(.pcc-archive-row,.pcc-event-row) input:not(:checked) {
+  background:light-dark(#e8e8e8,var(--pcc-card));
+  border-color:light-dark(#8e9fb3,#b4bfce);
 }
 
 /* Shared Backup/Restore geometry: one set of spacing and typography rules. */
@@ -147,3 +157,27 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
   color: var(--pcc-stopped-red) !important;
   -webkit-text-fill-color: var(--pcc-stopped-red) !important;
 }
+
+.pcc-shell .pcc-page > .pcc-operation-workspace {
+  flex: 1;
+  border: 3px solid var(--pcc-selection-accent);
+  overflow-wrap: anywhere;
+}
+.pcc-shell .pcc-operation-workspace h2 {margin: 0 0 14px}
+.pcc-shell .pcc-operation-workspace button {margin-top: 8px}
+.pcc-shell .pcc-stage-progress {display:flex;align-items:center;gap:12px;margin-block:12px}
+.pcc-shell .pcc-stage-progress progress {width:100%;min-width:0;height:16px;accent-color:var(--pcc-selection-accent)}
+.pcc-shell .pcc-stage-progress span {font-variant-numeric:tabular-nums;white-space:nowrap}
+.pcc-shell .pcc-backup-name {
+  display: grid;
+  gap: 6px;
+}
+.pcc-shell .pcc-backup-name input {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--pcc-bg);
+  color: var(--pcc-ink);
+  border: 1px solid var(--pcc-line);
+  border-radius: 8px;
+}
+.pcc-shell [data-prefix-help] {margin: 6px 0 14px}

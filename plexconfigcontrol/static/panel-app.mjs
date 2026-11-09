@@ -6,6 +6,62 @@ import {mountHistoryView} from './history-view.mjs';
 import {mountSettingsView} from './settings-view.mjs';
 import {mountBackupView} from './backup-view.mjs';
 
+function mountScrollbar(list) {
+  const document = list.ownerDocument;
+  const lifecycle = new AbortController();
+  const options = {signal: lifecycle.signal};
+  const frame = document.createElement('div');
+  const track = document.createElement('div');
+  const thumb = document.createElement('div');
+  frame.className = 'pcc-scroll-frame';
+  track.className = 'pcc-scroll-track';
+  thumb.className = 'pcc-scroll-thumb';
+  track.setAttribute('aria-hidden', 'true');
+  track.append(thumb);
+  list.before(frame);
+  frame.append(list, track);
+
+  const inset = 4;
+  let thumbHeight = 0;
+  let travel = 0;
+  let range = 0;
+  let dragOffset = 0;
+  function updateScrollbar() {
+    const usableHeight = Math.max(0, track.clientHeight - 2 * inset);
+    range = Math.max(0, list.scrollHeight - list.clientHeight);
+    track.toggleAttribute('data-empty', !range || !usableHeight);
+    thumbHeight = Math.min(usableHeight, Math.max(30, usableHeight * list.clientHeight / (list.scrollHeight || 1)));
+    travel = usableHeight - thumbHeight;
+    thumb.style.height = thumbHeight + 'px';
+    thumb.style.top = inset + (range ? travel * list.scrollTop / range : 0) + 'px';
+  }
+  function moveThumb(clientY) {
+    if (!travel) return;
+    list.scrollTop = (clientY - track.getBoundingClientRect().top - inset - dragOffset) / travel * range;
+  }
+  track.addEventListener('pointerdown', event => {
+    if (event.button !== 0 || !travel) return;
+    event.preventDefault();
+    dragOffset = event.target === thumb ? event.clientY - thumb.getBoundingClientRect().top : thumbHeight / 2;
+    track.setPointerCapture(event.pointerId);
+    moveThumb(event.clientY);
+  }, options);
+  track.addEventListener('pointermove', event => {
+    if (track.hasPointerCapture(event.pointerId)) moveThumb(event.clientY);
+  }, options);
+  list.addEventListener('scroll', updateScrollbar, {...options, passive: true});
+  const resize = new ResizeObserver(updateScrollbar);
+  resize.observe(list);
+  const content = new MutationObserver(updateScrollbar);
+  content.observe(list, {childList: true, subtree: true, attributes: true, attributeFilter: ['hidden']});
+  updateScrollbar();
+  return () => {
+    lifecycle.abort();
+    resize.disconnect();
+    content.disconnect();
+  };
+}
+
 export function mountPanelApp(root) {
   let epoch = 0, cleanup = () => {}, stopped = false;
   const client = new PanelClient({onSessionExpired: () => showLogin('Sign in required')});
@@ -42,12 +98,6 @@ export function mountPanelApp(root) {
     if (epoch !== generation || stopped) return;
     reset();
     const viewDisposers = new Map();
-    const scrollGutters = new ResizeObserver(entries => {
-      for (const {target} of entries) {
-        const gutter = target.offsetWidth - target.clientWidth;
-        target.style.setProperty('--pcc-gutter', gutter + 'px');
-      }
-    });
     const signedOut = reason => showLogin(reason === 'password_changed_history_pending' ? 'Password changed. Sign in with your new password. The History entry could not be confirmed.' : reason === 'password_changed' ? 'Password changed. Sign in with your new password.' : '');
     const shell = mountPanelShell(root, {theme: prefs.theme, onNavigate(key, section) {
       if (viewDisposers.has(key)) return;
@@ -75,16 +125,16 @@ export function mountPanelApp(root) {
       const list = section.querySelector('.pcc-scroll-list, [data-archive-list]');
       if (list) {
         const dispose = viewDisposers.get(key);
-        scrollGutters.observe(list);
+        const disposeScrollbar = mountScrollbar(list);
         viewDisposers.set(key, () => {
-          scrollGutters.unobserve(list);
+          disposeScrollbar();
           dispose();
         });
       }
     }});
     shell.setLanguage(prefs.language);
     root.ownerDocument.documentElement.lang = prefs.language;
-    cleanup = () => { scrollGutters.disconnect(); for (const dispose of viewDisposers.values()) dispose(); shell.dispose(); };
+    cleanup = () => { for (const dispose of viewDisposers.values()) dispose(); shell.dispose(); };
   }
   const initial = epoch;
   void client.restoreSession().then(() => {

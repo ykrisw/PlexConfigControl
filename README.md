@@ -5,15 +5,13 @@ restores, designed for installation as a **TrueNAS SCALE App**, with persistent
 iXVolume storage for its own settings and state. Installers for other platforms
 may be developed in future versions; they are not currently available.
 
-**Restricted test installation available; not ready for production data.**
+**Release Candidate.** For a fresh installation on a compatible x86-64 TrueNAS
+host, see the [Polish installation guide](INSTRUKCJA-PL.md). The installer runs
+from TrueNAS Shell and registers PlexConfigControl in Apps. See the guide for
+Plex storage, HTTPS and platform requirements and the verification scope.
 
-First test-installation packaging passed CI image/HTTPS/restart checks. `Dockerfile`
-builds the unprivileged HTTPS image; **Build test installation** runs a disposable
-container smoke test and Chromium/Firefox interface checks. Downloadable image
-artifacts are produced only when the workflow is started manually; ordinary
-code updates still run the checks without generating another installer. Follow
-`deploy/TEST-INSTALL.md` only after that workflow succeeds. This is a restricted
-test build, not permission to run Backup/Restore against live Plex data.
+The restricted UI test installation in `deploy/TEST-INSTALL.md` remains a
+separate development workflow.
 
 The approved appearance is frozen in `design/approved-panels.html` with its
 specification in `design/README.md`. Shared production styles import

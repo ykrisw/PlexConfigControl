@@ -39,6 +39,19 @@ export function mountHistoryView(root, client, {language = 'en', timezone = 'Eur
   let state, confirmation = [], disposed = false;
   const urls = new Map();
   const dateFormat = new Intl.DateTimeFormat(pl ? 'pl-PL' : 'en-GB', {dateStyle:'medium',timeStyle:'medium',timeZone:timezone});
+  const eventNames = {
+    BACKUP:tx('Backup','Kopia zapasowa'),
+    RESTORE:tx('Restore','Przywracanie'),
+    ARCHIVE_DETECTED:tx('Archive detected','Wykryto archiwum'),
+    ARCHIVE_VALIDATION:tx('Archive validation','Weryfikacja archiwum'),
+    PROFILE_PHOTO:tx('Profile photo','Zdjęcie profilowe'),
+    ARCHIVE_DELETE:tx('Archive deletion','Usunięcie archiwum'),
+    LOGIN:tx('Sign-in','Logowanie'),
+    PASSWORD_CHANGE:tx('Password change','Zmiana hasła'),
+    SNAPSHOT_REMOVAL:tx('Snapshot removal','Usunięcie migawki'),
+    INTERRUPTED_OPERATION:tx('Interrupted operation','Przerwana operacja'),
+    PUBLICATION_RECOVERY:tx('Archive publication recovery','Odzyskiwanie zapisu archiwum'),
+  };
   function render(value) {
     state = value;
     find('[data-total]').textContent = value.counts.all;
@@ -76,7 +89,7 @@ export function mountHistoryView(root, client, {language = 'en', timezone = 'Eur
       input.disabled = value.busy || value.loading || !value.available || dialog.open;
       row.classList.toggle('pcc-selected',input.checked);
       const text = document.createElement('span'); text.className = 'pcc-event-text';
-      const kind = ({BACKUP:tx('Backup','Kopia zapasowa'),RESTORE:tx('Restore','Przywracanie'),ARCHIVE_DETECTED:tx('Archive detected','Wykryto archiwum')})[event.kind] || String(event.kind);
+      const kind = Object.hasOwn(eventNames,event.kind) ? eventNames[event.kind] : String(event.kind);
       let date = String(event.created);
       if (Number.isFinite(Date.parse(event.created))) date = dateFormat.format(new Date(event.created));
       text.textContent = `${date} · ${kind}`;

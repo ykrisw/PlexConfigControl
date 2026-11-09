@@ -87,6 +87,7 @@ def main():
             dashboard=page.locator('[data-panel=dashboard]')
             expect(dashboard.locator('[data-account-active]')).to_have_count(0)
             expect(dashboard.locator('[data-photo-upload]')).to_be_enabled()
+            page.mouse.move(10,10)
             expect(dashboard.locator('.pcc-photo-tools')).to_have_css('opacity','0')
             dashboard.locator('.pcc-avatar').hover()
             expect(dashboard.locator('.pcc-photo-tools')).to_have_css('opacity','1')
@@ -136,6 +137,7 @@ def main():
             expect(restore.locator('[data-restore-action=validate]')).to_be_enabled()
             restore.locator('[data-restore-action=validate]').click()
             expect(restore.locator('[data-validation-notice]')).to_contain_text('not confirmed stopped')
+            expect(restore.locator('[data-archive-list]')).to_be_hidden()
             expect(restore.locator('[data-restore-action=validate]')).to_be_disabled()
             restore.locator('[data-restore-action=cancel]').click()
             expect(restore.locator('[data-restore-action=cancel]')).to_be_hidden()
@@ -284,6 +286,7 @@ def main():
             settings.locator('[data-details-label]').click()
             settings.locator('[data-theme-choice=Dark]').click()
             expect(page.locator('#pcc-app')).to_have_attribute('data-theme','dark')
+            expect(settings.locator('[data-settings-notice]')).to_have_css('border-top-color','rgb(229, 179, 33)')
             settings.locator('[data-language]').select_option('pl')
             expect(page.get_by_role('tab',name='Ustawienia',exact=True)).to_be_visible()
             expect(settings.locator('[data-about]')).to_have_text('O aplikacji')
@@ -301,6 +304,7 @@ def main():
             page.get_by_role('tab',name='Ustawienia',exact=True).click()
             settings.locator('[data-theme-choice=Light]').click()
             expect(page.locator('#pcc-app')).to_have_attribute('data-theme','light')
+            expect(settings.locator('[data-settings-notice]')).to_have_css('border-top-color','rgb(255, 103, 21)')
             for theme in ('Light','Dark'):
                 page.get_by_role('tab',name='Ustawienia',exact=True).click()
                 settings.locator(f'[data-theme-choice={theme}]').click()
@@ -309,11 +313,53 @@ def main():
                 for index,title in enumerate(('Pulpit','Kopia zapasowa','Przywracanie','Historia','Ustawienia'),1):
                     page.get_by_role('tab',name=title,exact=True).click()
                     visible=page.locator('.pcc-page:visible');expect(visible).to_be_visible()
+                    expect(page.locator('.pcc-logo')).to_have_css('color','rgb(255, 191, 0)')
+                    expect(page.locator('.pcc-nav [aria-selected=true]')).to_have_css(
+                        'color','rgb(255, 103, 21)' if theme=='Light' else 'rgb(255, 191, 0)')
                     page.mouse.move(10,10)
                     assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),f'{title} overflows horizontally'
                     heights.append(visible.bounding_box()['height'])
+                    if title == 'Kopia zapasowa':
+                        track = visible.locator('.pcc-scroll-track')
+                        thumb = track.locator('.pcc-scroll-thumb')
+                        expect(track).to_be_visible()
+                        expect(thumb).to_have_css('background-color', {
+                            'Light': 'rgb(133, 151, 173)',
+                            'Dark': 'rgb(115, 130, 149)',
+                        }[theme])
+                        assert abs(track.bounding_box()['width'] - 17.7093) < 0.2
+                        assert abs(thumb.bounding_box()['width'] - 10.6691) < 0.2
+                        listing = visible.locator('[data-archives]')
+                        listing.evaluate('list => { list.scrollTop = list.scrollHeight; }')
+                        page.wait_for_function(
+                            '''() => {
+                                const track = document.querySelector('[data-panel=backup] .pcc-scroll-track');
+                                const thumb = track.firstElementChild;
+                                return Math.abs(track.clientHeight - thumb.offsetTop - thumb.offsetHeight - 4) < 2;
+                            }'''
+                        )
+                        listing.evaluate('list => { list.scrollTop = 0; }')
                     page.screenshot(path=str(output/f'{theme.lower()}-{index}.png'),full_page=True)
                 assert max(heights)-min(heights)<2,f'Unequal panel heights: {heights}'
+            for title, selector in (('Kopia zapasowa', '[data-archives]'),
+                                    ('Przywracanie', '[data-archive-list]'),
+                                    ('Historia', '[data-events]')):
+                page.get_by_role('tab',name=title,exact=True).click()
+                panel=page.locator('.pcc-page:visible')
+                listing=panel.locator(selector)
+                expect(listing.locator('label').first).to_be_visible()
+                previous_height=0
+                for width,height in ((1280,720),(1920,1080),(2560,1440),(3840,2160)):
+                    page.set_viewport_size({'width':width,'height':height})
+                    shell=page.locator('#pcc-app').bounding_box()
+                    assert shell['height'] >= height-1, f'{title} leaves a gap at {width}×{height}'
+                    if height>=1080:
+                        assert abs(shell['height']-height)<2, f'{title} overflows at {width}×{height}'
+                    visible_height=listing.evaluate('list => list.clientHeight')
+                    assert visible_height >= 128 and visible_height > previous_height, (
+                        f'{title} list does not gain space at {width}×{height}')
+                    previous_height=visible_height
+                    assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth')
             for width in (360,320):
                 page.set_viewport_size({'width':width,'height':900})
                 for title in ('Pulpit','Kopia zapasowa','Przywracanie','Historia','Ustawienia'):
@@ -328,6 +374,10 @@ def main():
             dashboard.locator('.pcc-avatar').hover();dashboard.locator('[data-photo-remove]').click()
             dashboard.locator('[data-photo-confirm]').click()
             expect(dashboard.locator('[data-profile-photo]')).to_be_hidden()
+            page.get_by_role('tab',name='Historia',exact=True).click()
+            events=page.locator('[data-panel=history] .pcc-event-text')
+            expect(events.filter(has_text='Zdjęcie profilowe').first).to_be_visible()
+            expect(events.filter(has_text='Weryfikacja archiwum').first).to_be_visible()
             page.reload();expect(page.locator('.pcc-nav')).to_be_visible()
             expect(page.locator('#pcc-app')).to_have_attribute('data-theme','dark')
             dashboard=page.locator('[data-panel=dashboard]')

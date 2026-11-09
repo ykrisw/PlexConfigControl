@@ -49,7 +49,7 @@ def panels(browser, output):
                         scroller.evaluate('e=>e.scrollTop=e.scrollHeight');assert scroller.evaluate('e=>e.scrollTop>0')
                         scroller.evaluate('e=>e.scrollTop=0');scroller.locator('input').first.check()
                         expect(scroller.locator('input:checked')).to_have_count(1)
-                    if theme=='Light':expect(root.locator('h3' if key=='dashboard' else 'h2').first).to_have_css('color','rgb(0, 0, 0)')
+                    if theme=='Light':expect(root.locator('h3' if key=='dashboard' else 'h2').first).to_have_css('color','rgb(32, 36, 45)')
                     page.screenshot(path=str(output/f'{key}-{language}-{theme}-{width}.png'),full_page=True)
                 tab('dashboard');root=page.locator('[data-panel=dashboard]')
                 for state in ('STOPPED','RUNNING'):

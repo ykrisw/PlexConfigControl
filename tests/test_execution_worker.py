@@ -65,16 +65,19 @@ class WorkerTests(unittest.TestCase):
 
     def test_real_backup_runs_in_background_holds_lock_and_replay_never_runs_again(self):
         with self.fixture(blocked=True) as (worker,api,store,history,progress,root,entered,release,bf,rf,write):
-            request=BackupRequest('a'*32,'NEW')
+            request=BackupRequest('a'*32,'NEW',prefix='Plex_Living-Room')
             receipt=worker.submit(request)
             self.assertTrue(entered.wait(3))
             self.assertEqual(worker.journal.current()['state'],'RUNNING')
             with self.assertRaises(OperationBusy):
                 with operation_lock(worker.state): pass
             self.assertEqual(worker.submit(request),receipt)
+            with self.assertRaises(OperationDenied):
+                worker.submit(BackupRequest(request.request_id,'NEW',prefix='Different'))
             with self.assertRaises(OperationBusy): worker.submit(BackupRequest('b'*32,'NEW'))
             release.set();worker.close()
             self.assertEqual(worker.journal.current()['state'],'SUCCEEDED')
+            self.assertEqual(len(list(worker.destination.glob('Plex_Living-Room_*.tar.gz'))),1)
             self.assertEqual(api.present,set());self.assertEqual(history.list()[0]['status'],'SUCCESS')
             self.assertEqual(worker.submit(request),receipt);bf.assert_called_once();rf.assert_not_called()
             self.assertFalse(any(method in ('app.start','app.stop') for method,args in api.calls))

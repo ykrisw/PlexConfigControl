@@ -95,7 +95,7 @@ def exercise(driver, api, url, output):
                     click(root+' [data-clear]');visible(root+' dialog[open]');click(root+' [data-cancel]')
             if theme=='Light':
                 heading=visible(root+' h2' if key!='dashboard' else root+' h3')
-                assert driver.execute_script('return getComputedStyle(arguments[0]).color',heading)=='rgb(0, 0, 0)'
+                assert driver.execute_script('return getComputedStyle(arguments[0]).color',heading)=='rgb(32, 36, 45)'
             screenshot(f'{key}-{language}-{theme}-{width}')
         tab('dashboard')
         for state in ('STOPPED','RUNNING'):

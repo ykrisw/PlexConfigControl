@@ -1,0 +1,21 @@
+{
+  "panel": {
+    "host_ip": "192.168.1.120",
+    "host_port": 8787,
+    "verifier_file": "/mnt/Private/PCC/panel-verifier"
+  },
+  "backup": {
+    "archive_parent": "/mnt/ArchivePool/Kopie",
+    "folder_name": "Plex Config",
+    "archive_prefix": "PlexConfig"
+  },
+  "connection": {
+    "api_url": "",
+    "api_user": "plexconfigcontrol",
+    "api_key_file": "/mnt/Private/PCC/truenas-key",
+    "api_ca_file": "/mnt/Private/PCC/truenas-ca.pem"
+  },
+  "plex": {
+    "storage_mode": "automatic"
+  }
+}

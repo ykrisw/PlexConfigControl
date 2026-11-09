@@ -16,19 +16,14 @@
 @media(prefers-reduced-motion:reduce){.pcc-restore [data-plex-state]::before{animation:none}}
 .pcc-restore[data-theme=dark]{--pcc-bg:#151d28;--pcc-card:#222d3b;--pcc-ink:#f1f4f8;--pcc-line:#435268;--pcc-selected:#203b56}
 @media(prefers-color-scheme:dark){.pcc-restore:not([data-theme=light]):not([data-theme=dark]){--pcc-bg:#151d28;--pcc-card:#222d3b;--pcc-ink:#f1f4f8;--pcc-line:#435268;--pcc-selected:#203b56}}
-.pcc-shell .pcc-page.pcc-restore{min-height:0;padding:0}
-@media(max-width:600px){.pcc-restore .pcc-heading{flex-wrap:wrap}}
-
-/* Explicit Light text: no inherited muted heading or caption colours. */
-.pcc-restore[data-theme=light] :is(h1,h2,h3,h4,p,small,strong,b,span,label,summary,details,input,select){color:#000!important;-webkit-text-fill-color:#000!important;text-shadow:none!important}
-.pcc-restore[data-theme=light] button:not(.pcc-primary){color:#000!important;-webkit-text-fill-color:#000!important}
-.pcc-restore[data-theme=light] .pcc-header :is(span,button){color:#fff!important;-webkit-text-fill-color:#fff!important}
-.pcc-restore[data-theme=light] [data-plex-state=RUNNING]::before{color:#158843!important;-webkit-text-fill-color:#158843!important}
-.pcc-restore[data-theme=light] [data-plex-state=STOPPED]::before{color:#dc2626!important;-webkit-text-fill-color:#dc2626!important}
-@media(prefers-color-scheme:light){
-.pcc-restore[data-theme=system] :is(h1,h2,h3,h4,p,small,strong,b,span,label,summary,details,input,select){color:#000!important;-webkit-text-fill-color:#000!important;text-shadow:none!important}
-.pcc-restore[data-theme=system] button:not(.pcc-primary){color:#000!important;-webkit-text-fill-color:#000!important}
-.pcc-restore[data-theme=system] .pcc-header :is(span,button){color:#fff!important;-webkit-text-fill-color:#fff!important}
-.pcc-restore[data-theme=system] [data-plex-state=RUNNING]::before{color:#158843!important;-webkit-text-fill-color:#158843!important}
-.pcc-restore[data-theme=system] [data-plex-state=STOPPED]::before{color:#dc2626!important;-webkit-text-fill-color:#dc2626!important}
+.pcc-shell .pcc-page.pcc-restore {
+  --pcc-bg:inherit;
+  --pcc-card:inherit;
+  --pcc-ink:inherit;
+  --pcc-line:inherit;
+  --pcc-selected:inherit;
+  --pcc-selection-accent:inherit;
+  min-height:0;
+  padding:0;
 }
+@media(max-width:600px){.pcc-restore .pcc-heading{flex-wrap:wrap}}

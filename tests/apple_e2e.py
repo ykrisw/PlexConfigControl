@@ -186,9 +186,20 @@ def exercise(driver, fixture, output, *, mobile):
     driver.refresh();visible('.pcc-nav')
     assert driver.find_element(By.ID,'pcc-app').get_attribute('data-theme')=='dark'
     assert 'Pulpit' in driver.find_element(By.CSS_SELECTOR,'.pcc-nav').text
-    # Photo controls must work by hover/focus on desktop and without hover on iOS.
+    # Photo controls must work by hover on desktop and by holding on iOS.
     tab('dashboard');visible('[data-profile-photo]')
-    if not mobile:ActionChains(driver).move_to_element(driver.find_element(By.CSS_SELECTOR,'.pcc-avatar')).perform()
+    avatar=visible('.pcc-avatar')
+    if mobile:
+        remove=driver.find_element(By.CSS_SELECTOR,'[data-photo-remove]')
+        assert not remove.is_displayed()
+        driver.execute_script("""arguments[0].dispatchEvent(new PointerEvent('pointerdown',
+            {bubbles:true,pointerType:'touch',pointerId:1,isPrimary:true}));""",avatar)
+        assert not remove.is_displayed()
+        visible('[data-photo-remove]')
+        driver.execute_script("""arguments[0].dispatchEvent(new PointerEvent('pointerup',
+            {bubbles:true,pointerType:'touch',pointerId:1,isPrimary:true}));""",avatar)
+    else:
+        ActionChains(driver).move_to_element(avatar).perform()
     click('[data-photo-remove]');visible('[data-photo-dialog]');click('[data-photo-confirm]')
     wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR,'[data-profile-photo]')))
     assert not driver.execute_script('return window.__pccAppleErrors||[]')

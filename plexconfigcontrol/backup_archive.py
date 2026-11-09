@@ -4,7 +4,6 @@ Caller holds the operation lock and proves snapshot ownership/read-only identity
 This module never reads the live config, publishes an archive or removes snapshots.
 GNU tar preserves numeric owners, ACLs and extended attributes.
 """
-import hashlib
 import os
 import subprocess
 import tarfile
@@ -14,7 +13,7 @@ from .archives import validate_archive
 class BackupArchiveError(RuntimeError):
     pass
 
-def create_archive(snapshot_directory, output, *, tar_runner=subprocess.run):
+def create_archive(snapshot_directory, output, *, tar_runner=subprocess.run, verification_progress=None):
     snapshot=Path(snapshot_directory)
     output=Path(output)
     if not snapshot.is_dir():
@@ -30,8 +29,11 @@ def create_archive(snapshot_directory, output, *, tar_runner=subprocess.run):
             stream.flush(); os.fsync(stream.fileno())
         if result.returncode:
             raise BackupArchiveError('Archive creation failed')
+        if verification_progress:
+            verification_progress(0, None)
         validation=validate_archive(output)
-        compare_contents(snapshot,output)
+        compare_contents(snapshot,output,total_bytes=validation.bytes_read,
+                         progress_callback=verification_progress)
         return validation
     except BaseException:
         # Only the exclusively-created output belongs to this call. Coordinator
@@ -39,7 +41,7 @@ def create_archive(snapshot_directory, output, *, tar_runner=subprocess.run):
         output.unlink(missing_ok=True)
         raise
 
-def compare_contents(snapshot_directory, archive_path):
+def compare_contents(snapshot_directory, archive_path, *, total_bytes=None, progress_callback=None):
     """Compare complete regular file coverage and byte contents to snapshot."""
     snapshot=Path(snapshot_directory)
     expected=set()
@@ -53,6 +55,9 @@ def compare_contents(snapshot_directory, archive_path):
                 raise BackupArchiveError('Special files and symlinks unsupported')
             expected.add(path.relative_to(snapshot).as_posix())
     observed=set()
+    done=reported=0
+    if progress_callback and total_bytes:
+        progress_callback(0,total_bytes)
     with tarfile.open(archive_path,'r:gz') as archive:
         for member in archive:
             if not member.isreg(): continue
@@ -65,11 +70,19 @@ def compare_contents(snapshot_directory, archive_path):
             path=snapshot/relative
             if path.stat().st_size!=member.size:
                 raise BackupArchiveError('Snapshot file size mismatch')
-            with path.open('rb') as source:
-                left=hashlib.file_digest(source,'sha256').digest()
-            with archive.extractfile(member) as source:
-                right=hashlib.file_digest(source,'sha256').digest()
-            if left!=right:
-                raise BackupArchiveError('Snapshot content mismatch')
+            with path.open('rb') as source, archive.extractfile(member) as entry:
+                while chunk := entry.read(1024*1024):
+                    if source.read(len(chunk)) != chunk:
+                        raise BackupArchiveError('Snapshot content mismatch')
+                    done+=len(chunk)
+                    if progress_callback and total_bytes and done<total_bytes and done-reported>=16*1024*1024:
+                        progress_callback(done,total_bytes)
+                        reported=done
+                if source.read(1):
+                    raise BackupArchiveError('Snapshot content mismatch')
     if observed!=expected:
         raise BackupArchiveError('Archive is missing snapshot files')
+    if total_bytes is not None and done!=total_bytes:
+        raise BackupArchiveError('Verified byte count differs from archive validation')
+    if progress_callback and total_bytes:
+        progress_callback(done,total_bytes)
