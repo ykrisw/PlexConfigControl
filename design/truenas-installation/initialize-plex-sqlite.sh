@@ -22,7 +22,8 @@ fi
 
 stage=$(mktemp -d /runtime/.sqlite-XXXXXXXX)
 trap 'rm -rf -- "$stage"' EXIT
-cp '/usr/lib/plexmediaserver/Plex SQLite' "$stage/"
+# Plex SQLite launches its sibling Plex Media Server executable.
+cp '/usr/lib/plexmediaserver/Plex SQLite' '/usr/lib/plexmediaserver/Plex Media Server' "$stage/"
 cp -R /usr/lib/plexmediaserver/lib "$stage/lib"
 chmod -R a+rX "$stage"
 check_version "$stage"
