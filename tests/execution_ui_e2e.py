@@ -174,7 +174,9 @@ def backup_case(browser, output, language, theme, width, *, check_only=False):
         expect(page.locator('[data-stage-percent]')).to_have_text('37,5%' if language=='pl' else '37.5%')
         fixture.complete()
         expect(bar).to_be_hidden()
-        expect(page.locator('[data-operation-result]')).to_contain_text('zakończył się sukcesem' if language=='pl' else 'completed successfully')
+        result=page.locator('[data-operation-result]')
+        expect(result).to_contain_text('zakończył się sukcesem' if language=='pl' else 'completed successfully')
+        expect(result).to_have_css('border-top-color','rgb(255, 103, 21)' if theme=='light' else 'rgb(229, 179, 33)')
         page.locator('[data-return-to-archives]').click()
         expect(page.locator('[data-archives]')).to_be_visible()
         assert not errors, errors

@@ -8,6 +8,9 @@
 .pcc-restore .pcc-card:not(.pcc-archive-card) .pcc-heading h2{font:600 20px/1.5 Arial,sans-serif;margin:0}
 .pcc-shell :is(.pcc-notice,.pcc-notification,.pcc-notification-dialog),
 .pcc-restore .pcc-notice{border-width:3px!important;border-style:solid;border-color:#e5b321!important;background:var(--pcc-bg)}
+.pcc-shell :is(.pcc-backup [data-operation-result],[data-settings-notice]).pcc-notice {
+  border-color:light-dark(#ff6715,#e5b321)!important;
+}
 .pcc-shell :is(.pcc-archives,.pcc-events,.pcc-about),
 .pcc-restore .pcc-archive-card{display:flex;flex-direction:column;min-height:0}
 .pcc-shell .pcc-important{padding:10px 18px!important;flex-shrink:0}

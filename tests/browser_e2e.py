@@ -286,6 +286,7 @@ def main():
             settings.locator('[data-details-label]').click()
             settings.locator('[data-theme-choice=Dark]').click()
             expect(page.locator('#pcc-app')).to_have_attribute('data-theme','dark')
+            expect(settings.locator('[data-settings-notice]')).to_have_css('border-top-color','rgb(229, 179, 33)')
             settings.locator('[data-language]').select_option('pl')
             expect(page.get_by_role('tab',name='Ustawienia',exact=True)).to_be_visible()
             expect(settings.locator('[data-about]')).to_have_text('O aplikacji')
@@ -303,6 +304,7 @@ def main():
             page.get_by_role('tab',name='Ustawienia',exact=True).click()
             settings.locator('[data-theme-choice=Light]').click()
             expect(page.locator('#pcc-app')).to_have_attribute('data-theme','light')
+            expect(settings.locator('[data-settings-notice]')).to_have_css('border-top-color','rgb(255, 103, 21)')
             for theme in ('Light','Dark'):
                 page.get_by_role('tab',name='Ustawienia',exact=True).click()
                 settings.locator(f'[data-theme-choice={theme}]').click()
@@ -311,6 +313,7 @@ def main():
                 for index,title in enumerate(('Pulpit','Kopia zapasowa','Przywracanie','Historia','Ustawienia'),1):
                     page.get_by_role('tab',name=title,exact=True).click()
                     visible=page.locator('.pcc-page:visible');expect(visible).to_be_visible()
+                    expect(page.locator('.pcc-logo')).to_have_css('color','rgb(255, 191, 0)')
                     page.mouse.move(10,10)
                     assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),f'{title} overflows horizontally'
                     heights.append(visible.bounding_box()['height'])
