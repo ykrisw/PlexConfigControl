@@ -17,17 +17,29 @@ runtime=$(python3 -m plexconfigcontrol.plex_runtime)
 IFS=' ' read -r plex sqlite _ <<EOF
 $runtime
 EOF
-worker=plexconfigcontrol-worker:0.1.0-plex-${plex##*@sha256:}
+worker=plexconfigcontrol-worker:0.1.0-base
+initializer=$PWD/design/truenas-installation/initialize-plex-sqlite.sh
 printf 'Wykryto Plex SQLite %s w obrazie %s\n' "$sqlite" "$plex"
 docker build --tag "$panel" .
-docker build --file Dockerfile.worker --tag "$worker" \
-    --build-arg "PCC_PANEL_IMAGE=$panel" --build-arg "PLEX_IMAGE=$plex" .
+docker build --file Dockerfile.worker --target worker-base --tag "$worker" \
+    --build-arg "PCC_PANEL_IMAGE=$panel" .
+cache=$(docker volume create)
+trap 'docker volume rm "$cache" >/dev/null 2>&1 || true' EXIT
+docker run --rm --network none --read-only --user 0:0 --cap-drop ALL \
+    --security-opt no-new-privileges:true --env "PCC_SQLITE_VERSION=$sqlite" \
+    --tmpfs /config:ro --tmpfs /transcode:ro --mount "source=$cache,target=/runtime" \
+    --mount "type=bind,source=$initializer,target=/pcc-init.sh,readonly" \
+    --entrypoint /bin/sh "$plex" /pcc-init.sh
 docker run --rm --network none --read-only --tmpfs /tmp \
     --security-opt no-new-privileges:true --cap-drop ALL \
     --cap-add SETUID --cap-add SETGID --cap-add SETPCAP \
     --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER --cap-add FSETID \
+    --mount "source=$cache,target=/opt/pcc-plex,readonly" \
+    --env PCC_PLEX_RUNTIME=/opt/pcc-plex/files \
     "$worker" --check-runtime --panel-uid 568 --plex-sqlite /usr/local/bin/pcc-plex-sqlite \
     --sqlite-version "$sqlite"
+docker volume rm "$cache" >/dev/null
+trap - EXIT
 exec python3 -m plexconfigcontrol.host_install "$config" \
     --panel-image "$panel" --worker-image "$worker" --sqlite-version "$sqlite" \
     --plex-runtime "$runtime" --install

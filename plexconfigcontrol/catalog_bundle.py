@@ -14,11 +14,35 @@ _FIELDS = {
 }
 
 
+def with_plex_sqlite(compose, plex_reference, sqlite_version, initializer):
+    """Add the official-image initializer and its private read-only worker cache."""
+    if not PLEX_REFERENCE.fullmatch(plex_reference):
+        raise ValueError('The catalog requires the exact official Plex image digest')
+    cache = 'plex-sqlite-' + plex_reference.rsplit(':', 1)[1]
+    compose.setdefault('volumes', {})[cache] = {}
+    services = compose['services']
+    services['initialize-plex-sqlite'] = {
+        'image': plex_reference, 'user': '0:0', 'restart': 'no', 'read_only': True,
+        'cap_drop': ['ALL'], 'security_opt': ['no-new-privileges:true'],
+        'network_mode': 'none', 'healthcheck': {'disable': True},
+        'tmpfs': ['/config:ro', '/transcode:ro'],
+        'environment': {'PCC_SQLITE_VERSION': sqlite_version},
+        'entrypoint': ['/bin/sh', '-ec', initializer.replace('$', '$$')],
+        'command': [],
+        'volumes': [{'type': 'volume', 'source': cache, 'target': '/runtime',
+                     'volume': {'nocopy': True}}],
+    }
+    worker = services['worker']
+    worker.setdefault('depends_on', {})['initialize-plex-sqlite'] = {'condition': 'service_completed_successfully'}
+    worker.setdefault('environment', {})['PCC_PLEX_RUNTIME'] = '/opt/pcc-plex/files'
+    worker['volumes'].append({'type': 'volume', 'source': cache, 'target': '/opt/pcc-plex',
+                              'read_only': True, 'volume': {'nocopy': True}})
+    return compose
+
+
 def catalog_files(template_root, deployment, plan, values, version, *, plex_reference):
     if not re.fullmatch(r'\d+\.\d+\.\d+', version):
         raise ValueError('A catalog version such as 0.1.0 is required')
-    if not PLEX_REFERENCE.fullmatch(plex_reference):
-        raise ValueError('The catalog requires the exact official Plex image digest')
     root = Path(template_root)
     questions = json.loads((root/'questions.yaml').read_text(encoding='utf-8'))
     reviewed = {group: {field: values[group][field] for field in fields
@@ -48,24 +72,8 @@ def catalog_files(template_root, deployment, plan, values, version, *, plex_refe
         'command': ['--folder', plan.naming.folder_name, '--prefix', plan.naming.archive_prefix],
         'volumes': [panel_state],
     }
-    cache = 'plex-sqlite-' + plex_reference.rsplit(':', 1)[1]
-    compose['volumes'] = {cache: {}}
-    services['initialize-plex-sqlite'] = {
-        'image': plex_reference, 'user': '0:0', 'restart': 'no', 'read_only': True,
-        'cap_drop': ['ALL'], 'security_opt': ['no-new-privileges:true'],
-        'network_mode': 'none', 'healthcheck': {'disable': True},
-        'tmpfs': ['/config:ro', '/transcode:ro'],
-        'environment': {'PCC_SQLITE_VERSION': deployment.sqlite_version},
-        'entrypoint': ['/bin/sh', '-ec', (root/'initialize-plex-sqlite.sh').read_text().replace('$', '$$')],
-        'command': [],
-        'volumes': [{'type': 'volume', 'source': cache, 'target': '/runtime',
-                     'volume': {'nocopy': True}}],
-    }
-    worker = services['worker']
-    worker['depends_on']['initialize-plex-sqlite'] = {'condition': 'service_completed_successfully'}
-    worker['environment'] = {'PCC_PLEX_RUNTIME': '/opt/pcc-plex/files'}
-    worker['volumes'].append({'type': 'volume', 'source': cache, 'target': '/opt/pcc-plex',
-                              'read_only': True, 'volume': {'nocopy': True}})
+    with_plex_sqlite(compose, plex_reference, deployment.sqlite_version,
+                     (root/'initialize-plex-sqlite.sh').read_text(encoding='utf-8'))
     metadata = {
         'name': APP, 'title': 'PlexConfigControl', 'version': version, 'app_version': version,
         'description': 'Kopie zapasowe i przywracanie konfiguracji Plex Media Server.',

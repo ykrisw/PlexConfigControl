@@ -147,3 +147,25 @@ class HostInstallTests(unittest.TestCase):
             'type': 'ix_volume', 'read_only': False, 'mount_path': '/var/lib/plexconfigcontrol',
             'ix_volume_config': {'dataset_name': 'state', 'acl_enable': False},
         }])
+
+    def test_install_uses_isolated_sqlite_cache_with_unbundled_worker(self):
+        from plexconfigcontrol.host_install import install_app
+        reference = 'plexinc/pms-docker@sha256:' + 'a' * 64
+        api = Mock()
+        deployment = Mock(host_ip='192.168.1.120', host_port=8787, sqlite_version='3.53.3')
+        deployment.compose.return_value = {'services': {
+            'panel': {'volumes': []}, 'worker': {'volumes': []},
+        }}
+        reviewed = (deployment, Mock(), ('ArchivePool/Family', '/mnt/ArchivePool/Family'))
+        api.allocate_state.return_value = {'name': APP, 'custom_app': False}
+        api.convert.return_value = {'name': APP, 'custom_app': True}
+        api.configure.return_value = {'name': APP, 'custom_app': True, 'state': 'RUNNING'}
+        with patch('plexconfigcontrol.host_install._prepare', return_value=reviewed), \
+             patch('plexconfigcontrol.host_install.os.geteuid', return_value=0), \
+             patch('plexconfigcontrol.host_install.prepare_compose'), \
+             patch('plexconfigcontrol.host_install._ready'):
+            install_app(api, {}, reviewed, confirmed=True, plex_reference=reference)
+        compose, = api.configure.call_args.args
+        self.assertEqual(compose['services']['initialize-plex-sqlite']['image'], reference)
+        self.assertTrue(compose['services']['worker']['volumes'][-1]['read_only'])
+        self.assertEqual(compose['services']['panel']['volumes'], [])

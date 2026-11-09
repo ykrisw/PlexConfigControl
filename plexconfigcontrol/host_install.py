@@ -14,7 +14,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-from .catalog_bundle import APP, catalog_files
+from .catalog_bundle import APP, catalog_files, with_plex_sqlite
 from .deployment import Deployment
 from .installation_storage import create_storage, plan_storage
 from .naming import save_naming
@@ -24,6 +24,7 @@ from .plex_runtime import PlexRuntimeError, detect_plex_runtime
 
 
 APPS_MOUNT = '/mnt/.ix-apps'
+SQLITE_INITIALIZER = Path(__file__).resolve().parents[1]/'design/truenas-installation/initialize-plex-sqlite.sh'
 UID = 568
 _READ_METHODS = {'system.version', 'docker.config', 'app.query', 'app.config',
                  'app.ix_volume.query', 'filesystem.statfs'}
@@ -249,13 +250,17 @@ def _ready(deployment, *, timeout=90):
     raise InstallError('TrueNAS created the app, but the panel and worker did not report readiness')
 
 
-def install_app(api, settings, expected, *, confirmed=False):
+def install_app(api, settings, expected, *, confirmed=False, plex_reference=None):
     """Install once under a fixed Apps name. Interrupted installs are never replayed."""
     if confirmed is not True or os.geteuid() != 0:
         raise InstallError('Explicit administrator confirmation is required')
     if _prepare(api, settings) != expected:
         raise InstallError('Installation settings changed after review')
     deployment = expected[0]
+    runtime_compose = None
+    if plex_reference is not None:
+        runtime_compose = with_plex_sqlite(deployment.compose(), plex_reference,
+            deployment.sqlite_version, SQLITE_INITIALIZER.read_text(encoding='utf-8'))
     bootstrap = api.allocate_state(deployment)
     if not isinstance(bootstrap, dict) or bootstrap.get('name') != APP or bootstrap.get('custom_app') is not False:
         raise InstallError('TrueNAS did not confirm the state allocation app')
@@ -263,7 +268,7 @@ def install_app(api, settings, expected, *, confirmed=False):
     converted = api.convert()
     if not isinstance(converted, dict) or converted.get('name') != APP or converted.get('custom_app') is not True:
         raise InstallError('TrueNAS did not confirm conversion of PlexConfigControl')
-    installed = api.configure(compose)
+    installed = api.configure(runtime_compose if runtime_compose is not None else compose)
     if not isinstance(installed, dict) or installed.get('name') != APP or installed.get('custom_app') is not True:
         raise InstallError('TrueNAS did not confirm the final PlexConfigControl configuration')
     if installed.get('state') == 'STOPPED':
@@ -308,9 +313,13 @@ def main(argv=None):
             if input() != APP:
                 return 1
             if args.install:
-                if args.plex_runtime is not None and ' '.join(detect_plex_runtime()) != args.plex_runtime:
-                    raise InstallError('Plex zmienił się od czasu budowy obrazu. Uruchom instalator ponownie.')
-                print(json.dumps(install_app(api, settings, prepared, confirmed=True)))
+                reference = None
+                if args.plex_runtime is not None:
+                    runtime = detect_plex_runtime()
+                    if ' '.join(runtime) != args.plex_runtime or runtime[1] != deployment.sqlite_version:
+                        raise InstallError('Plex zmienił się od czasu budowy obrazu. Uruchom instalator ponownie.')
+                    reference = runtime[0]
+                print(json.dumps(install_app(api, settings, prepared, confirmed=True, plex_reference=reference)))
             elif args.prepare_catalog:
                 output = prepare_catalog(api, settings, prepared, values, args.catalog_template,
                                          args.catalog_version, args.prepare_catalog, confirmed=True)

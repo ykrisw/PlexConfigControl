@@ -79,31 +79,38 @@ jobs:
             --tag plexconfigcontrol:worker-base-check .
           docker run --rm --network none --read-only --cap-drop ALL --entrypoint /bin/sh \
             plexconfigcontrol:worker-base-check -ec 'test ! -e /opt/pcc-plex'
-          trap 'docker volume rm pcc-sqlite-check >/dev/null 2>&1 || true' EXIT
+          fixture=$(mktemp --suffix=.json)
+          trap 'docker compose -p pcc-sqlite-check -f "$fixture" down -v >/dev/null 2>&1 || true; rm -f "$fixture"' EXIT
           for image in "$PLEX_IMAGE" "$PLEX_PREVIOUS_IMAGE"; do
-            docker volume create pcc-sqlite-check
             version_output=$(docker run --rm --network none --read-only --user 0:0 --cap-drop ALL \
               --security-opt no-new-privileges:true \
               --entrypoint '/usr/lib/plexmediaserver/Plex SQLite' "$image" -version)
             sqlite_version=${version_output%% *}
-            for attempt in 1 2; do
-              docker run --rm --network none --read-only --user 0:0 --cap-drop ALL \
-                --security-opt no-new-privileges:true --env "PCC_SQLITE_VERSION=$sqlite_version" \
-                --tmpfs /config:ro --tmpfs /transcode:ro \
-                --mount source=pcc-sqlite-check,target=/runtime \
-                --mount "type=bind,source=$PWD/design/truenas-installation/initialize-plex-sqlite.sh,target=/pcc-init.sh,readonly" \
-                --entrypoint /bin/sh "$image" /pcc-init.sh
-            done
-            docker run --rm --network none --read-only --tmpfs /tmp \
-              --security-opt no-new-privileges:true --cap-drop ALL \
-              --cap-add SETUID --cap-add SETGID --cap-add SETPCAP \
-              --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER --cap-add FSETID \
-              --mount source=pcc-sqlite-check,target=/opt/pcc-plex,readonly \
-              --env PCC_PLEX_RUNTIME=/opt/pcc-plex/files \
-              plexconfigcontrol:worker-base-check \
-              --check-runtime --panel-uid 568 --plex-sqlite /usr/local/bin/pcc-plex-sqlite \
-              --sqlite-version "$sqlite_version"
-            docker volume rm pcc-sqlite-check
+            python3 - "$image" "$sqlite_version" > "$fixture" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          from plexconfigcontrol.catalog_bundle import with_plex_sqlite
+
+          image, version = sys.argv[1:]
+          worker = {
+              'image': 'plexconfigcontrol:worker-base-check', 'pull_policy': 'never',
+              'network_mode': 'none', 'read_only': True, 'tmpfs': ['/tmp'], 'volumes': [],
+              'security_opt': ['no-new-privileges:true'], 'cap_drop': ['ALL'],
+              'cap_add': ['SETUID', 'SETGID', 'SETPCAP', 'CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'FSETID'],
+              'command': ['--check-runtime', '--panel-uid', '568', '--plex-sqlite',
+                          '/usr/local/bin/pcc-plex-sqlite', '--sqlite-version', version],
+          }
+          initializer = Path('design/truenas-installation/initialize-plex-sqlite.sh').read_text()
+          print(json.dumps(with_plex_sqlite({'services': {'worker': worker}}, image, version, initializer)))
+          PY
+            docker compose -p pcc-sqlite-check -f "$fixture" up -d --no-build
+            worker_id=$(docker compose -p pcc-sqlite-check -f "$fixture" ps --all -q worker)
+            test "$(docker wait "$worker_id")" = 0 || {
+              docker compose -p pcc-sqlite-check -f "$fixture" logs
+              exit 1
+            }
+            docker compose -p pcc-sqlite-check -f "$fixture" down -v
           done
       - name: Check initialization of the managed state directory
         run: |
