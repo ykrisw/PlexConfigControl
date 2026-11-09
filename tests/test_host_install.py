@@ -1,13 +1,15 @@
 import json
+import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from plexconfigcontrol.host_install import APP, InstallError, LocalMiddleware, form_settings, prepare
+from plexconfigcontrol.host_install import APP, InstallError, LocalMiddleware, form_settings, prepare, prepare_compose
 from plexconfigcontrol.installation_storage import InstallationStoragePlan
 from plexconfigcontrol.naming import Naming
 from plexconfigcontrol.plex_storage import PlexStorage
+from plexconfigcontrol.storage import create_destination
 
 
 class HostInstallTests(unittest.TestCase):
@@ -49,6 +51,7 @@ class HostInstallTests(unittest.TestCase):
         api.call.side_effect = [
             'TrueNAS-25.10.8', [], {'fstype': 'zfs', 'source': 'OtherPool/ix-apps', 'dest': '/mnt/.ix-apps'},
             {'dataset': 'OtherPool/ix-apps'}, [],
+            {'fstype': 'zfs', 'source': 'ArchivePool/Family', 'dest': '/mnt/ArchivePool/Family'},
         ]
         plan = InstallationStoragePlan('/mnt/ArchivePool/Family', PlexStorage(
             'host_path', '/mnt/MediaPool/Plex', 'MediaPool/Plex', '/mnt/MediaPool/Plex', '.'),
@@ -61,7 +64,7 @@ class HostInstallTests(unittest.TestCase):
         self.assertEqual(deployment.archives, '/mnt/ArchivePool/Family/Plex Config')
         self.assertEqual(deployment.plex_dataset, 'MediaPool/Plex')
         self.assertEqual([call.args[0] for call in api.call.call_args_list],
-                         ['system.version', 'app.query', 'filesystem.statfs', 'docker.config', 'app.ix_volume.query'])
+                         ['system.version', 'app.query', 'filesystem.statfs', 'docker.config', 'app.ix_volume.query', 'filesystem.statfs'])
 
     def test_local_middleware_rejects_mutating_methods(self):
         runner = Mock(return_value=SimpleNamespace(stdout='"TrueNAS-25.10.8"'))
@@ -70,3 +73,32 @@ class HostInstallTests(unittest.TestCase):
         with self.assertRaises(InstallError):
             api.call('pool.dataset.create', {})
         runner.assert_called_once()
+
+    def test_confirmed_preparation_creates_custom_folder_and_never_reuses_the_volume(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            state = root/'state'
+            state.mkdir()
+            plan = InstallationStoragePlan(str(root), PlexStorage(
+                'host_path', '/mnt/MediaPool/Plex', 'MediaPool/Plex', '/mnt/MediaPool/Plex', '.'),
+                Naming('Moje kopie Plex', 'PlexDom'))
+            output = root/plan.naming.folder_name
+            deployment = Mock(state=str(state), archives=str(output))
+            deployment.compose.return_value = {'services': {'panel': {}}}
+            expected = (deployment, plan, ('ArchivePool/Family', '/mnt/ArchivePool/Family'))
+            with patch('plexconfigcontrol.host_install._prepare', return_value=expected),                  patch('plexconfigcontrol.host_install.os.geteuid', return_value=0),                  patch('plexconfigcontrol.host_install.os.chown'),                  patch('plexconfigcontrol.host_install.os.fchown'),                  patch('plexconfigcontrol.host_install._zfs', return_value=expected[2]),                  patch('plexconfigcontrol.host_install.create_storage',
+                       side_effect=lambda _, current: create_destination(
+                           current.parent, folder_name=current.naming.folder_name)) as create:
+                with self.assertRaises(InstallError):
+                    prepare_compose(Mock(), {}, expected)
+                self.assertEqual(list(state.iterdir()), [])
+                with self.assertRaisesRegex(InstallError, 'changed after review'):
+                    prepare_compose(Mock(), {}, (deployment, None, expected[2]), confirmed=True)
+                self.assertEqual(prepare_compose(Mock(), {}, expected, confirmed=True),
+                                 {'services': {'panel': {}}})
+                self.assertTrue((output/'Logs').is_dir())
+                self.assertEqual(json.loads((state/'output-naming.json').read_text()),
+                                 {'folder_name': 'Moje kopie Plex', 'archive_prefix': 'PlexDom'})
+                with self.assertRaisesRegex(InstallError, 'already in use'):
+                    prepare_compose(Mock(), {}, expected, confirmed=True)
+                create.assert_called_once()

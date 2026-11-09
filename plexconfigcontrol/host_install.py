@@ -1,16 +1,20 @@
-"""Read-only preparation of the PlexConfigControl installation on TrueNAS.
+"""Prepare verified storage and a Compose definition for TrueNAS Apps.
 
 The Apps installer owns the managed iXVolume and the deployment job.
 """
 import argparse
 import ipaddress
 import json
+import os
 import stat
 import subprocess
+import sys
 from pathlib import Path
 
 from .deployment import Deployment
-from .installation_storage import plan_storage
+from .installation_storage import create_storage, plan_storage
+from .naming import save_naming
+from .storage import verify_destination
 from .plex_storage import _zfs
 
 
@@ -80,30 +84,81 @@ def form_settings(values, *, panel_image, worker_image, sqlite_version):
     }
 
 
-def prepare(api, settings):
-    """Read-only installation plan. All source paths come from trusted inputs or middleware."""
+def _prepare(api, settings, *, provisioned=False):
     if api.call('system.version') != 'TrueNAS-25.10.8':
         raise InstallError('This installer targets TrueNAS 25.10.8')
-    if api.call('app.query', [['name', '=', APP]], {'select': ['name']}) != []:
+    if not provisioned and api.call('app.query', [['name', '=', APP]], {'select': ['name']}) != []:
         raise InstallError('PlexConfigControl already exists or its name cannot be checked')
     apps_dataset, apps_mount = _zfs(api, APPS_MOUNT)
     docker = api.call('docker.config')
     if apps_mount != APPS_MOUNT or not isinstance(docker, dict) or docker.get('dataset') != apps_dataset:
         raise InstallError('The managed Apps dataset cannot be confirmed')
     state = APPS_MOUNT + '/app_mounts/' + APP + '/state'
-    if api.call('app.ix_volume.query', [['app_name', '=', APP]]) != []:
+    volumes = api.call('app.ix_volume.query', [['app_name', '=', APP]])
+    if provisioned:
+        if volumes != [{'app_name': APP, 'name': 'state'}]:
+            raise InstallError('TrueNAS must provision the dedicated PlexConfigControl state volume first')
+        if _zfs(api, state) != (f'{apps_dataset}/app_mounts/{APP}/state', state):
+            raise InstallError('The managed state volume does not match the expected dataset')
+    elif volumes != []:
         raise InstallError('A state volume already exists for PlexConfigControl or cannot be checked')
     data = dict(settings)
-    storage = plan_storage(api, data.pop('archive_parent'), manual_source=data.pop('manual_source', None),
+    archive_parent = data.pop('archive_parent')
+    archive_dataset, archive_mount = _zfs(api, archive_parent)
+    if archive_dataset == apps_dataset or archive_dataset.startswith(apps_dataset + '/'):
+        raise InstallError('Choose archive storage outside the managed Apps dataset')
+    storage = plan_storage(api, archive_parent, manual_source=data.pop('manual_source', None),
                            folder_name=data.pop('folder_name', None), archive_prefix=data.pop('archive_prefix', None))
     deployment = Deployment(**data, state=state,
                             archives=str(Path(storage.parent)/storage.naming.folder_name),
                             plex_config=storage.plex.source, plex_dataset=storage.plex.dataset)
+    if archive_dataset == deployment.plex_dataset or archive_dataset.startswith(deployment.plex_dataset + '/'):
+        raise InstallError('Archive storage must be separate from the Plex configuration dataset')
     _verify_private_file(deployment.api_key_file, owner=UID)
     _verify_private_file(deployment.verifier_file, owner=UID)
     _verify_private_file(deployment.api_ca_file)
     _verify_local_images(deployment)
-    return deployment
+    return deployment, storage, (archive_dataset, archive_mount)
+
+
+def prepare(api, settings, *, provisioned=False):
+    """Read-only review. The provisioned form is used after Apps allocates the iXVolume."""
+    return _prepare(api, settings, provisioned=provisioned)[0]
+
+
+def prepare_compose(api, settings, expected, *, confirmed=False):
+    """Create the selected output once and render Compose after verifying both mounts."""
+    if confirmed is not True or os.geteuid() != 0:
+        raise InstallError('Explicit administrator confirmation is required')
+    current = _prepare(api, settings, provisioned=True)
+    if current != expected:
+        raise InstallError('Installation settings changed after review')
+    deployment, plan, archive_filesystem = current
+    path = Path(deployment.state)
+    if path.resolve(strict=True) != path:
+        raise InstallError('The managed state path must not contain symlinks')
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        if os.listdir(fd):
+            raise InstallError('The managed state volume is already in use')
+        # Exclusive creation consumes the empty-volume prerequisite before any
+        # output writes. A crash leaves a record for administrative review.
+        marker = os.open('install-preparation', os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+                         os.O_NOFOLLOW, 0o600, dir_fd=fd)
+        os.close(marker)
+        os.fsync(fd)
+        destination = create_storage(api, plan)
+        if (str(destination.root) != deployment.archives or not verify_destination(destination)
+                or _zfs(api, deployment.archives) != archive_filesystem):
+            raise InstallError('The selected archive destination could not be verified')
+        save_naming(path, plan.naming)
+        os.chown('output-naming.json', UID, UID, dir_fd=fd, follow_symlinks=False)
+        os.fchmod(fd, 0o700)
+        os.fchown(fd, UID, UID)
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    return deployment.compose()
 
 
 def main(argv=None):
@@ -112,21 +167,35 @@ def main(argv=None):
     parser.add_argument('--panel-image', required=True)
     parser.add_argument('--worker-image', required=True)
     parser.add_argument('--sqlite-version', required=True)
+    parser.add_argument('--prepare-compose', action='store_true',
+                        help='Prepare the confirmed paths after Apps provisions the iXVolume')
     args = parser.parse_args(argv)
     try:
         with args.configuration.open(encoding='utf-8') as stream:
             values = json.load(stream)
         settings = form_settings(values, panel_image=args.panel_image,
                                  worker_image=args.worker_image, sqlite_version=args.sqlite_version)
-        deployment = prepare(LocalMiddleware(), settings)
-        print(json.dumps({'app': APP, 'state': deployment.state,
-                          'archives': deployment.archives, 'plex_dataset': deployment.plex_dataset,
-                          'host_ip': deployment.host_ip, 'host_port': deployment.host_port}, indent=2))
+        api = LocalMiddleware()
+        prepared = _prepare(api, settings, provisioned=args.prepare_compose)
+        deployment, storage, _ = prepared
+        review = {'app': APP, 'state': deployment.state, 'archives': deployment.archives,
+                  'logs': deployment.archives + '/Logs', 'archive_prefix': storage.naming.archive_prefix,
+                  'plex_dataset': deployment.plex_dataset,
+                  'host_ip': deployment.host_ip, 'host_port': deployment.host_port}
+        if args.prepare_compose:
+            print(json.dumps(review, indent=2), file=sys.stderr)
+            print(f'Type {APP} to prepare these paths: ', file=sys.stderr, end='', flush=True)
+            if input() != APP:
+                return 1
+            compose = prepare_compose(api, settings, prepared, confirmed=True)
+            print(json.dumps(compose, indent=2))
+        else:
+            print(json.dumps(review, indent=2))
         return 0
     except InstallError as error:
-        print(str(error))
+        print(str(error), file=sys.stderr)
     except Exception:
-        print('PlexConfigControl could not verify the installation configuration.')
+        print('PlexConfigControl could not prepare the installation. Check the reviewed paths before retrying.', file=sys.stderr)
     return 1
 
 
