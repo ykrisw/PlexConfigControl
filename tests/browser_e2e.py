@@ -312,6 +312,26 @@ def main():
                     page.mouse.move(10,10)
                     assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),f'{title} overflows horizontally'
                     heights.append(visible.bounding_box()['height'])
+                    if title == 'Kopia zapasowa':
+                        track = visible.locator('.pcc-scroll-track')
+                        thumb = track.locator('.pcc-scroll-thumb')
+                        expect(track).to_be_visible()
+                        expect(thumb).to_have_css('background-color', {
+                            'Light': 'rgb(133, 151, 173)',
+                            'Dark': 'rgb(115, 130, 149)',
+                        }[theme])
+                        assert abs(track.bounding_box()['width'] - 17.7093) < 0.2
+                        assert abs(thumb.bounding_box()['width'] - 10.6691) < 0.2
+                        listing = visible.locator('[data-archives]')
+                        listing.evaluate('list => { list.scrollTop = list.scrollHeight; }')
+                        page.wait_for_function(
+                            '''() => {
+                                const track = document.querySelector('[data-panel=backup] .pcc-scroll-track');
+                                const thumb = track.firstElementChild;
+                                return Math.abs(track.clientHeight - thumb.offsetTop - thumb.offsetHeight - 4) < 2;
+                            }'''
+                        )
+                        listing.evaluate('list => { list.scrollTop = 0; }')
                     page.screenshot(path=str(output/f'{theme.lower()}-{index}.png'),full_page=True)
                 assert max(heights)-min(heights)<2,f'Unequal panel heights: {heights}'
             for width in (360,320):
