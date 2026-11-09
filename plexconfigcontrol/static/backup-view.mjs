@@ -1,4 +1,4 @@
-import {mountOperationWorkspace,activeExecution} from './operation-workspace.mjs';
+import {mountOperationWorkspace,activeExecution,mountStageProgress} from './operation-workspace.mjs';
 import {submissionText} from './submission-controller.mjs';
 import {backupResult} from './operation-outcome.mjs';
 import {mountRecoveryView} from './recovery-view.mjs';
@@ -18,9 +18,9 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
     <section class="pcc-card pcc-operation-workspace" hidden>
       <h2 data-operation-heading></h2>
       <p data-backup-progress role="status" aria-live="polite" hidden></p>
-      <div class="pcc-backup-progress" hidden>
+      <div class="pcc-stage-progress" hidden>
         <progress max="100" aria-label="${tx('Current backup stage progress','Postęp bieżącego etapu kopii')}"></progress>
-        <span data-backup-percent aria-hidden="true" hidden></span>
+        <span data-stage-percent aria-hidden="true" hidden></span>
       </div>
       <section data-recovery hidden></section>
       <div data-submission class="pcc-notice" role="status" aria-live="polite" hidden><p data-submission-text></p>
@@ -59,11 +59,11 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
   dialog.setAttribute('aria-label',tx('Confirm archive deletion','Potwierdź usunięcie archiwów'));
   backupDialog.setAttribute('aria-label',tx('Choose Backup Action','Wybierz działanie kopii zapasowej'));
   const dateFormat=new Intl.DateTimeFormat(pl?'pl-PL':'en-GB',{dateStyle:'medium',timeZone:timezone});
-  const percentFormat=new Intl.NumberFormat(pl?'pl-PL':'en-GB',{style:'percent',maximumFractionDigits:1});
   const recovery=mountRecoveryView(find('[data-recovery]'),client,{language});
   const lifecycle=new AbortController();let state,confirmation=[],backupConfirmation=null,disposed=false;
   const prefix=find('[data-backup-prefix]');
   const showWorkspace=mountOperationWorkspace(root,find('.pcc-archives'),lifecycle.signal);
+  const showProgress=mountStageProgress(find('.pcc-stage-progress'),'BACKUP',language);
   const stages={
     PREPARING:tx('Preparing backup…','Przygotowywanie kopii…'),
     CREATING_SNAPSHOT:tx('Creating a temporary snapshot…','Tworzenie tymczasowej migawki…'),
@@ -105,14 +105,7 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
           : find('[data-submission]').hidden?tx('Waiting for backup status…','Oczekiwanie na stan kopii…'):''
       : '';
     progress.hidden=!progress.textContent;
-    const meter=find('.pcc-backup-progress'),bar=meter.querySelector('progress');
-    const percent=find('[data-backup-percent]');
-    const measured=stage?.operation==='BACKUP'&&stage.active===true&&Number.isFinite(stage.stage_percent);
-    meter.hidden=!locked||recoveryVisible;
-    if(measured)bar.value=stage.stage_percent;
-    else bar.removeAttribute('value');
-    percent.hidden=!measured;
-    percent.textContent=measured?percentFormat.format(stage.stage_percent/100):'';
+    showProgress(locked&&!recoveryVisible,stage);
     prefix.disabled=locked||backupDialog.open;
     find('[data-plan]').hidden=locked;
     find('[data-submission-check]').hidden=!value.submission.canCheck;

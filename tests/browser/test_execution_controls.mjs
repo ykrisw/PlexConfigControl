@@ -2,9 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createBackupController} from '../../plexconfigcontrol/static/backup-controller.mjs';
 import {RestoreController} from '../../plexconfigcontrol/static/restore-panel.mjs';
+import {mountStageProgress} from '../../plexconfigcontrol/static/operation-workspace.mjs';
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 const id='a'.repeat(32),name='TrueNASPlexConfig_2026.11.03_04.15.35.tar.gz';
 const row=()=>({name,size:'42',device:'1',inode:'9223372036854775931',modified_ns:'1793664000000000123'});
+
+test('only measured progress from the current operation gets a percentage',()=>{
+  const bar={removeAttribute:()=>delete bar.value},label={};
+  const meter={querySelector:selector=>selector==='progress'?bar:label};
+  const show=mountStageProgress(meter,'RESTORE','pl');
+  show(true,{operation:'BACKUP',active:true,stage_percent:70});
+  assert.equal(meter.hidden,false);assert.equal(bar.value,undefined);assert.equal(label.hidden,true);
+  show(true,{operation:'RESTORE',active:true,stage_percent:37.5});
+  assert.equal(bar.value,37.5);assert.equal(label.textContent,'37,5%');
+  show(false,{operation:'RESTORE',active:false,stage_percent:100});
+  assert.equal(meter.hidden,true);assert.equal(bar.value,undefined);assert.equal(label.textContent,'');
+});
 function backup(rows=[]){
   const source={rows,enabled:true,plex:'RUNNING'},states=[],posts=[];
   const client={archives:async()=>source.rows,capabilities:async()=>({backup_create:source.enabled,backup_overwrite:true}),

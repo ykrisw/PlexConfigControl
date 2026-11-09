@@ -156,9 +156,9 @@ def backup_case(browser, output, language, theme, width, *, check_only=False):
         assert len(fixture.posts)==1 and fixture.executions==1
         assert fixture.posts[0]['prefix']=='Plex_Living-Room'
         expect(page.locator('[data-archives]')).to_be_hidden()
-        bar=page.locator('.pcc-backup-progress progress')
+        bar=page.locator('.pcc-stage-progress progress')
         expect(bar).to_be_visible()
-        expect(page.locator('[data-backup-percent]')).to_be_hidden()
+        expect(page.locator('[data-stage-percent]')).to_be_hidden()
         if check_only:
             page.locator('[data-submission-check]').click()
             expect(page.locator('[data-submission-retry]')).to_be_hidden()
@@ -171,7 +171,7 @@ def backup_case(browser, output, language, theme, width, *, check_only=False):
             assert fixture.executions==1
         fixture.progress.update(stage='VERIFYING_ARCHIVE',stage_percent=37.5)
         expect(bar).to_have_attribute('value','37.5')
-        expect(page.locator('[data-backup-percent]')).to_have_text('37,5%' if language=='pl' else '37.5%')
+        expect(page.locator('[data-stage-percent]')).to_have_text('37,5%' if language=='pl' else '37.5%')
         fixture.complete()
         expect(bar).to_be_hidden()
         expect(page.locator('[data-operation-result]')).to_contain_text('zakończył się sukcesem' if language=='pl' else 'completed successfully')
@@ -198,6 +198,8 @@ def restore_case(browser, output, language, theme, width):
             expect(page.locator('[data-restore-action=validate]')).to_have_css('background-color','rgb(255, 103, 21)')
         page.locator('[data-restore-action=validate]').click()
         expect(page.locator('[data-validation-notice]')).to_contain_text('ręcznie' if language=='pl' else 'manually')
+        bar=page.locator('.pcc-stage-progress progress')
+        expect(bar).to_be_hidden()
         execute=page.locator('[data-restore-execute]');expect(execute).to_be_disabled();assert not fixture.posts
         fixture.plex='STOPPED';page.locator('[data-restore-action=refresh]').click();expect(execute).to_be_enabled();execute.click()
         dialog=page.locator('[data-restore-dialog]');check_dialog(page,dialog,theme)
@@ -213,7 +215,12 @@ def restore_case(browser, output, language, theme, width):
         expect(page.locator('[data-restore-action=validate]')).to_be_disabled()
         expect(page.locator('[data-archive-list]')).to_be_hidden()
         expect(page.locator('input[type=radio]').first).to_be_disabled()
+        expect(bar).to_be_visible()
+        fixture.progress.update(stage='STAGING_ARCHIVE',stage_percent=62.5)
+        expect(bar).to_have_attribute('value','62.5')
+        expect(page.locator('[data-stage-percent]')).to_have_text('62,5%' if language=='pl' else '62.5%')
         fixture.complete()
+        expect(bar).to_be_hidden()
         expect(page.locator('[data-operation-result]')).to_contain_text('zakończyło się sukcesem' if language=='pl' else 'completed successfully')
         page.locator('[data-return-to-archives]').click()
         expect(page.locator('[data-archive-list]')).to_be_visible()

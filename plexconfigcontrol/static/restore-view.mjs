@@ -1,4 +1,4 @@
-import {mountOperationWorkspace,activeExecution} from './operation-workspace.mjs';
+import {mountOperationWorkspace,activeExecution,mountStageProgress} from './operation-workspace.mjs';
 import {submissionText} from './submission-controller.mjs';
 import {restoreResult} from './operation-outcome.mjs';
 import {mountRecoveryView} from './recovery-view.mjs';
@@ -25,6 +25,10 @@ export function mountRestoreView(root, client, {language='en'}={}) {
       <section data-recovery hidden></section>
       <div data-operation-result class="pcc-notice" role="status" aria-live="polite" hidden></div>
       <div data-validation-progress hidden role="status" aria-live="polite"></div>
+      <div class="pcc-stage-progress" hidden>
+        <progress max="100" aria-label="${tx('Current restore stage progress','Postęp bieżącego etapu przywracania')}"></progress>
+        <span data-stage-percent aria-hidden="true" hidden></span>
+      </div>
       <div data-validation-notice class="pcc-notice" hidden role="status" aria-live="polite"></div>
       <div data-submission class="pcc-notice" role="status" aria-live="polite" hidden><p data-submission-text></p>
         <button type="button" data-submission-check hidden></button><button type="button" data-submission-retry hidden></button></div>
@@ -52,6 +56,7 @@ export function mountRestoreView(root, client, {language='en'}={}) {
   const recovery=mountRecoveryView(find('[data-recovery]'),client,{language});
   const lifecycle = new AbortController();
   const showWorkspace=mountOperationWorkspace(root,find('.pcc-archive-card'),lifecycle.signal);
+  const showProgress=mountStageProgress(find('.pcc-stage-progress'),'RESTORE',language);
   const dialog=find('[data-restore-dialog]'),confirmationInput=find('[data-confirm-restore]');
   let confirmed=null,disposeControls;
   find('[data-submission-check]').textContent=tx('Check Status','Sprawdź stan');
@@ -92,6 +97,7 @@ export function mountRestoreView(root, client, {language='en'}={}) {
       (locked&&!view.notice&&find('[data-recovery]').hidden&&find('[data-submission]').hidden
         ? tx('Waiting for restore status…','Oczekiwanie na stan przywracania…'):'');
     progress.hidden=!progress.textContent;
+    showProgress(locked&&!view.waiting&&find('[data-recovery]').hidden,snapshot?.progress);
   };
   disposeControls = bindRestoreControls(root, client, render);
   find('[data-restore-execute]').addEventListener('click',()=>{

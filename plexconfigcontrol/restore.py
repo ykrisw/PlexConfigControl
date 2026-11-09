@@ -55,7 +55,8 @@ class Restore:
                         op.execution_request_id=self._execution_request_id
                         op.outcome={'code':'RESTORE_IN_PROGRESS','archive':name}
                     self.progress.start('RESTORE')
-                    with stage_archive(self.destination/name,self.state,digest) as staged:
+                    with stage_archive(self.destination/name,self.state,digest,
+                                       progress_callback=self.progress.update) as staged:
                         self.database_check(staged)
                         if not archive_matches(self.destination,name,identity):
                             raise OperationDenied('Archive changed; validate the returned copy again')

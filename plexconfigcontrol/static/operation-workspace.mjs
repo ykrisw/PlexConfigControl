@@ -31,3 +31,17 @@ export function mountOperationWorkspace(root, archiveCard, signal) {
 export function activeExecution(snapshot, kind) {
   return snapshot?.execution?.kind === kind && ['QUEUED', 'RUNNING'].includes(snapshot.execution.state);
 }
+
+export function mountStageProgress(meter, kind, language) {
+  const bar = meter.querySelector('progress'), percent = meter.querySelector('[data-stage-percent]');
+  const format = new Intl.NumberFormat(language === 'pl' ? 'pl-PL' : 'en-GB',
+    {style:'percent', maximumFractionDigits:1});
+  return (visible, stage) => {
+    const measured = stage?.operation === kind && stage.active === true && Number.isFinite(stage.stage_percent);
+    meter.hidden = !visible;
+    if (measured) bar.value = stage.stage_percent;
+    else bar.removeAttribute('value');
+    percent.hidden = !measured;
+    percent.textContent = measured ? format.format(stage.stage_percent / 100) : '';
+  };
+}

@@ -83,11 +83,14 @@ class RestoreValidation:
             try:
                 fd=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=directory)
                 try:
-                    if not stat.S_ISREG(os.fstat(fd).st_mode):
+                    info=os.fstat(fd)
+                    if not stat.S_ISREG(info.st_mode):
                         raise InvalidArchive('Archive must be a regular file')
-                    identity=file_identity(os.fstat(fd))
+                    identity=file_identity(info)
                     result=validate_archive(None, source_fd=fd,
-                        progress_callback=lambda stage,done: self.progress.update(stage,done=done))
+                        progress_callback=lambda stage,done: self.progress.update(
+                            stage,done=done,total=(info.st_size or None)
+                            if stage=='HASHING_ARCHIVE' and done<=info.st_size else None))
                     if file_identity(os.fstat(fd))!=identity:
                         raise InvalidArchive('Archive changed during validation')
                 finally:
