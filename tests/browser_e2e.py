@@ -336,6 +336,25 @@ def main():
                         listing.evaluate('list => { list.scrollTop = 0; }')
                     page.screenshot(path=str(output/f'{theme.lower()}-{index}.png'),full_page=True)
                 assert max(heights)-min(heights)<2,f'Unequal panel heights: {heights}'
+            for title, selector in (('Kopia zapasowa', '[data-archives]'),
+                                    ('Przywracanie', '[data-archive-list]'),
+                                    ('Historia', '[data-events]')):
+                page.get_by_role('tab',name=title,exact=True).click()
+                panel=page.locator('.pcc-page:visible')
+                listing=panel.locator(selector)
+                expect(listing.locator('label').first).to_be_visible()
+                previous_height=0
+                for width,height in ((1280,720),(1920,1080),(2560,1440),(3840,2160)):
+                    page.set_viewport_size({'width':width,'height':height})
+                    shell=page.locator('#pcc-app').bounding_box()
+                    assert shell['height'] >= height-1, f'{title} leaves a gap at {width}×{height}'
+                    if height>=1080:
+                        assert abs(shell['height']-height)<2, f'{title} overflows at {width}×{height}'
+                    visible_height=listing.evaluate('list => list.clientHeight')
+                    assert visible_height >= 128 and visible_height > previous_height, (
+                        f'{title} list does not gain space at {width}×{height}')
+                    previous_height=visible_height
+                    assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth')
             for width in (360,320):
                 page.set_viewport_size({'width':width,'height':900})
                 for title in ('Pulpit','Kopia zapasowa','Przywracanie','Historia','Ustawienia'):

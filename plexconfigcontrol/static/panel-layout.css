@@ -1,6 +1,6 @@
 @import url('/assets/approved-appearance.css');
 /* Shared geometry agreed for Dashboard, Backup, Restore, History and Settings. */
-.pcc-shell{--pcc-content-height:820px;--pcc-inset:18px;--pcc-gap:14px;font:14px/1.5 Arial,sans-serif;background:var(--pcc-bg);color:var(--pcc-ink);border-radius:20px}
+.pcc-shell{--pcc-inset:18px;--pcc-gap:14px;font:14px/1.5 Arial,sans-serif;background:var(--pcc-bg);color:var(--pcc-ink);border-radius:20px 20px 0 0;display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
 .pcc-shell *{box-sizing:border-box}.pcc-shell [hidden]{display:none!important}
 .pcc-shell .pcc-header{background:light-dark(#c3c6cb,#222932);color:light-dark(var(--pcc-ink),#f4f6fa);border-radius:20px 20px 0 0}
 .pcc-shell .pcc-brand{display:flex;align-items:center;gap:12px;font-size:23px;font-weight:700;padding:18px 22px 12px}
@@ -10,8 +10,9 @@
 .pcc-shell .pcc-nav button[aria-selected=true]{border-bottom-color:var(--pcc-selection-accent);color:var(--pcc-active-ink)}
 .pcc-shell .pcc-nav button span{max-width:100%;overflow-wrap:anywhere;text-align:center}
 .pcc-shell .pcc-nav svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5}
-.pcc-shell .pcc-main{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(var(--pcc-content-height),auto);padding:14px var(--pcc-inset) 18px}
-.pcc-shell .pcc-page{grid-area:1/1;min-width:0;display:flex;flex-direction:column;gap:var(--pcc-gap)}
+.pcc-shell .pcc-main{display:flex;flex:1 0 auto;padding:14px var(--pcc-inset) 18px}
+.pcc-shell .pcc-page{flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--pcc-gap)}
+.pcc-shell .pcc-page .pcc-scroll-frame{min-height:8rem}
 .pcc-shell .pcc-page>.pcc-card,.pcc-shell .pcc-page>.pcc-plex{margin:0;flex-shrink:0;background:var(--pcc-card);border-radius:15px;padding:18px}
 .pcc-shell .pcc-page>.pcc-plex{display:flex;justify-content:space-between;align-items:center;min-height:45px;padding:10px 18px}
 .pcc-shell .pcc-page>.pcc-fill{flex:1;min-height:0}
@@ -30,6 +31,16 @@
 @media(max-width:600px){
  .pcc-shell .pcc-nav button{display:grid;grid-template-rows:16px 28px;justify-items:center;align-items:start;align-content:center;padding:8px 0;min-height:72px}
  .pcc-shell .pcc-nav button span{line-height:14px}
+}
+
+/* Keep account controls in normal flow when vertical space is limited. */
+@media(max-height:820px){
+ .pcc-shell .pcc-page>.pcc-account{min-height:auto;container-type:normal}
+ .pcc-shell .pcc-account-content{position:static;transform:none;padding:0}
+ .pcc-shell .pcc-account-content h3{margin-bottom:14px;transform:none}
+ .pcc-shell .pcc-avatar{margin:0}
+ .pcc-shell .pcc-account-actions{margin-block:20px 0;gap:12px}
+ .pcc-shell .pcc-account-actions [data-logout]{transform:none}
 }
 
 /* Both explicit themes and System use the approved palettes. */
