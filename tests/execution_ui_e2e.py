@@ -172,6 +172,11 @@ def backup_case(browser, output, language, theme, width, *, check_only=False):
         fixture.progress.update(stage='VERIFYING_ARCHIVE',stage_percent=37.5)
         page.locator('[data-submission-check]').click()
         expect(page.locator('[data-submission-check-feedback]')).to_have_text('Stan odświeżony.' if language=='pl' else 'Status refreshed.')
+        expect(page.locator('[data-submission-text]')).to_contain_text(
+            'Trwa wykonywanie kopii zapasowej. Poczekaj do końca weryfikacji.' if language=='pl'
+            else 'Backup is in progress. Wait for verification to finish.')
+        expect(page.locator('[data-submission]')).to_have_css(
+            'border-top-color','rgb(255, 103, 21)' if theme=='light' else 'rgb(229, 179, 33)')
         expect(bar).to_have_attribute('value','37.5')
         expect(page.locator('[data-stage-percent]')).to_have_text('37,5%' if language=='pl' else '37.5%')
         fixture.complete()

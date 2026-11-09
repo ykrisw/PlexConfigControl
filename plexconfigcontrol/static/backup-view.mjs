@@ -86,7 +86,7 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
     find('[data-backup-another]').disabled=!value.canCreate||!draftMatches;
     find('[data-backup-overwrite]').disabled=!value.canCreate||!draftMatches||!value.overwriteEnabled;
     find('[data-backup-cancel]').disabled=value.submission.busy;
-    find('[data-submission-text]').textContent=submissionText(value.submission,language);
+    find('[data-submission-text]').textContent=submissionText(value.submission,language,'BACKUP');
     find('[data-submission]').hidden=!find('[data-submission-text]').textContent||Boolean(result.textContent);
     const snapshot=value.operation;
     const active=value.submission.blocked||activeExecution(snapshot,'BACKUP')||

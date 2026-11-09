@@ -54,13 +54,15 @@ export function createSubmission(send,read,changed,{kind,makeId=()=>globalThis.c
     dispose(){disposed=true;generation++;pending=null;lifecycle.abort();},
   };
 }
-export function submissionText(value,language='en'){
+export function submissionText(value,language='en',kind){
   const pl=language==='pl',tx=(en,polish)=>pl?polish:en;
   const text=({SENDING:tx('Submitting confirmed operation…','Przekazywanie potwierdzonej operacji…'),
     ACCEPTED:tx('Operation accepted. Waiting for its status.','Operacja przyjęta. Oczekiwanie na jej stan.'),
     UNCONFIRMED:tx('Submission could not be confirmed. Check its status or explicitly retry the same request.','Nie potwierdzono przyjęcia zlecenia. Sprawdź jego stan lub świadomie ponów to samo żądanie.'),
     QUEUED:tx('Operation admitted and awaiting execution.','Operacja przyjęta i oczekuje na wykonanie.'),
-    RUNNING:tx('Operation is running. You may leave this tab.','Operacja trwa. Możesz opuścić tę zakładkę.'),
+    RUNNING:kind==='BACKUP'
+      ?tx('Backup is in progress. Wait for verification to finish.','Trwa wykonywanie kopii zapasowej. Poczekaj do końca weryfikacji.')
+      :tx('Operation is running. You may leave this tab.','Operacja trwa. Możesz opuścić tę zakładkę.'),
     REJECTED:tx('Operation was not accepted. Refresh and confirm the current selection again.','Operacja nie została przyjęta. Odśwież i ponownie potwierdź aktualny wybór.'),
     FAILED:tx('Operation failed. Review History and recovery details.','Operacja nie powiodła się. Sprawdź Historię i szczegóły odzyskiwania.'),
     RECOVERY_REQUIRED:tx('Operation requires recovery or cleanup before continuing.','Operacja wymaga odzyskiwania lub sprzątania przed kontynuowaniem.'),
