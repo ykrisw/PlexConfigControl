@@ -149,8 +149,5 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 }
 .pcc-refresh-icon {
   display: inline-block;
-  width: 1em;
-  height: 1em;
-  vertical-align: -0.15em;
-  margin-inline-end: 0.4em;
+  transform: scale(0.8);
 }

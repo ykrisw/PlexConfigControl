@@ -8,7 +8,7 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
   root.classList.add('pcc-backup');
   root.innerHTML=`
     <section class="pcc-plex"><strong data-server></strong><span data-plex-state="UNKNOWN">UNKNOWN</span></section>
-    <section class="pcc-card pcc-backup-action pcc-action-card"><div class="pcc-heading"><h2 data-create-heading></h2><button type="button" data-refresh><svg class="pcc-refresh-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4v6h-6M20 10a8 8 0 1 0 .1 5"/></svg><span data-refresh-label></span></button></div>
+    <section class="pcc-card pcc-backup-action pcc-action-card"><div class="pcc-heading"><h2 data-create-heading></h2><button type="button" data-refresh><span class="pcc-refresh-icon" aria-hidden="true">⟳</span> <span data-refresh-label></span></button></div>
       <p data-description></p><button type="button" class="pcc-primary" data-create disabled></button>
       <p data-execution-note></p><p data-plan></p>
       <div data-submission class="pcc-notice" role="status" aria-live="polite" hidden><p data-submission-text></p>
