@@ -10,7 +10,7 @@ export function mountDashboardView(root, client, {onSignedOut, language = 'en'} 
       <div class="pcc-account-content"><h3 data-account></h3>
         <div class="pcc-avatar" role="group" aria-label="${tx('Profile photo','Zdjęcie konta')}">
           <svg data-photo-placeholder viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 22v-2a8 8 0 0 1 16 0v2"/></svg>
-          <img data-profile-photo alt="${tx('Profile photo','Zdjęcie konta')}" hidden>
+          <img data-profile-photo alt="${tx('Profile photo','Zdjęcie konta')}" draggable="false" hidden>
           <div class="pcc-photo-tools">
             <button type="button" data-photo-upload aria-label="Upload Photo"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 17 6-6 4 4 3-3 5 5M14 7h4m-2-2v4"/></svg></button>
             <button type="button" data-photo-remove aria-label="Remove Photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg></button>
@@ -90,6 +90,56 @@ export function mountDashboardView(root, client, {onSignedOut, language = 'en'} 
     find('[data-photo-notice]').textContent=pl?(errors[state.error]||state.error):state.error;
   });
   const options = {signal: lifecycle.signal};
+  const avatar = find('.pcc-avatar'), photoTools = find('.pcc-photo-tools');
+  let photoPress = null;
+  function cancelPhotoPress() {
+    if (!photoPress) return;
+    clearTimeout(photoPress.timer);
+    photoPress = null;
+  }
+  function hidePhotoTools() {
+    cancelPhotoPress();
+    avatar.removeAttribute('data-photo-tools-open');
+  }
+  avatar.addEventListener('pointerdown', event => {
+    if (event.pointerType !== 'touch') return;
+    avatar.setAttribute('data-photo-touch', '');
+    if (avatar.hasAttribute('data-photo-tools-open') && photoTools.contains(event.target)) return;
+    hidePhotoTools();
+    if (!event.isPrimary) return;
+    photoPress = {
+      id: event.pointerId, x: event.clientX, y: event.clientY,
+      timer: setTimeout(() => avatar.setAttribute('data-photo-tools-open', ''), 3000),
+    };
+  }, options);
+  avatar.addEventListener('pointermove', event => {
+    if (event.pointerType === 'mouse') {
+      hidePhotoTools();
+      avatar.removeAttribute('data-photo-touch');
+    } else if (event.pointerId === photoPress?.id &&
+               Math.hypot(event.clientX - photoPress.x, event.clientY - photoPress.y) > 10) {
+      cancelPhotoPress();
+    }
+  }, options);
+  avatar.addEventListener('pointerup', event => {
+    if (event.pointerId === photoPress?.id) cancelPhotoPress();
+  }, options);
+  avatar.addEventListener('pointercancel', event => {
+    if (event.pointerId === photoPress?.id) hidePhotoTools();
+  }, options);
+  avatar.addEventListener('contextmenu', event => {
+    if (avatar.hasAttribute('data-photo-touch')) event.preventDefault();
+  }, options);
+  photoTools.addEventListener('click', event => {
+    if (avatar.hasAttribute('data-photo-touch') && !avatar.hasAttribute('data-photo-tools-open')) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, {...options, capture: true});
+  root.ownerDocument.addEventListener('pointerdown', event => {
+    if (!avatar.contains(event.target)) hidePhotoTools();
+  }, options);
+  lifecycle.signal.addEventListener('abort', cancelPhotoPress, {once: true});
   find('[data-password]').addEventListener('click', () => {
     form.reset(); find('[data-password-error]').textContent = '';
     find('[data-dashboard-error]').hidden = true;
@@ -109,9 +159,9 @@ export function mountDashboardView(root, client, {onSignedOut, language = 'en'} 
   image.addEventListener('error',()=>{image.hidden=true;placeholder.removeAttribute('hidden');
     find('[data-photo-notice]').hidden=false;find('[data-photo-notice]').textContent=tx('The profile photo could not be loaded. Try uploading it again.','Nie udało się wczytać zdjęcia konta. Spróbuj wgrać je ponownie.');},options);
   const file=find('[data-photo-file]');
-  find('[data-photo-upload]').addEventListener('click',()=>file.click(),options);
+  find('[data-photo-upload]').addEventListener('click',()=>{file.click();hidePhotoTools();},options);
   file.addEventListener('change',()=>{const chosen=file.files[0];file.value='';if(chosen)void photoController.upload(chosen);},options);
-  find('[data-photo-remove]').addEventListener('click',()=>photoDialog.showModal(),options);
+  find('[data-photo-remove]').addEventListener('click',()=>{photoDialog.showModal();hidePhotoTools();},options);
   find('[data-photo-cancel]').addEventListener('click',()=>photoDialog.close(),options);
   photoDialog.addEventListener('cancel',event=>{if(busy)event.preventDefault();},options);
   find('[data-photo-confirm]').addEventListener('click',async()=>{

@@ -80,11 +80,22 @@ def exercise(page, cdp, output, password, *, emulated=False):
     assert page.evaluate('navigator.maxTouchPoints>0')
     assert page.evaluate("matchMedia('(hover:none)').matches")
     dashboard=page.locator('[data-panel=dashboard]')
-    expect(dashboard.locator('.pcc-photo-tools')).to_have_css('opacity','1')
-    expect(dashboard.locator('[data-photo-upload]')).to_be_visible()
+    avatar=dashboard.locator('.pcc-avatar')
+    upload_button=dashboard.locator('[data-photo-upload]')
+    expect(upload_button).to_be_hidden()
+    touch(avatar)
+    expect(upload_button).to_be_hidden()
+    avatar.scroll_into_view_if_needed()
+    box=avatar.bounding_box()
+    point={'x':box['x']+box['width']/2,'y':box['y']+box['height']/2}
+    cdp.send('Input.dispatchTouchEvent',{'type':'touchStart','touchPoints':[point]})
+    expect(upload_button).to_be_hidden()
+    expect(upload_button).to_be_visible(timeout=6000)
+    cdp.send('Input.dispatchTouchEvent',{'type':'touchEnd','touchPoints':[]})
+    expect(upload_button).to_be_visible()
     # set_input_files bypasses the chooser button: wait for the same readiness
     # a real user needs before sending its change event. Loading rejects uploads.
-    expect(dashboard.locator('[data-photo-upload]')).to_be_enabled()
+    expect(upload_button).to_be_enabled()
     photo=io.BytesIO();Image.new('RGB',(40,40),'#2a70af').save(photo,format='PNG')
     with page.expect_response(lambda response: urlsplit(response.url).path=='/api/account/photo' and response.request.method=='POST') as upload:
         dashboard.locator('[data-photo-file]').set_input_files({'name':'touch.png','mimeType':'image/png','buffer':photo.getvalue()})
