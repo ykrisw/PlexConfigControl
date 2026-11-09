@@ -87,12 +87,21 @@ def _verify_process():
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description='PlexConfigControl execution owner')
-    for option in ('state', 'archives', 'config-mount', 'host-config', 'dataset', 'socket',
-                   'truenas-url', 'api-username', 'api-key-file', 'plex-sqlite', 'sqlite-version'):
-        parser.add_argument('--' + option, required=True)
+    parser.add_argument('--check-runtime', action='store_true',
+                        help='Verify process privileges and SQLite using an in-memory database')
+    parser.add_argument('--plex-sqlite', required=True)
+    parser.add_argument('--sqlite-version', required=True)
+    deployment_options = ('state', 'archives', 'config-mount', 'host-config', 'dataset', 'socket',
+                          'truenas-url', 'api-username', 'api-key-file')
+    for option in deployment_options:
+        parser.add_argument('--' + option)
     parser.add_argument('--ca-file')
     parser.add_argument('--panel-uid', required=True, type=int)
     args = parser.parse_args(argv)
+    if not args.check_runtime:
+        missing = [f'--{name}' for name in deployment_options if not getattr(args, name.replace('-', '_'))]
+        if missing:
+            parser.error('deployment requires ' + ', '.join(missing))
     os.umask(0o077)
     try:
         # The socket and private state are shared with the same UID in the
@@ -100,13 +109,16 @@ def main(argv=None):
         if args.panel_uid != os.geteuid() or args.panel_uid <= 0:
             raise ValueError('The worker and panel must use the configured non-root UID')
         _verify_process()
+        probe_sqlite(args.plex_sqlite, args.sqlite_version)
+        if args.check_runtime:
+            print(f'Worker runtime verified: UID {args.panel_uid}, Plex SQLite {args.sqlite_version}', flush=True)
+            return 0
         api = build_client(args.truenas_url, args.api_username, read_secret(args.api_key_file),
                            args.ca_file, timeout=10)
         plan = discover_plex_storage(api, manual_source=args.host_config)
         if plan.dataset != args.dataset:
             raise ValueError('Configured Plex dataset no longer matches TrueNAS')
         storage = ExecutionStorage(api, plan, args.config_mount, args.state, args.archives)
-        probe_sqlite(args.plex_sqlite, args.sqlite_version)
         worker = build_execution_worker(storage, sqlite_executable=args.plex_sqlite,
                                         sqlite_version=args.sqlite_version)
         serve(worker, Path(args.socket), args.panel_uid)

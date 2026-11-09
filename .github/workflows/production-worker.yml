@@ -1,0 +1,46 @@
+name: Verify production worker image
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - Dockerfile.worker
+      - .github/workflows/production-worker.yml
+      - plexconfigcontrol/**
+      - pyproject.toml
+  push:
+    branches: [main, 'work/approved-panel-goldeye']
+    paths:
+      - Dockerfile
+      - Dockerfile.worker
+      - .github/workflows/production-worker.yml
+      - plexconfigcontrol/**
+      - pyproject.toml
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Reported by the target NAS. Build and test locally in this job only.
+      PLEX_IMAGE: plexinc/pms-docker@sha256:531ad94c469748dcaa9d6f3d6c6160ad3598617a55319d389e7d08216bc680a7
+      PLEX_SQLITE_VERSION: '3.53.3'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the panel and worker images
+        run: |
+          docker build --tag plexconfigcontrol:panel-check .
+          docker build --file Dockerfile.worker --tag plexconfigcontrol:worker-check \
+            --build-arg PCC_PANEL_IMAGE=plexconfigcontrol:panel-check \
+            --build-arg "PLEX_IMAGE=$PLEX_IMAGE" .
+      - name: Check the real worker entrypoint without a NAS or host mounts
+        run: |
+          docker run --rm --network none --read-only --tmpfs /tmp \
+            --security-opt no-new-privileges:true --cap-drop ALL \
+            --cap-add SETUID --cap-add SETGID --cap-add SETPCAP \
+            --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER --cap-add FSETID \
+            plexconfigcontrol:worker-check \
+            --check-runtime --panel-uid 568 --plex-sqlite /usr/local/bin/pcc-plex-sqlite \
+            --sqlite-version "$PLEX_SQLITE_VERSION"
