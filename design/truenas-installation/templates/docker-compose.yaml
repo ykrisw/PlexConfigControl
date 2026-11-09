@@ -1,0 +1,13 @@
+{# Use only the Compose definition prepared for the exact settings reviewed on the host. #}
+{% set release = values.pcc_release %}
+{% for group, fields in release.reviewed_fields.items() %}
+  {% for field, expected in fields.items() %}
+    {% if values[group].get(field) != expected %}
+      {{ {}['PlexConfigControl: ustawienia zmieniono po sprawdzeniu. Przygotuj ponownie definicję aplikacji.']() }}
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+{% if values.ix_context.app_name != release.app_name or values.ix_volumes.get('state') != release.state %}
+  {{ {}['PlexConfigControl: TrueNAS nie potwierdził oczekiwanego iXVolume state.']() }}
+{% endif %}
+{{ release.compose | tojson }}

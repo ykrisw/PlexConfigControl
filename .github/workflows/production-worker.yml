@@ -7,6 +7,8 @@ on:
       - .github/workflows/production-worker.yml
       - plexconfigcontrol/**
       - pyproject.toml
+      - deploy/**
+      - design/truenas-installation/**
   push:
     branches: [main, 'work/approved-panel-goldeye']
     paths:
@@ -15,6 +17,8 @@ on:
       - .github/workflows/production-worker.yml
       - plexconfigcontrol/**
       - pyproject.toml
+      - deploy/**
+      - design/truenas-installation/**
   workflow_dispatch:
 permissions:
   contents: read
@@ -44,3 +48,28 @@ jobs:
             plexconfigcontrol:worker-check \
             --check-runtime --panel-uid 568 --plex-sqlite /usr/local/bin/pcc-plex-sqlite \
             --sqlite-version "$PLEX_SQLITE_VERSION"
+      - name: Check initialization of the managed state directory
+        run: |
+          docker volume create pcc-state-check
+          docker run --rm --network none --read-only --user 0:0 \
+            --security-opt no-new-privileges:true --cap-drop ALL \
+            --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER \
+            --mount source=pcc-state-check,target=/var/lib/plexconfigcontrol \
+            --entrypoint python plexconfigcontrol:panel-check \
+            -m plexconfigcontrol.catalog_init --folder 'Moje kopie Plex' --prefix PlexDom
+          docker run --rm --network none --read-only \
+            --mount source=pcc-state-check,target=/var/lib/plexconfigcontrol,readonly \
+            --entrypoint python plexconfigcontrol:panel-check -c \
+            "from plexconfigcontrol.naming import Naming, load_naming; assert load_naming('/var/lib/plexconfigcontrol') == Naming('Moje kopie Plex', 'PlexDom')"
+      - name: Assemble installer source bundle
+        run: |
+          mkdir -p dist
+          git archive --format=tar --prefix=PlexConfigControl/ HEAD \
+            Dockerfile Dockerfile.worker pyproject.toml plexconfigcontrol \
+            deploy/install.sh deploy/installation-settings.example.json design/truenas-installation \
+            | gzip -n > dist/PlexConfigControl-installer.tar.gz
+          (cd dist && sha256sum PlexConfigControl-installer.tar.gz > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PlexConfigControl-installer-candidate
+          path: dist/

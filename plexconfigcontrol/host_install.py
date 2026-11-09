@@ -6,11 +6,15 @@ import argparse
 import ipaddress
 import json
 import os
+import ssl
 import stat
 import subprocess
 import sys
+import time
+import urllib.request
 from pathlib import Path
 
+from .catalog_bundle import APP, catalog_files
 from .deployment import Deployment
 from .installation_storage import create_storage, plan_storage
 from .naming import save_naming
@@ -18,7 +22,6 @@ from .storage import verify_destination
 from .plex_storage import _zfs
 
 
-APP = 'plexconfigcontrol'
 APPS_MOUNT = '/mnt/.ix-apps'
 UID = 568
 _READ_METHODS = {'system.version', 'docker.config', 'app.query', 'app.config',
@@ -37,13 +40,44 @@ class LocalMiddleware:
     def call(self, method, *params):
         if method not in _READ_METHODS:
             raise InstallError('Unsupported installer lookup')
-        command = ['midclt', 'call', method, *(json.dumps(value) for value in params)]
+        return self._call(method, params)
+
+    def _call(self, method, params, *, job=False):
+        command = ['midclt', 'call', *(['-job'] if job else []), method,
+                   *(json.dumps(value) for value in params)]
         try:
             result = self.runner(command, check=True, capture_output=True, text=True,
-                                 timeout=30)
+                                 timeout=300 if job else 30)
             return json.loads(result.stdout)
         except (OSError, subprocess.SubprocessError, ValueError):
             raise InstallError(f'TrueNAS did not confirm {method}') from None
+
+    def allocate_state(self, deployment):
+        name = deployment.panel_image.rsplit('/', 1)[-1]
+        if ':' not in name or '@' in deployment.panel_image:
+            raise InstallError('The locally built panel image requires an explicit tag')
+        repository, tag = deployment.panel_image.rsplit(':', 1)
+        return self._call('app.create', ({
+            'app_name': APP, 'catalog_app': 'ix-app', 'train': 'stable', 'version': '1.4.8',
+            'values': {
+                'image': {'repository': repository, 'tag': tag, 'pull_policy': 'never'},
+                'entrypoint': ['/bin/sleep'], 'command': ['infinity'],
+                'disable_builtin_healthcheck': True, 'restart_policy': 'no',
+                'run_as_custom_user': True, 'run_as': {'user': UID, 'group': UID},
+                'storage': [{'type': 'ix_volume', 'read_only': False,
+                             'mount_path': '/var/lib/plexconfigcontrol',
+                             'ix_volume_config': {'dataset_name': 'state', 'acl_enable': False}}],
+            },
+        },), job=True)
+
+    def convert(self):
+        return self._call('app.convert_to_custom', (APP,), job=True)
+
+    def configure(self, compose):
+        return self._call('app.update', (APP, {'custom_compose_config': compose}), job=True)
+
+    def start(self):
+        return self._call('app.start', (APP,), job=True)
 
 
 def _verify_private_file(path, *, owner=None):
@@ -161,14 +195,90 @@ def prepare_compose(api, settings, expected, *, confirmed=False):
     return deployment.compose()
 
 
+def prepare_catalog(api, settings, expected, values, template_root, version, output, *, confirmed=False):
+    """Prepare a fresh archive directory and write the native Apps version files."""
+    if confirmed is not True or os.geteuid() != 0:
+        raise InstallError('Explicit administrator confirmation is required')
+    current = _prepare(api, settings)
+    if current != expected:
+        raise InstallError('Installation settings changed after review')
+    deployment, plan, archive_filesystem = current
+    files = catalog_files(template_root, deployment, plan, values, version)
+    output = Path(output).absolute()
+    if output.parent.resolve(strict=True) != output.parent:
+        raise InstallError('The catalog output must use a real parent directory')
+    for path in map(Path, (deployment.state, deployment.archives, deployment.plex_config)):
+        if output == path or output in path.parents or path in output.parents:
+            raise InstallError('The catalog output overlaps application storage')
+    output.mkdir(mode=0o700)  # Exclusive reservation. Never overwrite a prior export.
+    destination = create_storage(api, plan)
+    if (str(destination.root) != deployment.archives or not verify_destination(destination)
+            or _zfs(api, deployment.archives) != archive_filesystem):
+        raise InstallError('The selected archive destination could not be verified')
+    for name, body in files.items():
+        path = output/name
+        path.parent.mkdir(exist_ok=True)
+        with path.open('x', encoding='utf-8') as stream:
+            stream.write(body)
+    return output
+
+
+def _ready(deployment, *, timeout=90):
+    host = ipaddress.ip_address(deployment.host_ip)
+    authority = f'[{host}]' if host.version == 6 else str(host)
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            ca = Path(deployment.state)/'tls'/'panel.crt'
+            context = ssl.create_default_context(cafile=str(ca))
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),
+                                                  urllib.request.HTTPSHandler(context=context))
+            with opener.open(f'https://{authority}:{deployment.host_port}/healthz', timeout=5) as response:
+                if json.loads(response.read(256)) == {'ready': True, 'mode': 'operational'}:
+                    return
+        except (OSError, ValueError):
+            pass
+        time.sleep(1)
+    raise InstallError('TrueNAS created the app, but the panel and worker did not report readiness')
+
+
+def install_app(api, settings, expected, *, confirmed=False):
+    """Install once under a fixed Apps name. Interrupted installs are never replayed."""
+    if confirmed is not True or os.geteuid() != 0:
+        raise InstallError('Explicit administrator confirmation is required')
+    if _prepare(api, settings) != expected:
+        raise InstallError('Installation settings changed after review')
+    deployment = expected[0]
+    bootstrap = api.allocate_state(deployment)
+    if not isinstance(bootstrap, dict) or bootstrap.get('name') != APP or bootstrap.get('custom_app') is not False:
+        raise InstallError('TrueNAS did not confirm the state allocation app')
+    compose = prepare_compose(api, settings, expected, confirmed=True)
+    converted = api.convert()
+    if not isinstance(converted, dict) or converted.get('name') != APP or converted.get('custom_app') is not True:
+        raise InstallError('TrueNAS did not confirm conversion of PlexConfigControl')
+    installed = api.configure(compose)
+    if not isinstance(installed, dict) or installed.get('name') != APP or installed.get('custom_app') is not True:
+        raise InstallError('TrueNAS did not confirm the final PlexConfigControl configuration')
+    if installed.get('state') == 'STOPPED':
+        api.start()
+    _ready(deployment)
+    return {'app': APP, 'host_ip': deployment.host_ip, 'port': deployment.host_port}
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Verify the PlexConfigControl installation form')
     parser.add_argument('configuration', type=Path)
     parser.add_argument('--panel-image', required=True)
     parser.add_argument('--worker-image', required=True)
     parser.add_argument('--sqlite-version', required=True)
-    parser.add_argument('--prepare-compose', action='store_true',
-                        help='Prepare the confirmed paths after Apps provisions the iXVolume')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--prepare-compose', action='store_true',
+                      help='Prepare the confirmed paths after Apps provisions the iXVolume')
+    mode.add_argument('--install', action='store_true',
+                      help='Install the reviewed configuration as one application in TrueNAS Apps')
+    mode.add_argument('--prepare-catalog', type=Path, metavar='OUTPUT',
+                      help='Prepare a native Apps version directory for the reviewed settings')
+    parser.add_argument('--catalog-template', type=Path)
+    parser.add_argument('--catalog-version', default='0.1.0')
     args = parser.parse_args(argv)
     try:
         with args.configuration.open(encoding='utf-8') as stream:
@@ -182,13 +292,22 @@ def main(argv=None):
                   'logs': deployment.archives + '/Logs', 'archive_prefix': storage.naming.archive_prefix,
                   'plex_dataset': deployment.plex_dataset,
                   'host_ip': deployment.host_ip, 'host_port': deployment.host_port}
-        if args.prepare_compose:
+        if args.prepare_compose or args.prepare_catalog or args.install:
+            if args.prepare_catalog and args.catalog_template is None:
+                raise InstallError('The catalog template directory is required')
             print(json.dumps(review, indent=2), file=sys.stderr)
             print(f'Type {APP} to prepare these paths: ', file=sys.stderr, end='', flush=True)
             if input() != APP:
                 return 1
-            compose = prepare_compose(api, settings, prepared, confirmed=True)
-            print(json.dumps(compose, indent=2))
+            if args.install:
+                print(json.dumps(install_app(api, settings, prepared, confirmed=True)))
+            elif args.prepare_catalog:
+                output = prepare_catalog(api, settings, prepared, values, args.catalog_template,
+                                         args.catalog_version, args.prepare_catalog, confirmed=True)
+                print(json.dumps({'catalog_version_directory': str(output)}))
+            else:
+                compose = prepare_compose(api, settings, prepared, confirmed=True)
+                print(json.dumps(compose, indent=2))
         else:
             print(json.dumps(review, indent=2))
         return 0

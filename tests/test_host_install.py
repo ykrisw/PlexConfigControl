@@ -102,3 +102,41 @@ class HostInstallTests(unittest.TestCase):
                 with self.assertRaisesRegex(InstallError, 'already in use'):
                     prepare_compose(Mock(), {}, expected, confirmed=True)
                 create.assert_called_once()
+
+    def test_installer_keeps_the_managed_volume_and_waits_for_operational_health(self):
+        from plexconfigcontrol.host_install import install_app
+        api = Mock()
+        deployment = Mock(host_ip='192.168.1.120', host_port=8787)
+        reviewed = (deployment, Mock(), ('ArchivePool/Family', '/mnt/ArchivePool/Family'))
+        api.allocate_state.return_value = {'name': APP, 'custom_app': False}
+        api.convert.return_value = {'name': APP, 'custom_app': True}
+        api.configure.return_value = {'name': APP, 'custom_app': True, 'state': 'STOPPED'}
+        compose = {'services': {'panel': {}, 'worker': {}}}
+        with patch('plexconfigcontrol.host_install._prepare', return_value=reviewed), \
+             patch('plexconfigcontrol.host_install.os.geteuid', return_value=0), \
+             patch('plexconfigcontrol.host_install.prepare_compose', return_value=compose) as prepare, \
+             patch('plexconfigcontrol.host_install._ready') as ready:
+            with self.assertRaises(InstallError):
+                install_app(api, {}, reviewed)
+            api.allocate_state.assert_not_called()
+            self.assertEqual(install_app(api, {}, reviewed, confirmed=True),
+                             {'app': APP, 'host_ip': '192.168.1.120', 'port': 8787})
+            prepare.assert_called_once_with(api, {}, reviewed, confirmed=True)
+            ready.assert_called_once_with(deployment)
+        self.assertEqual([call[0] for call in api.method_calls],
+                         ['allocate_state', 'convert', 'configure', 'start'])
+
+    def test_built_in_allocation_targets_only_the_application_state(self):
+        runner = Mock(return_value=SimpleNamespace(stdout='{}'))
+        api = LocalMiddleware(runner)
+        api.allocate_state(Mock(panel_image='plexconfigcontrol:local'))
+        args = runner.call_args.args[0]
+        self.assertEqual(args[:4], ['midclt', 'call', '-job', 'app.create'])
+        definition = json.loads(args[4])
+        self.assertEqual(definition['app_name'], APP)
+        self.assertEqual(definition['catalog_app'], 'ix-app')
+        self.assertNotIn('ports', definition['values'])
+        self.assertEqual(definition['values']['storage'], [{
+            'type': 'ix_volume', 'read_only': False, 'mount_path': '/var/lib/plexconfigcontrol',
+            'ix_volume_config': {'dataset_name': 'state', 'acl_enable': False},
+        }])
