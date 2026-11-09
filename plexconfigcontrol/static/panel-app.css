@@ -147,7 +147,3 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
   color: var(--pcc-stopped-red) !important;
   -webkit-text-fill-color: var(--pcc-stopped-red) !important;
 }
-.pcc-refresh-icon {
-  display: inline-block;
-  transform: scale(0.8);
-}

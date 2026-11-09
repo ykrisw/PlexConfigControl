@@ -15,7 +15,7 @@ export function mountRestoreView(root, client, {language='en'}={}) {
       <span data-plex-state="UNKNOWN">${tx('UNKNOWN','NIEZNANY')}</span></section>
     <section class="pcc-card pcc-action-card">
       <div class="pcc-heading"><h2>${tx('Archive Validation','Weryfikacja archiwum')}</h2>
-        <button type="button" data-restore-action="refresh"><span class="pcc-refresh-icon" aria-hidden="true">⟳</span> <span>${tx('Refresh','Odśwież')}</span></button></div>
+        <button type="button" data-restore-action="refresh">${tx('Refresh','Odśwież')}</button></div>
       <p>${tx('Select an archive and start validation.','Wybierz archiwum i rozpocznij weryfikację.')}</p>
       <button type="button" class="pcc-primary" data-restore-action="validate" disabled>${tx('Validate Archive','Zweryfikuj archiwum')}</button>
       <div data-operation-result class="pcc-notice" role="status" aria-live="polite" hidden></div>

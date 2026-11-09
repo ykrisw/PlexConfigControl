@@ -8,7 +8,7 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
   root.classList.add('pcc-backup');
   root.innerHTML=`
     <section class="pcc-plex"><strong data-server></strong><span data-plex-state="UNKNOWN">UNKNOWN</span></section>
-    <section class="pcc-card pcc-backup-action pcc-action-card"><div class="pcc-heading"><h2 data-create-heading></h2><button type="button" data-refresh><span class="pcc-refresh-icon" aria-hidden="true">⟳</span> <span data-refresh-label></span></button></div>
+    <section class="pcc-card pcc-backup-action pcc-action-card"><div class="pcc-heading"><h2 data-create-heading></h2><button type="button" data-refresh></button></div>
       <p data-description></p><button type="button" class="pcc-primary" data-create disabled></button>
       <p data-execution-note></p><p data-plan></p>
       <div data-submission class="pcc-notice" role="status" aria-live="polite" hidden><p data-submission-text></p>
@@ -24,7 +24,7 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
   const find=selector=>root.querySelector(selector),list=find('[data-archives]'),dialog=find('dialog'),backupDialog=find('[data-backup-dialog]');
   const labels={
     '[data-server]':tx('Plex Server','Serwer Plex'),'[data-create-heading]':tx('Create a new backup','Utwórz nową kopię zapasową'),
-    '[data-refresh-label]':tx('Refresh','Odśwież'),'[data-description]':tx('Create and verify a new copy of your Plex configuration.','Utwórz i zweryfikuj nową kopię konfiguracji Plex.'),
+    '[data-refresh]':tx('Refresh','Odśwież'),'[data-description]':tx('Create and verify a new copy of your Plex configuration.','Utwórz i zweryfikuj nową kopię konfiguracji Plex.'),
     '[data-create]':tx('Create Backup','Utwórz kopię zapasową'),'[data-existing]':tx('Existing Backups','Istniejące kopie zapasowe'),
     '[data-delete]':tx('Delete Selected Archives','Usuń zaznaczone archiwa'),'[data-important]':tx('Important','Ważne'),
     '[data-important-text]':tx('Existing backups will not be deleted automatically. Each completed backup is verified before it becomes available.','Istniejące kopie nie są usuwane automatycznie. Każda nowa kopia jest weryfikowana, zanim stanie się dostępna.'),
