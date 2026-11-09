@@ -138,7 +138,7 @@ class HostInstallTests(unittest.TestCase):
         api = LocalMiddleware(runner)
         api.allocate_state(Mock(panel_image='plexconfigcontrol:local'))
         args = runner.call_args.args[0]
-        self.assertEqual(args[:4], ['midclt', 'call', '-job', 'app.create'])
+        self.assertEqual(args[:4], ['midclt', 'call', '--job', 'app.create'])
         definition = json.loads(args[4])
         self.assertEqual(definition['app_name'], APP)
         self.assertEqual(definition['catalog_app'], 'ix-app')

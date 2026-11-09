@@ -43,7 +43,7 @@ class LocalMiddleware:
         return self._call(method, params)
 
     def _call(self, method, params, *, job=False):
-        command = ['midclt', 'call', *(['-job'] if job else []), method,
+        command = ['midclt', 'call', *(['--job'] if job else []), method,
                    *(json.dumps(value) for value in params)]
         try:
             result = self.runner(command, check=True, capture_output=True, text=True,
