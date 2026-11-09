@@ -25,7 +25,7 @@ export function mountHistoryView(root, client, {language = 'en', timezone = 'Eur
     </dialog>`;
   const find = value => root.querySelector(value);
   for (const [selector,text] of Object.entries({
-    '[data-total-label]':tx('Total Operations','Wszystkie operacje'),
+    '[data-total-label]':tx('Total','Wszystkie'),
     '[data-success-label]':tx('Successful','Udane'), '[data-failed-label]':tx('Failed','Nieudane'),
     '[data-heading]':tx('Operations & Events','Operacje i zdarzenia'),
     '[data-download]':tx('Download Logs','Pobierz logi'), '[data-clear]':tx('Clear Selected','Usuń zaznaczone'),

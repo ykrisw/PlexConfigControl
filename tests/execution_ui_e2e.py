@@ -237,9 +237,18 @@ def restore_case(browser, output, language, theme, width):
         result=page.locator('[data-operation-result]')
         expect(result).to_contain_text('zakończyło się sukcesem' if language=='pl' else 'completed successfully')
         expect(result).to_have_css('border-top-color',border)
+        plex_status=result.locator('[data-restore-plex]')
+        expect(plex_status).to_contain_text('Plex jest zatrzymany.' if language=='pl' else 'Plex is stopped.')
+        fixture.plex='RUNNING'
+        page.locator('[data-restore-action=refresh]').click()
+        expect(page.locator('[data-plex-state]')).to_have_attribute('data-plex-state','RUNNING')
+        expect(plex_status).to_have_text('Plex działa.' if language=='pl' else 'Plex is running.')
         page.locator('[data-return-to-archives]').click()
         expect(page.locator('[data-archive-list]')).to_be_visible()
-        assert fixture.plex=='STOPPED' and fixture.executions==1 and not errors, errors
+        fixture.plex='UNKNOWN'
+        expect(page.locator('[data-plex-state]')).to_have_attribute('data-plex-state','UNKNOWN')
+        expect(page.locator('[data-archive-list]')).to_be_visible()
+        assert fixture.executions==1 and not errors, errors
     except BaseException:
         try: page.screenshot(path=str(output/f'failure-{fixture.panel}-{language}-{theme}-{width}.png'),full_page=True)
         except Exception: pass

@@ -23,7 +23,7 @@ export function mountRestoreView(root, client, {language='en'}={}) {
     <section class="pcc-card pcc-operation-workspace" hidden>
       <h2>${tx('Restore status','Stan przywracania')}</h2>
       <section data-recovery hidden></section>
-      <div data-operation-result class="pcc-notice" role="status" aria-live="polite" hidden></div>
+      <div data-operation-result class="pcc-notice" role="status" aria-live="polite" hidden><span data-restore-summary></span><span data-restore-plex hidden></span></div>
       <div data-validation-progress hidden role="status" aria-live="polite"></div>
       <div class="pcc-stage-progress" hidden>
         <progress max="100" aria-label="${tx('Current restore stage progress','Postęp bieżącego etapu przywracania')}"></progress>
@@ -53,6 +53,8 @@ export function mountRestoreView(root, client, {language='en'}={}) {
   const validate = find('[data-restore-action="validate"]');
   const cancel = find('[data-restore-action="cancel"]');
   const status = find('[data-plex-state]');
+  const result = find('[data-operation-result]'), summary = find('[data-restore-summary]');
+  const resultPlex = find('[data-restore-plex]');
   const recovery=mountRecoveryView(find('[data-recovery]'),client,{language});
   const lifecycle = new AbortController();
   const showWorkspace=mountOperationWorkspace(root,find('.pcc-archive-card'),lifecycle.signal);
@@ -61,11 +63,26 @@ export function mountRestoreView(root, client, {language='en'}={}) {
   let confirmed=null,disposeControls;
   find('[data-submission-check]').textContent=tx('Check Status','Sprawdź stan');
   find('[data-submission-retry]').textContent=tx('Retry Same Request','Ponów to samo żądanie');
-  let selected = null, loading = false, archiveAvailable=false, statusTimer, currentState;
+  let selected = null, loading = false, archiveAvailable=false, statusTimer, statusLoading=false, currentState;
+
+  function renderResultPlex(){
+    if(resultPlex.hidden)return;
+    const labels={
+      RUNNING:tx('Plex is running.','Plex działa.'),
+      STOPPED:tx('Plex is stopped. Start it manually in TrueNAS Apps.','Plex jest zatrzymany. Uruchom go ręcznie w TrueNAS Apps.'),
+      UNKNOWN:tx('Plex status is unknown.','Stan Plexa jest nieznany.'),
+    };
+    const message=' '+(labels[status.dataset.plexState]||labels.UNKNOWN);
+    if(resultPlex.textContent!==message)resultPlex.textContent=message;
+  }
 
   const render = state => {
     currentState = state;recovery.observe(state.snapshot?.operation);
-    const result=find('[data-operation-result]');result.textContent=state.submission?.blocked?'':restoreResult(state.snapshot?.operation,language);result.hidden=!result.textContent;
+    const resultText=state.submission?.blocked?'':restoreResult(state.snapshot?.operation,language);
+    if(summary.textContent!==resultText)summary.textContent=resultText;
+    result.hidden=!resultText;
+    resultPlex.hidden=!resultText||state.snapshot?.operation?.operation?.phase!=='SUCCESS';
+    renderResultPlex();
     selected = state.selected;
     const view=restorePresentation(state,language);
     validate.disabled = view.validateDisabled||loading||!archiveAvailable;
@@ -78,7 +95,7 @@ export function mountRestoreView(root, client, {language='en'}={}) {
       !confirmed||confirmed.archive!==candidate.archive||confirmed.sha256!==candidate.sha256;
     find('[data-restore-dialog-cancel]').disabled=state.submission?.busy===true;
     find('[data-submission-text]').textContent=submissionText(state.submission,language);
-    find('[data-submission]').hidden=!find('[data-submission-text]').textContent||Boolean(result.textContent)||(state.submission?.phase==='RUNNING'&&Boolean(view.notice));
+    find('[data-submission]').hidden=!find('[data-submission-text]').textContent||Boolean(resultText)||(state.submission?.phase==='RUNNING'&&Boolean(view.notice));
     find('[data-submission-check]').hidden=!state.submission?.canCheck;
     find('[data-submission-retry]').hidden=!state.submission?.canRetry;
     for (const input of list.querySelectorAll('input')) {
@@ -92,7 +109,7 @@ export function mountRestoreView(root, client, {language='en'}={}) {
     const operation=snapshot?.operation;
     const active=state.busy||state.submission?.blocked===true||view.waiting||activeExecution(snapshot,'RESTORE')||
       (operation?.kind==='RESTORE'&&view.active)||!find('[data-recovery]').hidden;
-    const locked=showWorkspace({active,snapshot,result:result.textContent||view.notice||find('[data-submission-text]').textContent});
+    const locked=showWorkspace({active,snapshot,result:resultText||view.notice||find('[data-submission-text]').textContent});
     progress.textContent=view.progressText||
       (locked&&!view.notice&&find('[data-recovery]').hidden&&find('[data-submission]').hidden
         ? tx('Waiting for restore status…','Oczekiwanie na stan przywracania…'):'');
@@ -148,17 +165,23 @@ export function mountRestoreView(root, client, {language='en'}={}) {
     } finally { loading = false;if(!lifecycle.signal.aborted&&currentState)render(currentState); }
   };
   const updatePlex = async () => {
+    if(statusLoading)return;
+    clearTimeout(statusTimer);statusLoading=true;
     let value = 'UNKNOWN';
     try {
       const result = await client.status(lifecycle.signal);
       if (result?.available!==false&&['RUNNING', 'STOPPED'].includes(result?.state)) value = result.state;
     } catch { /* A failed read must remove any old green/red status. */ }
+    statusLoading=false;
     if (lifecycle.signal.aborted) return;
     status.dataset.plexState = value; status.textContent = pl?({RUNNING:'DZIAŁA',STOPPED:'ZATRZYMANY',UNKNOWN:'NIEZNANY'})[value]:value;
+    renderResultPlex();
     statusTimer = setTimeout(updatePlex, 2000);
   };
   const refreshArchives = event => {
-    if (event.target.closest('[data-restore-action="refresh"]')) void loadArchives();
+    if (event.target.closest('[data-restore-action="refresh"]')) {
+      void loadArchives();void updatePlex();
+    }
   };
   root.addEventListener('click', refreshArchives, {signal: lifecycle.signal});
   void loadArchives(); void updatePlex();

@@ -277,7 +277,8 @@ def main():
             assert diagnostic_requests==[], 'Opening Details must not start host probes'
             settings.locator('[data-integration-check]').click()
             expect(settings.locator('[data-integration-checks]')).to_contain_text('Archive list read verified; count: 13')
-            expect(settings.locator('[data-integration-limit]')).to_contain_text('do not enable')
+            expect(settings.locator('[data-integration-limit]')).to_have_count(0)
+            expect(settings.locator('[data-details]')).not_to_contain_text('Test build')
             assert diagnostic_requests==['GET']
             page.set_viewport_size({'width':360,'height':900})
             assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth')
@@ -286,7 +287,7 @@ def main():
             settings.locator('[data-details-label]').click()
             settings.locator('[data-theme-choice=Dark]').click()
             expect(page.locator('#pcc-app')).to_have_attribute('data-theme','dark')
-            expect(settings.locator('[data-settings-notice]')).to_have_css('border-top-color','rgb(229, 179, 33)')
+            expect(settings.locator('[data-settings-notice]')).to_be_hidden()
             settings.locator('[data-language]').select_option('pl')
             expect(page.get_by_role('tab',name='Ustawienia',exact=True)).to_be_visible()
             expect(settings.locator('[data-about]')).to_have_text('O aplikacji')
@@ -304,7 +305,7 @@ def main():
             page.get_by_role('tab',name='Ustawienia',exact=True).click()
             settings.locator('[data-theme-choice=Light]').click()
             expect(page.locator('#pcc-app')).to_have_attribute('data-theme','light')
-            expect(settings.locator('[data-settings-notice]')).to_have_css('border-top-color','rgb(255, 103, 21)')
+            expect(settings.locator('[data-settings-notice]')).to_be_hidden()
             for theme in ('Light','Dark'):
                 page.get_by_role('tab',name='Ustawienia',exact=True).click()
                 settings.locator(f'[data-theme-choice={theme}]').click()
@@ -316,6 +317,11 @@ def main():
                     expect(page.locator('.pcc-logo')).to_have_css('color','rgb(255, 191, 0)')
                     expect(page.locator('.pcc-nav [aria-selected=true]')).to_have_css(
                         'color','rgb(255, 103, 21)' if theme=='Light' else 'rgb(255, 191, 0)')
+                    if title == 'Historia':
+                        expect(visible.locator('[data-total-label]')).to_have_text('Wszystkie')
+                        for card in visible.locator('.pcc-history-stats > .pcc-card').all():
+                            expect(card).to_have_css('align-items','center')
+                            expect(card).to_have_css('justify-content','center')
                     page.mouse.move(10,10)
                     assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),f'{title} overflows horizontally'
                     heights.append(visible.bounding_box()['height'])

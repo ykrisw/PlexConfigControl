@@ -3,7 +3,7 @@ import {createIntegrationController} from './integration-controller.mjs';
 export function mountIntegrationView(root,client,{language='en'}={}){
   let currentLanguage=language,last={loading:false,data:null,error:false};
   root.classList.add('pcc-integration');
-  root.innerHTML='<h3 data-integration-title></h3><p data-integration-description></p><button type="button" data-integration-check></button><dl data-integration-checks></dl><p data-integration-checked></p><p class="pcc-notice" data-integration-error role="status" aria-live="polite" hidden></p><p data-integration-limit></p>';
+  root.innerHTML='<h3 data-integration-title></h3><p data-integration-description></p><button type="button" data-integration-check></button><dl data-integration-checks></dl><p data-integration-checked></p><p class="pcc-notice" data-integration-error role="status" aria-live="polite" hidden></p>';
   const find=selector=>root.querySelector(selector),document=root.ownerDocument;
   function render(state){
     last=state;const pl=currentLanguage==='pl',tx=(en,polish)=>pl?polish:en;
@@ -43,7 +43,6 @@ export function mountIntegrationView(root,client,{language='en'}={}){
     find('[data-integration-checked]').textContent=data?tx('Checked (UTC): ','Sprawdzono (UTC): ')+new Date(data.checked_at).toISOString():'';
     const error=find('[data-integration-error]');error.hidden=!state.error;
     error.textContent=tx('Checks could not be confirmed. Previous confirmations were cleared. Try again.','Nie udało się potwierdzić wyników. Poprzednie potwierdzenia zostały usunięte. Spróbuj ponownie.');
-    find('[data-integration-limit]').textContent=tx('Backup and Restore execution are not connected in this test build. Successful reads do not enable them.','W tej wersji testowej wykonywanie Backup i Restore nie jest podłączone. Udane odczyty nie odblokowują tych funkcji.');
   }
   const controller=createIntegrationController(client,render),events=new AbortController();
   find('[data-integration-check]').addEventListener('click',()=>void controller.check(),{signal:events.signal});

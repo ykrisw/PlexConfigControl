@@ -9,7 +9,7 @@ export function mountSettingsView(root,client,{preferences,onChanged}={}) {
     <section class="pcc-card pcc-appearance"><h2 class="pcc-section-title" data-appearance></h2>
       <div class="pcc-theme-row"><strong data-theme-label></strong><div class="pcc-theme-buttons" role="group" aria-label="Theme">
         <button type="button" data-theme-choice="Light"></button><button type="button" data-theme-choice="Dark"></button><button type="button" data-theme-choice="System"></button>
-      </div></div><p data-settings-notice class="pcc-notice" role="status" aria-live="polite" hidden></p></section>
+      </div></div><p data-settings-notice role="alert" hidden></p></section>
     <section class="pcc-card pcc-about"><h2 class="pcc-section-title" data-about></h2><div class="pcc-about-info">
       <div class="pcc-about-row"><span data-application-label></span><span>PlexConfigControl</span></div>
       <div class="pcc-about-row"><span data-version-label></span><span data-version></span></div>
@@ -28,7 +28,7 @@ export function mountSettingsView(root,client,{preferences,onChanged}={}) {
       '[data-application-label]':tx('Application','Aplikacja'),'[data-version-label]':tx('Version','Wersja'),
       '[data-version]':tx('Development preview','Wersja rozwojowa'),'[data-created-label]':tx('Created by','Autor'),
       '[data-details-label]':tx('Details','Szczegóły'),
-      '[data-details]':tx('PlexConfigControl is designed for installation as a TrueNAS SCALE App, with application settings stored in an iXVolume. Installers for other platforms may be developed in future versions. Test build: backup creation and restore execution are unavailable.','PlexConfigControl jest przeznaczony do instalacji jako aplikacja TrueNAS SCALE, z ustawieniami programu przechowywanymi w iXVolume. W przyszłości mogą powstać instalatory dla innych platform. Wersja testowa: tworzenie kopii i wykonywanie przywracania są niedostępne.'),
+      '[data-details]':tx('PlexConfigControl is designed for installation as a TrueNAS SCALE App, with application settings stored in an iXVolume.','PlexConfigControl jest przeznaczony do instalacji jako aplikacja TrueNAS SCALE. Ustawienia programu są przechowywane w iXVolume.'),
     };
     for(const [selector,label]of Object.entries(labels))find(selector).textContent=label;
     const language=find('[data-language]');language.value=state.preferences.language;language.disabled=state.busy;
@@ -39,9 +39,8 @@ export function mountSettingsView(root,client,{preferences,onChanged}={}) {
       button.setAttribute('aria-pressed',String(theme===state.preferences.theme));
     }
     const notice=find('[data-settings-notice]');
-    notice.hidden=!state.error&&!state.saved;
-    notice.textContent=state.error?tx('Settings could not be confirmed. Try again or reload the page.','Nie udało się potwierdzić ustawień. Spróbuj ponownie lub odśwież stronę.'):
-      state.saved?tx('Settings saved.','Ustawienia zapisane.'):'';
+    notice.hidden=!state.error;
+    notice.textContent=state.error?tx('Settings could not be confirmed. Try again or reload the page.','Nie udało się potwierdzić ustawień. Spróbuj ponownie lub odśwież stronę.'):'';
   },onChanged);
   root.addEventListener('click',event=>{
     const button=event.target.closest('[data-theme-choice]');

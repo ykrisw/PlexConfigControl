@@ -58,8 +58,8 @@ test('Restore success requires consistent completion and never reports current P
   const {restoreResult}=await import('../../plexconfigcontrol/static/operation-outcome.mjs');
   const base=snapshot();base.operation.kind='RESTORE';base.operation.outcome=outcome('RESTORE_COMPLETED');base.progress.operation='RESTORE';
   assert.match(restoreResult(base),/Last Restore completed successfully/);
-  assert.match(restoreResult(base,'pl'),/Plex nie został uruchomiony automatycznie/);
-  assert.doesNotMatch(restoreResult(base),/Plex is stopped/);
+  assert.match(restoreResult(base,'pl'),/Ostatnie przywracanie zakończyło się sukcesem/);
+  assert.equal(restoreResult(base),'Last Restore completed successfully. Archive: '+base.operation.outcome.archive);
   for(const mutate of [s=>s.operation.phase='RECOVERY_REQUIRED',s=>s.operation.snapshot_id='retained',
     s=>s.progress.active=true,s=>s.progress.stage='CLEANUP_REQUIRED',s=>s.progress.operation='BACKUP',
     s=>s.publication.pending=true,s=>s.operation.outcome=outcome('BACKUP_COMPLETED')]){

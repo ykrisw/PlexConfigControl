@@ -71,8 +71,8 @@ export function restoreResult(snapshot,language='en'){
   const pl=language==='pl',tx=(en,polish)=>pl?polish:en;
   if(executionMatches(snapshot,'RESTORE',true)&&operation.phase==='SUCCESS'&&outcome.code==='RESTORE_COMPLETED'&&progress?.operation==='RESTORE'&&
      progress.stage==='COMPLETED'&&progress.active===false&&Number.isFinite(progress.finished))
-    return tx('Last Restore completed successfully. Plex was not started automatically. Archive: ',
-      'Ostatnie Restore zakończyło się sukcesem. Plex nie został uruchomiony automatycznie. Archiwum: ')+outcome.archive;
+    return tx('Last Restore completed successfully. Archive: ',
+      'Ostatnie przywracanie zakończyło się sukcesem. Archiwum: ')+outcome.archive;
   if(operation.phase==='FAILED'&&outcome.code==='RESTORE_FAILED_UNCHANGED')return recoveryOutcome(operation,language);
   return '';
 }
