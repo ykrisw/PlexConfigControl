@@ -48,6 +48,9 @@ class LocalMiddleware:
         try:
             result = self.runner(command, check=True, capture_output=True, text=True,
                                  timeout=300 if job else 30)
+            version = result.stdout.strip()
+            if method == 'system.version' and version.startswith('TrueNAS-'):
+                return version
             return json.loads(result.stdout)
         except (OSError, subprocess.SubprocessError, ValueError):
             raise InstallError(f'TrueNAS did not confirm {method}') from None

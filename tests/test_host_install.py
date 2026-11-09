@@ -74,6 +74,13 @@ class HostInstallTests(unittest.TestCase):
             api.call('pool.dataset.create', {})
         runner.assert_called_once()
 
+    def test_local_middleware_accepts_the_unquoted_truenas_version(self):
+        runner = Mock(return_value=SimpleNamespace(stdout='TrueNAS-25.10.8\n'))
+        api = LocalMiddleware(runner)
+        self.assertEqual(api.call('system.version'), 'TrueNAS-25.10.8')
+        with self.assertRaises(InstallError):
+            api.call('docker.config')
+
     def test_confirmed_preparation_creates_custom_folder_and_never_reuses_the_volume(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
