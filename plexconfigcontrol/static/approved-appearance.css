@@ -42,15 +42,17 @@
 
 .pcc-shell .pcc-scroll-list::-webkit-scrollbar-corner,.pcc-restore [data-archive-list]::-webkit-scrollbar-corner{background:var(--pcc-bg)}
 
-/* Round both ends of the measured native gutter without masking list rows. */
+/* Inset the rounded mask to hide the browser's native track bevel. */
 .pcc-shell .pcc-scroll-list,
 .pcc-restore [data-archive-list] {
   --pcc-gutter: 0px;
+  --pcc-track-inset: min(2px, calc(var(--pcc-gutter) / 2));
+  --pcc-track-width: calc(var(--pcc-gutter) - 2 * var(--pcc-track-inset));
   mask:
-    linear-gradient(black, black) left / calc(100% - var(--pcc-gutter)) 100% no-repeat,
-    linear-gradient(black, black) right center / var(--pcc-gutter) max(0px, calc(100% - var(--pcc-gutter))) no-repeat,
-    radial-gradient(circle closest-side, black 98%, transparent) right top / var(--pcc-gutter) var(--pcc-gutter) no-repeat,
-    radial-gradient(circle closest-side, black 98%, transparent) right bottom / var(--pcc-gutter) var(--pcc-gutter) no-repeat;
+    linear-gradient(black, black) left / calc(100% - var(--pcc-gutter) - var(--pcc-track-inset)) 100% no-repeat,
+    linear-gradient(black, black) right var(--pcc-track-inset) center / var(--pcc-track-width) max(0px, calc(100% - var(--pcc-gutter))) no-repeat,
+    radial-gradient(circle closest-side, black 98%, transparent) right var(--pcc-track-inset) top var(--pcc-track-inset) / var(--pcc-track-width) var(--pcc-track-width) no-repeat,
+    radial-gradient(circle closest-side, black 98%, transparent) right var(--pcc-track-inset) bottom var(--pcc-track-inset) / var(--pcc-track-width) var(--pcc-track-width) no-repeat;
 }
 
 .pcc-shell .pcc-account-actions [data-logout] {
