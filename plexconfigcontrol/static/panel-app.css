@@ -135,11 +135,17 @@ html{color-scheme:light dark;background:light-dark(#f1f3f8,#151d28)}body{margin:
 
 .pcc-shell {
   --pcc-running-green: #15b716;
+  --pcc-stopped-red: #f70607;
 }
 .pcc-shell .pcc-page > .pcc-plex [data-plex-state=RUNNING]::before,
 .pcc-shell .pcc-event-status[data-status=SUCCESS] {
   color: var(--pcc-running-green) !important;
   -webkit-text-fill-color: var(--pcc-running-green) !important;
+}
+.pcc-shell .pcc-page > .pcc-plex [data-plex-state=STOPPED]::before,
+.pcc-shell .pcc-event-status[data-status=FAILED] {
+  color: var(--pcc-stopped-red) !important;
+  -webkit-text-fill-color: var(--pcc-stopped-red) !important;
 }
 .pcc-refresh-icon {
   display: inline-block;
