@@ -182,8 +182,8 @@ class ExecutionWorker:
         try:
             coordinator = self._coordinator(request,borrowed)
             if isinstance(request,BackupRequest):
-                if request.mode == 'OVERWRITE': result = coordinator.run_overwrite(request.archive)
-                else: result = coordinator.run_new(create_another=request.archive)
+                if request.mode == 'OVERWRITE': result = coordinator.run_overwrite(request.archive,prefix=request.prefix)
+                else: result = coordinator.run_new(create_another=request.archive,prefix=request.prefix)
             else:
                 # Payload-bound digest/name were checked while this same lock
                 # was reserved; validation/cancel routes cannot replace them.

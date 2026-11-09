@@ -84,6 +84,7 @@ class Web:
                 '/assets/recovery-view.mjs':'recovery-view.mjs',
                 '/assets/recovery-controller.mjs':'recovery-controller.mjs',
                 '/assets/operation-outcome.mjs':'operation-outcome.mjs',
+                '/assets/operation-workspace.mjs':'operation-workspace.mjs',
                 '/assets/backup-controller.mjs':'backup-controller.mjs',
                 '/assets/submission-controller.mjs':'submission-controller.mjs',
                 '/assets/backup-view.mjs':'backup-view.mjs',

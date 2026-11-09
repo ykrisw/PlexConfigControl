@@ -132,7 +132,7 @@ def check_dialog(page, dialog, theme):
         sample.style.background='var(--pcc-bg)';element.append(sample);
         const expected=getComputedStyle(sample).backgroundColor;sample.remove();
         return getComputedStyle(element).backgroundColor===expected;}''')
-    if theme=='light': expect(dialog.locator('h3')).to_have_css('color','rgb(0, 0, 0)')
+    if theme=='light': expect(dialog.locator('h3')).to_have_css('color','rgb(32, 36, 45)')
     box=dialog.bounding_box();assert box and box['x']>=0 and box['x']+box['width']<=page.viewport_size['width']+1
     assert dialog.evaluate('(element)=>element.scrollWidth<=element.clientWidth+1')
 
@@ -145,7 +145,8 @@ def backup_case(browser, output, language, theme, width, *, check_only=False):
     page.route('**/*',fixture.route)
     try:
         page.goto(ORIGIN)
-        create=page.locator('[data-create]');expect(create).to_be_enabled();create.click()
+        create=page.locator('[data-create]');expect(create).to_be_enabled()
+        page.locator('[data-backup-prefix]').fill('Plex_Living-Room');create.click()
         dialog=page.locator('[data-backup-dialog]');check_dialog(page,dialog,theme)
         expect(dialog.locator('[data-backup-archive]')).to_have_text(NAME)
         expect(dialog.locator('[data-backup-another]')).to_have_text('Utwórz kolejną kopię' if language=='pl' else 'Create Another Copy')
@@ -153,6 +154,8 @@ def backup_case(browser, output, language, theme, width, *, check_only=False):
         dialog.locator('[data-backup-overwrite]').click()
         expect(dialog).to_be_hidden();expect(page.locator('[data-submission-retry]')).to_be_visible()
         assert len(fixture.posts)==1 and fixture.executions==1
+        assert fixture.posts[0]['prefix']=='Plex_Living-Room'
+        expect(page.locator('[data-archives]')).to_be_hidden()
         if check_only:
             page.locator('[data-submission-check]').click()
             expect(page.locator('[data-submission-retry]')).to_be_hidden()
@@ -165,6 +168,8 @@ def backup_case(browser, output, language, theme, width, *, check_only=False):
             assert fixture.executions==1
         fixture.complete()
         expect(page.locator('[data-operation-result]')).to_contain_text('zakończył się sukcesem' if language=='pl' else 'completed successfully')
+        page.locator('[data-return-to-archives]').click()
+        expect(page.locator('[data-archives]')).to_be_visible()
         assert not errors, errors
     except BaseException:
         try: page.screenshot(path=str(output/f'failure-{fixture.panel}-{language}-{theme}-{width}.png'),full_page=True)
@@ -197,9 +202,12 @@ def restore_case(browser, output, language, theme, width):
         assert len(fixture.posts)==1 and fixture.posts[0]['sha256']=='c'*64
         assert fixture.posts[0]['confirmation']=='RESTORE'
         expect(page.locator('[data-restore-action=validate]')).to_be_disabled()
+        expect(page.locator('[data-archive-list]')).to_be_hidden()
         expect(page.locator('input[type=radio]').first).to_be_disabled()
         fixture.complete()
         expect(page.locator('[data-operation-result]')).to_contain_text('zakończyło się sukcesem' if language=='pl' else 'completed successfully')
+        page.locator('[data-return-to-archives]').click()
+        expect(page.locator('[data-archive-list]')).to_be_visible()
         assert fixture.plex=='STOPPED' and fixture.executions==1 and not errors, errors
     except BaseException:
         try: page.screenshot(path=str(output/f'failure-{fixture.panel}-{language}-{theme}-{width}.png'),full_page=True)

@@ -1,5 +1,7 @@
 import copy
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 from plexconfigcontrol.plex_storage import discover_plex_storage, StorageDiscoveryError
@@ -97,6 +99,19 @@ class PlexStorageTests(unittest.TestCase):
             with self.assertRaisesRegex(StorageDiscoveryError,'PLEX_STORAGE_CHANGED'):create_storage(api,plan)
             create.assert_not_called()
             fs['source']='tank/plex-config';create_storage(api,plan);create.assert_called_once()
+
+    def test_dedicated_plex_and_backup_storage_can_use_separate_custom_pools(self):
+        api, _, _, fs = self.fixture('host_path', '/mnt/MediaPool/Services/PlexData')
+        fs['source'] = 'MediaPool/Services/PlexData'
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary) / 'ArchivePool' / 'Home Backups'
+            parent.mkdir(parents=True)
+            plan = plan_storage(api, parent, folder_name='Plex Config')
+            self.assertEqual(plan.plex.dataset, 'MediaPool/Services/PlexData')
+            self.assertEqual(plan.parent, str(parent))
+            destination = create_storage(api, plan)
+            self.assertEqual(destination.root, parent / 'Plex Config')
+            self.assertTrue(destination.logs.is_dir())
 
     def test_raw_api_errors_do_not_disclose_credentials(self):
         api=Mock();api.call.side_effect=RuntimeError('SECRET from API')

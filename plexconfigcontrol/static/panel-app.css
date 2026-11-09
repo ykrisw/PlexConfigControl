@@ -152,3 +152,24 @@ html{color-scheme:light dark;background:light-dark(#b5b9be,#151d28)}body{margin:
   color: var(--pcc-stopped-red) !important;
   -webkit-text-fill-color: var(--pcc-stopped-red) !important;
 }
+
+.pcc-shell .pcc-page > .pcc-operation-workspace {
+  flex: 1;
+  border: 3px solid var(--pcc-selection-accent);
+  overflow-wrap: anywhere;
+}
+.pcc-shell .pcc-operation-workspace h2 {margin: 0 0 14px}
+.pcc-shell .pcc-operation-workspace button {margin-top: 8px}
+.pcc-shell .pcc-backup-name {
+  display: grid;
+  gap: 6px;
+}
+.pcc-shell .pcc-backup-name input {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--pcc-bg);
+  color: var(--pcc-ink);
+  border: 1px solid var(--pcc-line);
+  border-radius: 8px;
+}
+.pcc-shell [data-prefix-help] {margin: 6px 0 14px}

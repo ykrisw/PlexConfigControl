@@ -76,7 +76,8 @@ class ExecutionTests(unittest.TestCase):
         invalid=[{**base,'command':'zfs destroy something'}, {**base,'dataset':'other'},
                  {**base,'path':'/config'}, {**base,'confirmed':1},
                  {**base,'request_id':'../escape'}, {**base,'mode':'SHELL'},
-                 {**base,'archive':None}]
+                 {**base,'archive':None}, {**base,'prefix':'../escape'},
+                 {**base,'prefix':None}, {**base,'prefix':'a'*65}]
         for data in invalid:
             with self.subTest(data=data),self.fixture() as (web, backend, api, root, token, csrf):
                 self.assertEqual(self.request(web,'/api/backup/start',data,token,csrf)[0],'400 Bad Request')

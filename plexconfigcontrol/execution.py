@@ -10,6 +10,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from .archive_store import Archive, NAME
+from .naming import archive_prefix, InvalidNaming
 from .backup_plan import plan_backup
 from .operations import OperationDenied
 from .locking import OperationBusy
@@ -56,6 +57,7 @@ class BackupRequest:
     request_id: str
     mode: str
     archive: Archive | None = None
+    prefix: str | None = None
 
 
 @dataclass(frozen=True)
@@ -145,8 +147,7 @@ class ExecutionGateway:
         return None if receipt is None else self._receipt(request, kind, receipt)
 
     def backup(self, data):
-        if not isinstance(data, dict) or set(data) not in (
-                {'request_id','mode','confirmed'}, {'request_id','mode','confirmed','archive'}):
+        if not isinstance(data, dict) or set(data) - {'archive','prefix'} != {'request_id','mode','confirmed'}:
             raise InvalidExecutionRequest('Invalid Backup request fields')
         request_id = _request_id(data)
         mode = data.get('mode')
@@ -155,7 +156,11 @@ class ExecutionGateway:
         selected = _identity(data.get('archive')) if mode != 'NEW' else None
         if mode == 'NEW' and 'archive' in data:
             raise InvalidExecutionRequest('A new-copy request cannot select an archive')
-        request = BackupRequest(request_id, mode, selected)
+        try:
+            prefix = archive_prefix(data['prefix']) if 'prefix' in data else None
+        except InvalidNaming as error:
+            raise InvalidExecutionRequest(str(error)) from None
+        request = BackupRequest(request_id, mode, selected, prefix)
         previous = self._lookup(request, 'BACKUP')
         if previous is not None:
             return previous

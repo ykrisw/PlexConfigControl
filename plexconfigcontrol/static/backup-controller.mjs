@@ -50,16 +50,17 @@ export function createBackupController(client,render,{schedule=setTimeout,cancel
       if(!canCreate())return null;
       return entries.length===1?{mode:'CHOICE',archive:{...entries[0]}}:{mode:'NEW'};
     },
-    async startBackup(mode='NEW',confirmedArchive=null){
+    async startBackup(mode='NEW',confirmedArchive=null,prefix=''){
       if(!canCreate())return false;
       if(mode==='NEW'&&entries.length===1)return false;
+      if(prefix&&!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(prefix))return false;
       if(mode!=='NEW'&&(!['ANOTHER','OVERWRITE'].includes(mode)||entries.length!==1||
           archiveIdentity(confirmedArchive||{})!==archiveIdentity(entries[0])||
           (mode==='OVERWRITE'&&capabilities.backup_overwrite!==true))){
         error='Archive selection changed. Refresh and confirm again.';emit();return false;
       }
       cancel(timer);
-      const result=await submission.submit({mode,confirmed:true,...(mode==='NEW'?{}:{archive:{...confirmedArchive}})});
+      const result=await submission.submit({mode,confirmed:true,...(prefix?{prefix}:{}),...(mode==='NEW'?{}:{archive:{...confirmedArchive}})});
       if(!disposed)void refresh();return result;
     },
     async retrySubmission(){const result=await submission.retry();if(!disposed)void refresh();return result;},

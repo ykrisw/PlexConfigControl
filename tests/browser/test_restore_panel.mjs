@@ -72,6 +72,21 @@ test('waiting restore rejects selection changes and duplicate validation; remove
 });
 
 
+test('a reloaded view resumes the server-validated archive only if it is still listed', async () => {
+  const snapshot = {
+    operation: {operation: {kind: 'RESTORE', phase: 'WAITING_FOR_PLEX_STOP',
+      validation_details: {status: 'VALID', archive: 'validated'}}},
+    readiness: {archive: 'validated'},
+  };
+  const controller = new RestoreController({restoreView: async () => snapshot}, () => {});
+  await controller.refresh();
+  assert.equal(controller.state.selected, null);
+  controller.reconcileSelection(['other', 'validated']);
+  assert.equal(controller.state.selected, 'validated');
+  controller.reconcileSelection(['other']);
+  assert.equal(controller.state.selected, null);
+});
+
 test('pending publication prevents selection validation and cancellation requests',async()=>{
   let posts=0;
   const controller=new RestoreController({validateArchive:async()=>posts++,cancelRestore:async()=>posts++},()=>{});
