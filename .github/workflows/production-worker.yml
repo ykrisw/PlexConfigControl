@@ -31,6 +31,8 @@ jobs:
       # Reported by the target NAS. Build and test locally in this job only.
       PLEX_IMAGE: plexinc/pms-docker@sha256:531ad94c469748dcaa9d6f3d6c6160ad3598617a55319d389e7d08216bc680a7
       PLEX_SQLITE_VERSION: '3.53.3'
+      # Second official image offered by the TrueNAS Plex app.
+      PLEX_PASS_IMAGE: plexinc/pms-docker@sha256:e5def02c2d81a3f93558f9ee772edaaf6d479b317961f4e67d5a2b7cd46a1629
     steps:
       - uses: actions/checkout@v4
       - name: Build the panel and worker images
@@ -70,6 +72,36 @@ jobs:
             plexconfigcontrol:worker-check \
             --check-runtime --panel-uid 568 --plex-sqlite /usr/local/bin/pcc-plex-sqlite \
             --sqlite-version "$PLEX_SQLITE_VERSION"
+      - name: Check a worker image with SQLite supplied separately
+        run: |
+          docker build --file Dockerfile.worker --target worker-base \
+            --build-arg PCC_PANEL_IMAGE=plexconfigcontrol:panel-check \
+            --tag plexconfigcontrol:worker-base-check .
+          docker run --rm --network none --read-only --cap-drop ALL --entrypoint /bin/sh \
+            plexconfigcontrol:worker-base-check -ec 'test ! -e /opt/pcc-plex'
+          trap 'docker volume rm pcc-sqlite-check >/dev/null 2>&1 || true' EXIT
+          for image in "$PLEX_IMAGE" "$PLEX_PASS_IMAGE"; do
+            docker volume create pcc-sqlite-check
+            version_output=$(docker run --rm --network none --read-only --user 0:0 --cap-drop ALL \
+              --security-opt no-new-privileges:true \
+              --mount source=pcc-sqlite-check,target=/runtime \
+              --entrypoint /bin/sh "$image" -ec '
+                cp "/usr/lib/plexmediaserver/Plex SQLite" /runtime/
+                cp -R /usr/lib/plexmediaserver/lib /runtime/lib
+                chmod -R a+rX /runtime
+                exec "/usr/lib/plexmediaserver/Plex SQLite" -version
+              ')
+            sqlite_version=${version_output%% *}
+            docker run --rm --network none --read-only --tmpfs /tmp \
+              --security-opt no-new-privileges:true --cap-drop ALL \
+              --cap-add SETUID --cap-add SETGID --cap-add SETPCAP \
+              --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER --cap-add FSETID \
+              --mount source=pcc-sqlite-check,target=/opt/pcc-plex,readonly \
+              plexconfigcontrol:worker-base-check \
+              --check-runtime --panel-uid 568 --plex-sqlite /usr/local/bin/pcc-plex-sqlite \
+              --sqlite-version "$sqlite_version"
+            docker volume rm pcc-sqlite-check
+          done
       - name: Check initialization of the managed state directory
         run: |
           docker volume create pcc-state-check
