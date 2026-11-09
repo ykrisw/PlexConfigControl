@@ -24,7 +24,8 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
       </div>
       <section data-recovery hidden></section>
       <div data-submission class="pcc-notice" role="status" aria-live="polite" hidden><p data-submission-text></p>
-        <button type="button" data-submission-check hidden></button><button type="button" data-submission-retry hidden></button></div><p data-operation-result class="pcc-notice" role="status" aria-live="polite" hidden></p>
+        <button type="button" data-submission-check hidden></button><button type="button" data-submission-retry hidden></button>
+        <p data-submission-check-feedback hidden></p></div><p data-operation-result class="pcc-notice" role="status" aria-live="polite" hidden></p>
       <button type="button" data-return-to-archives hidden></button>
     </section>
     <section class="pcc-card pcc-archives"><div class="pcc-heading"><h2 data-existing></h2><button type="button" data-delete disabled></button></div>
@@ -53,7 +54,7 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
     '[data-backup-question]':tx('Create another dated copy or replace this archive? The existing archive is retained until the new copy is verified and its temporary snapshot removed.','Utworzyć kolejną kopię z datą czy zastąpić to archiwum? Dotychczasowe archiwum pozostanie do czasu weryfikacji nowej kopii i usunięcia jej tymczasowego snapshotu.'),
     '[data-backup-cancel]':tx('Cancel','Anuluj'),'[data-backup-another]':tx('Create Another Copy','Utwórz kolejną kopię'),
     '[data-backup-overwrite]':tx('Overwrite Existing','Nadpisz istniejącą'),
-    '[data-submission-check]':tx('Check Status','Sprawdź stan'),'[data-submission-retry]':tx('Retry Same Request','Ponów to samo żądanie'),
+    '[data-submission-retry]':tx('Retry Same Request','Ponów to samo żądanie'),
   };
   for(const [selector,text]of Object.entries(labels))find(selector).textContent=text;
   dialog.setAttribute('aria-label',tx('Confirm archive deletion','Potwierdź usunięcie archiwów'));
@@ -108,8 +109,17 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
     showProgress(locked&&!recoveryVisible,stage);
     prefix.disabled=locked||backupDialog.open;
     find('[data-plan]').hidden=locked;
-    find('[data-submission-check]').hidden=!value.submission.canCheck;
-    find('[data-submission-retry]').hidden=!value.submission.canRetry;
+    const checking=value.manualCheck==='CHECKING',checkButton=find('[data-submission-check]');
+    checkButton.hidden=!value.submission.canCheck&&!checking;
+    checkButton.disabled=checking;
+    checkButton.textContent=checking?tx('Checking…','Sprawdzanie…'):tx('Check Status','Sprawdź stan');
+    const feedback=find('[data-submission-check-feedback]');
+    feedback.textContent=({
+      UPDATED:tx('Status refreshed.','Stan odświeżony.'),
+      UNAVAILABLE:tx('Could not refresh the status. Try again.','Nie udało się odświeżyć stanu. Spróbuj ponownie.'),
+    })[value.manualCheck]||'';
+    feedback.hidden=!feedback.textContent;
+    find('[data-submission-retry]').hidden=!value.submission.canRetry||checking;
     find('[data-delete]').disabled=!value.canDelete||!value.selected.length||value.selected.length>1000||value.loading||value.busy;
     find('[data-cancel]').disabled=value.busy;
     find('[data-confirm]').disabled=!value.canDelete||value.loading||value.busy;

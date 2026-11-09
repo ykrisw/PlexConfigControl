@@ -48,6 +48,32 @@ test('changed choice, stopped Plex or missing backend capability blocks Backup b
   view.source.plex='RUNNING';view.source.enabled=false;await view.controller.refresh();assert.equal(view.controller.prepareBackup(),null);assert.equal(view.posts.length,0);view.controller.dispose();
 });
 
+test('checking an active backup refreshes progress without resubmitting',async()=>{
+  const view=backup();
+  await flush();
+  let percent=20, available=true;
+  view.client.operation=async()=>{
+    if(!available)throw Error('offline');
+    return {operation:{phase:'RUNNING',kind:'BACKUP'},execution:{request_id:id,kind:'BACKUP',state:'RUNNING'},
+      progress:{operation:'BACKUP',active:true,stage_percent:percent},publication:{status:'NONE'}};
+  };
+  await view.controller.startBackup();
+  await flush();
+  assert.equal(view.states.at(-1).operation.progress.stage_percent,20);
+  percent=40;
+  const pending=view.controller.checkSubmission();
+  assert.equal(view.states.at(-1).manualCheck,'CHECKING');
+  assert.equal(await pending,true);
+  assert.equal(view.states.at(-1).manualCheck,'UPDATED');
+  assert.equal(view.states.at(-1).operation.progress.stage_percent,40);
+  available=false;
+  assert.equal(await view.controller.checkSubmission(),false);
+  assert.equal(view.states.at(-1).manualCheck,'UNAVAILABLE');
+  assert.equal(view.states.at(-1).submission.phase,'RUNNING');
+  assert.equal(view.posts.length,1);
+  view.controller.dispose();
+});
+
 function restore(){
   const snapshot={operation:{operation:{kind:'RESTORE',phase:'WAITING_FOR_PLEX_STOP',snapshot_id:null,outcome:null,
       archive_identity:'b'.repeat(64),validation_details:{status:'VALID',archive:name,sha256:'b'.repeat(64)}},publication:{pending:false}},

@@ -170,6 +170,8 @@ def backup_case(browser, output, language, theme, width, *, check_only=False):
             assert fixture.posts[0]['archive']['inode']=='9223372036854775931'
             assert fixture.executions==1
         fixture.progress.update(stage='VERIFYING_ARCHIVE',stage_percent=37.5)
+        page.locator('[data-submission-check]').click()
+        expect(page.locator('[data-submission-check-feedback]')).to_have_text('Stan odświeżony.' if language=='pl' else 'Status refreshed.')
         expect(bar).to_have_attribute('value','37.5')
         expect(page.locator('[data-stage-percent]')).to_have_text('37,5%' if language=='pl' else '37.5%')
         fixture.complete()
