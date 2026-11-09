@@ -3,6 +3,7 @@ import argparse
 import fcntl
 import os
 import signal
+import shutil
 import stat
 from contextlib import contextmanager
 from pathlib import Path
@@ -74,6 +75,16 @@ def serve(worker, socket_path, panel_uid):
                 signal.signal(sig, handler)
 
 
+def _verify_process():
+    status = dict(line.split(':', 1) for line in Path('/proc/self/status').read_text().splitlines()
+                  if ':' in line)
+    required = (1 << 0) | (1 << 1) | (1 << 3) | (1 << 4)  # CHOWN, DAC_OVERRIDE, FOWNER, FSETID.
+    if int(status['CapEff'].strip(), 16) != required or status['NoNewPrivs'].strip() != '1':
+        raise ValueError('Worker did not receive exactly the expected file capabilities')
+    if shutil.which('rsync') is None or shutil.which('tar') is None:
+        raise ValueError('Worker archive tools are unavailable')
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description='PlexConfigControl execution owner')
     for option in ('state', 'archives', 'config-mount', 'host-config', 'dataset', 'socket',
@@ -88,6 +99,7 @@ def main(argv=None):
         # separate unprivileged web environment. Credentials are worker-only.
         if args.panel_uid != os.geteuid() or args.panel_uid <= 0:
             raise ValueError('The worker and panel must use the configured non-root UID')
+        _verify_process()
         api = build_client(args.truenas_url, args.api_username, read_secret(args.api_key_file),
                            args.ca_file, timeout=10)
         plan = discover_plex_storage(api, manual_source=args.host_config)

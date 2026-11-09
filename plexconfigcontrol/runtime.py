@@ -178,6 +178,11 @@ def main():
         os.umask(0o077)
         config=Configuration.from_environment()
         verifier=os.environ.pop('PCC_BOOTSTRAP_VERIFIER',None)
+        verifier_file=os.environ.pop('PCC_BOOTSTRAP_VERIFIER_FILE',None)
+        if verifier_file is not None:
+            if verifier is not None:
+                raise ValueError('Choose one source for the installation verifier')
+            verifier=read_secret(verifier_file)
         # Gunicorn loads this once per worker, including after a worker restart.
         # A single worker is required for the operation-thread ownership model.
         from gunicorn.app.base import BaseApplication

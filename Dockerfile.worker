@@ -1,0 +1,18 @@
+# Build locally from the exact Plex image installed on this NAS.
+ARG PLEX_IMAGE
+ARG PCC_PANEL_IMAGE
+FROM ${PLEX_IMAGE} AS plex
+FROM ${PCC_PANEL_IMAGE}
+
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends rsync util-linux \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=plex /usr/lib/plexmediaserver/ /opt/pcc-plex/
+RUN printf '%s\n' '#!/bin/sh' 'exec env LD_LIBRARY_PATH=/opt/pcc-plex/lib "/opt/pcc-plex/Plex SQLite" "$@"' \
+      > /usr/local/bin/pcc-plex-sqlite \
+    && chmod 0755 /usr/local/bin/pcc-plex-sqlite \
+    && /usr/local/bin/pcc-plex-sqlite -version
+
+HEALTHCHECK NONE
+ENTRYPOINT ["/usr/bin/setpriv", "--reuid=568", "--regid=568", "--clear-groups", "--inh-caps=+chown,+dac_override,+fowner,+fsetid", "--ambient-caps=+chown,+dac_override,+fowner,+fsetid", "--bounding-set=-setuid,-setgid,-setpcap", "--no-new-privs", "python", "-m", "plexconfigcontrol.worker_runtime"]
