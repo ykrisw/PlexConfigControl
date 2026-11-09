@@ -1,4 +1,4 @@
-{# Use only the Compose definition prepared for the exact settings reviewed on the host. #}
+{# Host mounts and credentials remain bound to the prepared configuration. #}
 {% set release = values.pcc_release %}
 {% for group, fields in release.reviewed_fields.items() %}
   {% for field, expected in fields.items() %}
@@ -10,4 +10,24 @@
 {% if values.ix_context.app_name != release.app_name or values.ix_volumes.get('state') != release.state %}
   {{ {}['PlexConfigControl: TrueNAS nie potwierdził oczekiwanego iXVolume state.']() }}
 {% endif %}
-{{ release.compose | tojson }}
+{% set port = values.panel.host_port %}
+{% if port is not integer or not 1024 <= port <= 65535 %}
+  {{ {}['PlexConfigControl: wybierz port od 1024 do 65535.']() }}
+{% endif %}
+{% set prefix = values.backup.archive_prefix %}
+{% set alphanumeric = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789' %}
+{% if prefix is not string or not 1 <= prefix | length <= 64 or prefix[0] not in alphanumeric %}
+  {{ {}['PlexConfigControl: nieprawidłowy początek nazwy archiwum.']() }}
+{% endif %}
+{% for character in prefix %}
+  {% if character not in alphanumeric ~ '_-' %}
+    {{ {}['PlexConfigControl: nieprawidłowy początek nazwy archiwum.']() }}
+  {% endif %}
+{% endfor %}
+{% set panel = release.compose.services.panel %}
+{% set init = release.compose.services['initialize-state'] %}
+{% set services = dict(release.compose.services, **{
+  'panel': dict(panel, ports=[dict(panel.ports[0], published=port | string)]),
+  'initialize-state': dict(init, command=['--folder', release.reviewed_fields.backup.folder_name, '--prefix', prefix])
+}) %}
+{{ dict(release.compose, services=services) | tojson }}

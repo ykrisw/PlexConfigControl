@@ -11,7 +11,7 @@
       "schema": {"type": "dict", "attrs": [
         {
           "variable": "host_ip", "label": "Adres IP TrueNAS",
-          "description": "Adres NAS-a w Twojej sieci lokalnej.",
+          "description": "Adres NAS-a potwierdzony podczas przygotowania instalacji.",
           "schema": {"type": "string", "required": true}
         },
         {
@@ -31,18 +31,18 @@
       "schema": {"type": "dict", "attrs": [
         {
           "variable": "archive_parent", "label": "Miejsce przechowywania kopii zapasowych Plex",
-          "description": "Wybierz dataset lub folder dostępny przez SMB. Aplikacja utworzy w nim nowy folder kopii oraz podfolder Logs.",
+          "description": "Lokalizacja dostępna przez SMB, potwierdzona podczas przygotowania instalacji.",
           "schema": {"type": "hostpath", "required": true}
         },
         {
           "variable": "folder_name", "label": "Nazwa nowego folderu na kopie i logi",
-          "description": "W wybranej lokalizacji użyj wolnej nazwy folderu.",
+          "description": "Folder kopii i logów przygotowany na hoście. Zmiana lokalizacji wymaga ponownego przygotowania instalacji.",
           "schema": {"type": "string", "default": "Plex Config", "max_length": 80, "required": true}
         },
         {
           "variable": "archive_prefix", "label": "Domyślny początek nazwy archiwum",
-          "description": "Użyj liter A–Z, cyfr, podkreśleń lub myślników. Zacznij od litery lub cyfry. Data i rozszerzenie zostaną dopisane automatycznie.",
-          "schema": {"type": "string", "default": "PlexConfig", "max_length": 64, "required": true}
+          "description": "Ustaw podczas pierwszej instalacji. Użyj liter A–Z, cyfr, podkreśleń lub myślników. Zacznij od litery lub cyfry. Data i rozszerzenie zostaną dopisane automatycznie.",
+          "schema": {"type": "string", "default": "PlexConfig", "max_length": 64, "required": true, "immutable": true}
         }
       ]}
     },

@@ -54,6 +54,9 @@ def catalog_files(template_root, deployment, plan, values, version):
         'sources': ['https://github.com/ykrisw/PlexConfigControl'],
         'lib_version': '2.3.18',
     }
+    # Changing these two form values cannot redirect a verified host mount.
+    reviewed['panel'].pop('host_port')
+    reviewed['backup'].pop('archive_prefix')
     definition = {'pcc_release': {'app_name': APP, 'state': deployment.state,
                                   'reviewed_fields': reviewed, 'compose': compose}}
     def serialize(value):

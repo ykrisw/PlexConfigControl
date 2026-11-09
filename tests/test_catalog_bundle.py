@@ -70,3 +70,29 @@ class CatalogBundleTests(unittest.TestCase):
             template.render(values={**data, 'backup': {**data['backup'], 'folder_name': 'Inna nazwa'}})
         with self.assertRaisesRegex(UndefinedError, 'iXVolume'):
             template.render(values={**data, 'ix_volumes': {'state': '/mnt/Another/state'}})
+        with self.assertRaisesRegex(UndefinedError, 'ustawienia zmieniono'):
+            template.render(values={**data, 'connection': {**data['connection'],
+                            'api_key_file': '/mnt/Another/key'}})
+
+    @unittest.skipIf(Environment is None, 'Jinja is used by the catalog renderer')
+    def test_render_applies_form_port_and_prefix_without_changing_host_mounts(self):
+        template = Environment(undefined=StrictUndefined).from_string(self.files['templates/docker-compose.yaml'])
+        data = {**self.values, **json.loads(self.files['ix_values.yaml']),
+                'ix_context': {'app_name': 'plexconfigcontrol'}, 'ix_volumes': {'state': self.state}}
+        data['panel'] = {**data['panel'], 'host_port': 9443}
+        data['backup'] = {**data['backup'], 'archive_prefix': 'Plex-Dom_2'}
+        services = json.loads(template.render(values=data))['services']
+        self.assertEqual(services['panel']['ports'][0],
+                         {'target': 8443, 'published': '9443', 'host_ip': self.deployment.host_ip,
+                          'protocol': 'tcp'})
+        self.assertEqual(services['initialize-state']['command'],
+                         ['--folder', 'Moje kopie Plex', '--prefix', 'Plex-Dom_2'])
+        expected = self.deployment.compose()['services']
+        for service in ('panel', 'worker'):
+            self.assertEqual(services[service]['volumes'], expected[service]['volumes'])
+        for invalid in (True, '9443', 1023, 65536):
+            with self.subTest(port=invalid), self.assertRaisesRegex(UndefinedError, 'wybierz port'):
+                template.render(values={**data, 'panel': {**data['panel'], 'host_port': invalid}})
+        for invalid in ('', '_bad', '../bad', 'Plex.2', 'Plex$VAR', 'Plex-ą', 'Plex\n', 'A' * 65):
+            with self.subTest(prefix=invalid), self.assertRaisesRegex(UndefinedError, 'początek nazwy'):
+                template.render(values={**data, 'backup': {**data['backup'], 'archive_prefix': invalid}})
