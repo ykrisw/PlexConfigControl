@@ -20,6 +20,7 @@ from .installation_storage import create_storage, plan_storage
 from .naming import save_naming
 from .storage import verify_destination
 from .plex_storage import _zfs
+from .plex_runtime import PlexRuntimeError, detect_plex_runtime
 
 
 APPS_MOUNT = '/mnt/.ix-apps'
@@ -273,6 +274,7 @@ def main(argv=None):
     parser.add_argument('--panel-image', required=True)
     parser.add_argument('--worker-image', required=True)
     parser.add_argument('--sqlite-version', required=True)
+    parser.add_argument('--plex-runtime', help=argparse.SUPPRESS)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--prepare-compose', action='store_true',
                       help='Prepare the confirmed paths after Apps provisions the iXVolume')
@@ -303,6 +305,8 @@ def main(argv=None):
             if input() != APP:
                 return 1
             if args.install:
+                if args.plex_runtime is not None and ' '.join(detect_plex_runtime()) != args.plex_runtime:
+                    raise InstallError('Plex zmienił się od czasu budowy obrazu. Uruchom instalator ponownie.')
                 print(json.dumps(install_app(api, settings, prepared, confirmed=True)))
             elif args.prepare_catalog:
                 output = prepare_catalog(api, settings, prepared, values, args.catalog_template,
@@ -314,7 +318,7 @@ def main(argv=None):
         else:
             print(json.dumps(review, indent=2))
         return 0
-    except InstallError as error:
+    except (InstallError, PlexRuntimeError) as error:
         print(str(error), file=sys.stderr)
     except Exception:
         print('PlexConfigControl could not prepare the installation. Check the reviewed paths before retrying.', file=sys.stderr)

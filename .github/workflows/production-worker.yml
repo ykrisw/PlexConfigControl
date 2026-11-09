@@ -47,6 +47,20 @@ jobs:
             --security-opt no-new-privileges:true --cap-drop ALL \
             --entrypoint python plexconfigcontrol:panel-check \
             -c 'import plexconfigcontrol.runtime'
+      - name: Detect Plex and its SQLite from an isolated container
+        run: |
+          trap 'docker rm -f pcc-plex-runtime-fixture >/dev/null 2>&1 || true' EXIT
+          docker run -d --name pcc-plex-runtime-fixture --network none --read-only --cap-drop ALL \
+            --label com.docker.compose.project=ix-plex --label com.docker.compose.service=plex \
+            --entrypoint /bin/sleep "$PLEX_IMAGE" infinity
+          python3 - <<'PY'
+          import os
+          from plexconfigcontrol.plex_runtime import detect_plex_runtime
+
+          reference, version, _, _ = detect_plex_runtime()
+          assert reference.rsplit('@', 1)[-1] == os.environ['PLEX_IMAGE'].rsplit('@', 1)[-1]
+          assert version == os.environ['PLEX_SQLITE_VERSION']
+          PY
       - name: Check the real worker entrypoint without a NAS or host mounts
         run: |
           docker run --rm --network none --read-only --tmpfs /tmp \
