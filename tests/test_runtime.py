@@ -5,11 +5,12 @@ import ssl
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from cryptography import x509
 from plexconfigcontrol.auth import Account
 from plexconfigcontrol.installation import initialize_from_verifier, password_verifier
-from plexconfigcontrol.runtime import Configuration, ReadOnlyTrueNAS, prepare
+from plexconfigcontrol.runtime import Configuration, OperationalApplication, ReadOnlyTrueNAS, prepare
+from plexconfigcontrol.execution_ipc import ExecutionSocketClient
 from plexconfigcontrol.tls import ensure_tls
 
 
@@ -66,6 +67,26 @@ class RuntimeTests(unittest.TestCase):
             code,_,data=self.request(app,'/api/capabilities',cookie='pcc_session='+token)
             self.assertEqual(code,'200 OK');self.assertFalse(json.loads(data)['archive_delete'])
             self.assertEqual(self.request(app,'/api/backup/plan',cookie='pcc_session='+token)[0],'200 OK')
+
+    def test_operational_runtime_uses_local_worker_and_retains_browser_authentication(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archives = root/'archives'
+            archives.mkdir()
+            config = Configuration(root/'state', 'localhost', archives=archives,
+                                   execution_socket=root/'worker.sock', execution_uid=568)
+            with patch.object(ExecutionSocketClient, '_call', return_value=None) as call:
+                app, _, _ = prepare(config, self.verifier)
+                self.assertIsInstance(app, OperationalApplication)
+                self.assertEqual(self.request(app, '/healthz')[0], '200 OK')
+                call.assert_called_once_with('status', {'request_id': None})
+                self.assertEqual(self.request(app, '/api/backup/start', 'POST', {})[0], '401 Unauthorized')
+                self.assertEqual(self.request(app, '/api/archives/delete', 'POST', {})[0], '403 Forbidden')
+                token, csrf = app.web.sessions.create()
+                status, _, body = self.request(app, '/api/capabilities', cookie='pcc_session='+token)
+                self.assertEqual(status, '200 OK')
+                self.assertTrue(json.loads(body)['backup_create'])
+                self.assertFalse(json.loads(body)['archive_delete'])
 
     def test_missing_or_invalid_bootstrap_never_creates_usable_account(self):
         with tempfile.TemporaryDirectory() as d:

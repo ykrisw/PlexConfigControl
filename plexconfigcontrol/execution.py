@@ -74,6 +74,36 @@ class AcceptedOperation:
     kind: str
 
 
+def parse_backup_request(data):
+    if not isinstance(data, dict) or set(data) - {'archive','prefix'} != {'request_id','mode','confirmed'}:
+        raise InvalidExecutionRequest('Invalid Backup request fields')
+    request_id = _request_id(data)
+    mode = data.get('mode')
+    if mode not in ('NEW','ANOTHER','OVERWRITE') or data.get('confirmed') is not True:
+        raise InvalidExecutionRequest('Confirm the Backup action')
+    selected = _identity(data.get('archive')) if mode != 'NEW' else None
+    if mode == 'NEW' and 'archive' in data:
+        raise InvalidExecutionRequest('A new-copy request cannot select an archive')
+    try:
+        prefix = archive_prefix(data['prefix']) if 'prefix' in data else None
+    except InvalidNaming as error:
+        raise InvalidExecutionRequest(str(error)) from None
+    return BackupRequest(request_id, mode, selected, prefix)
+
+
+def parse_restore_request(data):
+    if (not isinstance(data, dict) or set(data) !=
+            {'request_id','archive','sha256','confirmation'}):
+        raise InvalidExecutionRequest('Invalid Restore request fields')
+    request_id = _request_id(data)
+    name, digest = data.get('archive'), data.get('sha256')
+    if (not isinstance(name, str) or not NAME.fullmatch(name)
+            or not isinstance(digest, str) or not re.fullmatch(r'[0-9a-f]{64}', digest)
+            or data.get('confirmation') != 'RESTORE'):
+        raise InvalidExecutionRequest('Confirm the selected validated archive with RESTORE')
+    return RestoreRequest(request_id, name, digest, 'RESTORE')
+
+
 class ExecutionGateway:
     def __init__(self, state_directory, archive_directory, api, backend, *, receipt_lookup=None, status_reader=None, status_lookup=None):
         self.state = Path(state_directory).resolve()
@@ -147,20 +177,8 @@ class ExecutionGateway:
         return None if receipt is None else self._receipt(request, kind, receipt)
 
     def backup(self, data):
-        if not isinstance(data, dict) or set(data) - {'archive','prefix'} != {'request_id','mode','confirmed'}:
-            raise InvalidExecutionRequest('Invalid Backup request fields')
-        request_id = _request_id(data)
-        mode = data.get('mode')
-        if mode not in ('NEW','ANOTHER','OVERWRITE') or data.get('confirmed') is not True:
-            raise InvalidExecutionRequest('Confirm the Backup action')
-        selected = _identity(data.get('archive')) if mode != 'NEW' else None
-        if mode == 'NEW' and 'archive' in data:
-            raise InvalidExecutionRequest('A new-copy request cannot select an archive')
-        try:
-            prefix = archive_prefix(data['prefix']) if 'prefix' in data else None
-        except InvalidNaming as error:
-            raise InvalidExecutionRequest(str(error)) from None
-        request = BackupRequest(request_id, mode, selected, prefix)
+        request = parse_backup_request(data)
+        mode, selected = request.mode, request.archive
         previous = self._lookup(request, 'BACKUP')
         if previous is not None:
             return previous
@@ -176,16 +194,8 @@ class ExecutionGateway:
         return self._submit(request, 'BACKUP')
 
     def restore(self, data):
-        if (not isinstance(data, dict) or set(data) !=
-                {'request_id','archive','sha256','confirmation'}):
-            raise InvalidExecutionRequest('Invalid Restore request fields')
-        request_id = _request_id(data)
-        name, digest = data.get('archive'), data.get('sha256')
-        if (not isinstance(name, str) or not NAME.fullmatch(name)
-                or not isinstance(digest, str) or not re.fullmatch(r'[0-9a-f]{64}', digest)
-                or data.get('confirmation') != 'RESTORE'):
-            raise InvalidExecutionRequest('Confirm the selected validated archive with RESTORE')
-        request = RestoreRequest(request_id, name, digest, 'RESTORE')
+        request = parse_restore_request(data)
+        name, digest = request.archive, request.sha256
         previous = self._lookup(request, 'RESTORE')
         if previous is not None:
             return previous

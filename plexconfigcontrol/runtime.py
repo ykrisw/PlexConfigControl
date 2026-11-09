@@ -1,11 +1,12 @@
-"""Unprivileged test runtime with optional scoped reads; host writes disabled."""
+"""Unprivileged WWW runtime with a separately configured execution owner."""
 import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
 from .connection_check import read_secret
 from .installation import initialize_from_verifier
-from .locking import operation_lock
+from .locking import OperationBusy, operation_lock
+from .execution_ipc import ExecutionSocketClient
 from .startup import reconcile_startup
 from .tls import ensure_tls
 from .transport import build_client
@@ -25,8 +26,17 @@ class Configuration:
     api_key_file: str = ''
     ca_file: str | None = None
     snapshot_dataset: str | None = None
+    execution_socket: Path | None = None
+    execution_uid: int | None = None
 
     def __post_init__(self):
+        if self.execution_socket is not None:
+            if (not self.execution_socket.is_absolute() or self.archives is None
+                    or type(self.execution_uid) is not int or self.execution_uid < 0
+                    or any((self.truenas_url,self.api_username,self.api_key_file,self.snapshot_dataset))):
+                raise ValueError('Execution owner requires fixed archive and socket configuration')
+        elif self.execution_uid is not None:
+            raise ValueError('Execution owner socket is required')
         if self.snapshot_dataset is not None:
             if not all((self.truenas_url,self.api_username,self.api_key_file)):
                 raise ValueError('Snapshot inspection requires a configured read-only TrueNAS connection')
@@ -49,7 +59,11 @@ class Configuration:
         url=env.get('PCC_TRUENAS_URL',''); user=env.get('PCC_API_USERNAME',''); key=env.get('PCC_API_KEY_FILE','')
         if any((url,user,key)) and not all((url,user,key)):
             raise ValueError('Incomplete read-only TrueNAS connection')
-        return cls(state,host,port,Path(archives) if archives else None,url,user,key,env.get('PCC_CA_FILE'),env.get('PCC_PLEX_CONFIG_DATASET') or None)
+        endpoint=env.get('PCC_EXECUTION_SOCKET')
+        uid=env.get('PCC_EXECUTION_UID')
+        return cls(state,host,port,Path(archives) if archives else None,url,user,key,
+                   env.get('PCC_CA_FILE'),env.get('PCC_PLEX_CONFIG_DATASET') or None,
+                   Path(endpoint) if endpoint else None,int(uid) if uid is not None else None)
 
 
 class ReadOnlyTrueNAS:
@@ -82,6 +96,8 @@ class TestApplication:
     POSTS={'/api/login','/api/logout','/api/account/password','/api/settings',
            '/api/history/detail','/api/history/download','/api/history/clear',
            '/api/restore/validate','/api/restore/cancel','/api/account/photo','/api/account/photo/remove'}
+    mode = "test"
+
     def __init__(self,web):
         if web.execution is not None:
             raise ValueError('The restricted runtime cannot accept an execution backend')
@@ -89,25 +105,54 @@ class TestApplication:
     def __call__(self,environ,start_response):
         method=environ.get('REQUEST_METHOD','GET'); path=environ.get('PATH_INFO','/')
         if path=='/healthz' and method=='GET':
-            body=b'{"ready":true,"mode":"test"}'
-            start_response('200 OK',[('Content-Type','application/json'),('Content-Length',str(len(body))),('Cache-Control','no-store')])
-            return [body]
+            return self.health(start_response)
         allowed=(method=='GET' and (path=='/' or path.startswith('/assets/') or path in self.READS)) or (method=='POST' and path in self.POSTS)
         if not allowed:
-            body=json.dumps({'error':'This operation is disabled in the test installation'}).encode()
+            body=json.dumps({'error':'This operation is disabled in this installation'}).encode()
             start_response('403 Forbidden',[('Content-Type','application/json'),('Content-Length',str(len(body))),('Cache-Control','no-store')])
             return [body]
         return self.web(environ,start_response)
+
+
+    def health(self, start_response):
+        body = json.dumps({'ready': True, 'mode': self.mode}, separators=(',', ':')).encode()
+        start_response('200 OK',[('Content-Type','application/json'),('Content-Length',str(len(body))),('Cache-Control','no-store')])
+        return [body]
+
+
+class OperationalApplication(TestApplication):
+    mode = 'operational'
+    READS = TestApplication.READS | {'/api/execution/status'}
+    POSTS = TestApplication.POSTS | {'/api/backup/start','/api/restore/execute'}
+
+    def __init__(self, web):
+        if web.execution is None:
+            raise ValueError('An execution owner is required')
+        self.web = web
+
+    def health(self, start_response):
+        try:
+            self.web.execution.status()
+        except Exception:
+            body = b'{"ready":false}'
+            start_response('503 Service Unavailable',[('Content-Type','application/json'),
+                ('Content-Length',str(len(body))),('Cache-Control','no-store')])
+            return [body]
+        return super().health(start_response)
 
 
 def prepare(config,verifier=None):
     if config.state.is_symlink(): raise ValueError('State volume must not be a symlink')
     config.state.mkdir(mode=0o700,parents=True,exist_ok=True)
     api=None
-    if config.truenas_url:
+    execution=None
+    if config.execution_socket is not None:
+        api=ExecutionSocketClient(config.execution_socket,config.execution_uid,config.state,config.archives)
+        execution=api.gateway()
+    elif config.truenas_url:
         api=ReadOnlyTrueNAS(build_client(config.truenas_url,config.api_username,
              read_secret(config.api_key_file),config.ca_file,timeout=10),config.snapshot_dataset)
-    web=Web(config.state,archive_directory=config.archives,truenas_api=api,archive_deletion_enabled=False,archive_logs_enabled=False)
+    web=Web(config.state,archive_directory=config.archives,truenas_api=api,archive_deletion_enabled=False,archive_logs_enabled=False,execution_service=execution)
     if config.snapshot_dataset is not None:
         if api is None:
             raise ValueError('Snapshot inspection connection is unavailable')
@@ -119,8 +164,12 @@ def prepare(config,verifier=None):
             if not verifier: raise ValueError('First installation requires PCC_BOOTSTRAP_VERIFIER')
             initialize_from_verifier(web.account,verifier)
         cert,key=ensure_tls(config.state,config.public_host)
-    reconcile_startup(web.operation_store,web.progress,web.history,config.state)
-    return TestApplication(web),cert,key
+    try:
+        reconcile_startup(web.operation_store,web.progress,web.history,config.state)
+    except OperationBusy:
+        if execution is None:
+            raise
+    return (OperationalApplication(web) if execution is not None else TestApplication(web)),cert,key
 
 
 def main():
