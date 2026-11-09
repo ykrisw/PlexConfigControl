@@ -39,8 +39,10 @@ class CatalogBundleTests(unittest.TestCase):
                            'api_ca_file': self.deployment.api_ca_file, 'api_url': ''},
             'plex': {'storage_mode': 'automatic'},
         }
-        root = Path(__file__).resolve().parents[1]/'design/truenas-installation'
-        self.files = catalog_files(root, self.deployment, self.plan, self.values, '0.1.0')
+        self.root = Path(__file__).resolve().parents[1]/'design/truenas-installation'
+        self.plex = 'plexinc/pms-docker@sha256:' + 'a' * 64
+        self.files = catalog_files(self.root, self.deployment, self.plan, self.values, '0.1.0',
+                                   plex_reference=self.plex)
 
     def test_prepared_folder_and_state_dependencies_are_bound(self):
         release = json.loads(self.files['ix_values.yaml'])['pcc_release']
@@ -58,6 +60,30 @@ class CatalogBundleTests(unittest.TestCase):
         backup = next(q['schema'] for q in form['questions'] if q['variable'] == 'backup')
         name = next(f['schema'] for f in backup['attrs'] if f['variable'] == 'folder_name')
         self.assertEqual(name['default'], 'Moje kopie Plex')
+
+    def test_sqlite_initializer_uses_only_a_digest_bound_cache(self):
+        compose = json.loads(self.files['ix_values.yaml'])['pcc_release']['compose']
+        services = compose['services']
+        init, worker, panel = (services[name] for name in ('initialize-plex-sqlite', 'worker', 'panel'))
+        cache = 'plex-sqlite-' + 'a' * 64
+        self.assertEqual(compose['volumes'], {cache: {}})
+        self.assertEqual(init['image'], self.plex)
+        self.assertEqual(init['environment'], {'PCC_SQLITE_VERSION': '3.53.3'})
+        self.assertEqual(init['network_mode'], 'none')
+        self.assertEqual(init['tmpfs'], ['/config:ro', '/transcode:ro'])
+        self.assertEqual(init['volumes'], [{'type': 'volume', 'source': cache, 'target': '/runtime',
+                                           'volume': {'nocopy': True}}])
+        self.assertEqual(init['entrypoint'][2].replace('$$', '$'),
+                         (self.root/'initialize-plex-sqlite.sh').read_text())
+        self.assertEqual(worker['depends_on']['initialize-plex-sqlite']['condition'],
+                         'service_completed_successfully')
+        self.assertEqual(worker['environment']['PCC_PLEX_RUNTIME'], '/opt/pcc-plex/files')
+        self.assertEqual(worker['volumes'][-1], {'type': 'volume', 'source': cache, 'target': '/opt/pcc-plex',
+                                                'read_only': True, 'volume': {'nocopy': True}})
+        self.assertFalse(any(mount['source'] == cache for mount in panel['volumes']))
+        with self.assertRaisesRegex(ValueError, 'image digest'):
+            catalog_files(self.root, self.deployment, self.plan, self.values, '0.1.0',
+                          plex_reference='plexinc/pms-docker:latest')
 
     @unittest.skipIf(Environment is None, 'Jinja is used by the catalog renderer')
     def test_render_rejects_changes_and_wrong_ixvolume(self):
@@ -88,8 +114,8 @@ class CatalogBundleTests(unittest.TestCase):
         self.assertEqual(services['initialize-state']['command'],
                          ['--folder', 'Moje kopie Plex', '--prefix', 'Plex-Dom_2'])
         expected = self.deployment.compose()['services']
-        for service in ('panel', 'worker'):
-            self.assertEqual(services[service]['volumes'], expected[service]['volumes'])
+        self.assertEqual(services['panel']['volumes'], expected['panel']['volumes'])
+        self.assertEqual(services['worker']['volumes'][:-1], expected['worker']['volumes'])
         for invalid in (True, '9443', 1023, 65536):
             with self.subTest(port=invalid), self.assertRaisesRegex(UndefinedError, 'wybierz port'):
                 template.render(values={**data, 'panel': {**data['panel'], 'host_port': invalid}})

@@ -84,19 +84,22 @@ jobs:
             docker volume create pcc-sqlite-check
             version_output=$(docker run --rm --network none --read-only --user 0:0 --cap-drop ALL \
               --security-opt no-new-privileges:true \
-              --mount source=pcc-sqlite-check,target=/runtime \
-              --entrypoint /bin/sh "$image" -ec '
-                cp "/usr/lib/plexmediaserver/Plex SQLite" /runtime/
-                cp -R /usr/lib/plexmediaserver/lib /runtime/lib
-                chmod -R a+rX /runtime
-                exec "/usr/lib/plexmediaserver/Plex SQLite" -version
-              ')
+              --entrypoint '/usr/lib/plexmediaserver/Plex SQLite' "$image" -version)
             sqlite_version=${version_output%% *}
+            for attempt in 1 2; do
+              docker run --rm --network none --read-only --user 0:0 --cap-drop ALL \
+                --security-opt no-new-privileges:true --env "PCC_SQLITE_VERSION=$sqlite_version" \
+                --tmpfs /config:ro --tmpfs /transcode:ro \
+                --mount source=pcc-sqlite-check,target=/runtime \
+                --mount "type=bind,source=$PWD/design/truenas-installation/initialize-plex-sqlite.sh,target=/pcc-init.sh,readonly" \
+                --entrypoint /bin/sh "$image" /pcc-init.sh
+            done
             docker run --rm --network none --read-only --tmpfs /tmp \
               --security-opt no-new-privileges:true --cap-drop ALL \
               --cap-add SETUID --cap-add SETGID --cap-add SETPCAP \
               --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER --cap-add FSETID \
               --mount source=pcc-sqlite-check,target=/opt/pcc-plex,readonly \
+              --env PCC_PLEX_RUNTIME=/opt/pcc-plex/files \
               plexconfigcontrol:worker-base-check \
               --check-runtime --panel-uid 568 --plex-sqlite /usr/local/bin/pcc-plex-sqlite \
               --sqlite-version "$sqlite_version"

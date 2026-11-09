@@ -207,7 +207,10 @@ def prepare_catalog(api, settings, expected, values, template_root, version, out
     if current != expected:
         raise InstallError('Installation settings changed after review')
     deployment, plan, archive_filesystem = current
-    files = catalog_files(template_root, deployment, plan, values, version)
+    plex_reference, sqlite_version, _, _ = detect_plex_runtime()
+    if deployment.sqlite_version != sqlite_version:
+        raise InstallError('The catalog SQLite version does not match the running Plex image')
+    files = catalog_files(template_root, deployment, plan, values, version, plex_reference=plex_reference)
     output = Path(output).absolute()
     if output.parent.resolve(strict=True) != output.parent:
         raise InstallError('The catalog output must use a real parent directory')

@@ -7,7 +7,8 @@ USER root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends rsync util-linux \
     && rm -rf /var/lib/apt/lists/*
-RUN printf '%s\n' '#!/bin/sh' 'exec env LD_LIBRARY_PATH=/opt/pcc-plex/lib "/opt/pcc-plex/Plex SQLite" "$@"' \
+RUN printf '%s\n' '#!/bin/sh' 'runtime="${PCC_PLEX_RUNTIME:-/opt/pcc-plex}"' \
+      'exec env LD_LIBRARY_PATH="$runtime/lib" "$runtime/Plex SQLite" "$@"' \
       > /usr/local/bin/pcc-plex-sqlite \
     && chmod 0755 /usr/local/bin/pcc-plex-sqlite
 

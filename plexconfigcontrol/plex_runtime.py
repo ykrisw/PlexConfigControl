@@ -3,6 +3,8 @@ import re
 import subprocess
 import sys
 
+PLEX_REFERENCE = re.compile(r'(?:(?:docker\.io|index\.docker\.io)/)?plexinc/pms-docker@sha256:[0-9a-f]{64}')
+
 
 class PlexRuntimeError(RuntimeError):
     pass
@@ -25,8 +27,7 @@ def detect_plex_runtime(*, runner=subprocess.run):
         raise PlexRuntimeError('Nie można potwierdzić identyfikatora obrazu Plexa.')
 
     digests = docker('image', 'inspect', '--format', '{{range .RepoDigests}}{{println .}}{{end}}', image)
-    references = sorted({ref for ref in digests.splitlines() if re.fullmatch(
-        r'(?:(?:docker\.io|index\.docker\.io)/)?plexinc/pms-docker@sha256:[0-9a-f]{64}', ref)})
+    references = sorted({ref for ref in digests.splitlines() if PLEX_REFERENCE.fullmatch(ref)})
     if not references:
         raise PlexRuntimeError('Potrzebny jest oficjalny obraz Plexa z identyfikatorem SHA-256.')
     reference = references[0]
