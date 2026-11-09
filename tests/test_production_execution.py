@@ -3,6 +3,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
+from plexconfigcontrol.archive_store import ArchiveStore
+from plexconfigcontrol.locking import OperationBusy, operation_lock
 from plexconfigcontrol.operations import OperationDenied
 from plexconfigcontrol.plex_storage import PlexStorage
 from plexconfigcontrol.production_execution import ExecutionStorage, build_execution_worker
@@ -88,6 +90,25 @@ class ProductionExecutionTests(unittest.TestCase):
             worker.api.call('pool.snapshot.create', request)
         mutations = [call for call in self.api.call.call_args_list if call.args[0] == 'pool.snapshot.create']
         self.assertEqual(len(mutations), 1)
+
+    def test_worker_deletes_only_selected_archives_after_storage_and_lock_checks(self):
+        worker = self.worker()
+        archive = self.archives/'PlexConfig_2026.11.09_17.58.28.tar.gz'
+        archive.write_bytes(b'backup')
+        log = self.archives/'Logs'/'Backup.log'
+        log.write_text('keep')
+        selected = ArchiveStore(self.archives, self.state).list()
+        with operation_lock(self.state):
+            with self.assertRaises(OperationBusy):
+                worker.delete_archives(selected)
+        self.mount_entries.append((self.archives, '/', 'zfs', self.dataset))
+        with self.assertRaises(OperationDenied):
+            worker.delete_archives(selected)
+        self.assertTrue(archive.exists())
+        self.mount_entries.pop()
+        self.assertEqual(worker.delete_archives(selected), [archive.name])
+        self.assertFalse(archive.exists())
+        self.assertEqual(log.read_text(), 'keep')
 
 
 if __name__ == '__main__':

@@ -8,13 +8,15 @@ from dataclasses import asdict
 
 from .execution import (
     AcceptedOperation, BackupRequest, ExecutionGateway, InvalidExecutionRequest,
-    RestoreRequest, SubmissionUnconfirmed, parse_backup_request, parse_restore_request,
+    RestoreRequest, SubmissionUnconfirmed, parse_archive_deletion, parse_backup_request, parse_restore_request,
 )
+from .archive_store import ArchiveChanged
 from .locking import OperationBusy
 from .operations import OperationDenied
 
 
-MAX_FRAME = 4096
+# Fit the 16 KiB HTTP deletion body plus the IPC binding and envelope.
+MAX_FRAME = 20 * 1024
 TIMEOUT = 30
 
 
@@ -63,7 +65,7 @@ class _ExecutionHandler(socketserver.BaseRequestHandler):
         try:
             result = self.server.dispatch(_read(self.request))
             reply = {'result': result}
-        except (OperationBusy, OperationDenied):
+        except (OperationBusy, OperationDenied, ArchiveChanged, FileNotFoundError):
             reply = {'error': 'denied'}
         except (InvalidExecutionRequest, ValueError, TypeError):
             reply = {'error': 'invalid'}
@@ -78,6 +80,7 @@ class _ExecutionHandler(socketserver.BaseRequestHandler):
 class ExecutionSocketServer(socketserver.UnixStreamServer):
     def __init__(self, path, worker, panel_uid):
         self.gateway = worker.gateway()
+        self.worker = worker
         self.panel_uid = panel_uid
         super().__init__(str(path), _ExecutionHandler)
 
@@ -100,6 +103,8 @@ class ExecutionSocketServer(socketserver.UnixStreamServer):
             return self.gateway.backup(data)
         if action == 'restore':
             return self.gateway.restore(data)
+        if action == 'delete_archives':
+            return self.worker.delete_archives(parse_archive_deletion(data))
         if action == 'lookup_backup':
             return self.gateway._lookup(parse_backup_request(data), 'BACKUP')
         if action == 'lookup_restore':
@@ -153,6 +158,13 @@ class ExecutionSocketClient:
 
     def status(self, request_id=None):
         return self._call('status', {'request_id': request_id})
+
+    def delete_archives(self, archives):
+        result = self._call('delete_archives', {'archives': [asdict(item) for item in archives],
+                                                'confirmed': True})
+        if result != [item.name for item in archives]:
+            raise SubmissionUnconfirmed('Archive deletion could not be verified')
+        return result
 
     def call(self, method, *params):
         if method != 'app.query':

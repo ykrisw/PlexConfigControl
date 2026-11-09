@@ -152,4 +152,5 @@ def build_execution_worker(storage, *, sqlite_executable, sqlite_version):
         return Restore(api, store, history, progress, storage.state, storage.archives, dataset,
                        database_check, write, writer.verify, RollbackVerifier(store, reader, writer))
 
-    return ExecutionWorker(storage.state, storage.archives, dataset, api, backup, restore)
+    return ExecutionWorker(storage.state, storage.archives, dataset, api, backup, restore,
+                           verify_archive_storage=storage.verify)

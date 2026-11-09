@@ -123,7 +123,7 @@ class TestApplication:
 class OperationalApplication(TestApplication):
     mode = 'operational'
     READS = TestApplication.READS | {'/api/execution/status'}
-    POSTS = TestApplication.POSTS | {'/api/backup/start','/api/restore/execute'}
+    POSTS = TestApplication.POSTS | {'/api/backup/start','/api/restore/execute','/api/archives/delete'}
 
     def __init__(self, web):
         if web.execution is None:
@@ -152,7 +152,9 @@ def prepare(config,verifier=None):
     elif config.truenas_url:
         api=ReadOnlyTrueNAS(build_client(config.truenas_url,config.api_username,
              read_secret(config.api_key_file),config.ca_file,timeout=10),config.snapshot_dataset)
-    web=Web(config.state,archive_directory=config.archives,truenas_api=api,archive_deletion_enabled=False,archive_logs_enabled=False,execution_service=execution)
+    web=Web(config.state,archive_directory=config.archives,truenas_api=api,
+            archive_deletion_enabled=execution is not None,archive_logs_enabled=False,
+            execution_service=execution,archive_deleter=api.delete_archives if execution is not None else None)
     if config.snapshot_dataset is not None:
         if api is None:
             raise ValueError('Snapshot inspection connection is unavailable')

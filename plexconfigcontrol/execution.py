@@ -45,6 +45,14 @@ def _identity(value):
     return Archive(value['name'], **numbers)
 
 
+def parse_archive_deletion(data):
+    if (not isinstance(data, dict) or set(data) != {'archives', 'confirmed'}
+            or data['confirmed'] is not True or not isinstance(data['archives'], list)
+            or not 1 <= len(data['archives']) <= 1000):
+        raise InvalidExecutionRequest('Select archives and confirm deletion')
+    return [_identity(item) for item in data['archives']]
+
+
 def _request_id(data):
     value = data.get('request_id')
     if not isinstance(value, str) or not re.fullmatch(r'[0-9a-f]{32}', value):

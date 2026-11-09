@@ -81,12 +81,22 @@ class RuntimeTests(unittest.TestCase):
                 self.assertEqual(self.request(app, '/healthz')[0], '200 OK')
                 call.assert_called_once_with('status', {'request_id': None})
                 self.assertEqual(self.request(app, '/api/backup/start', 'POST', {})[0], '401 Unauthorized')
-                self.assertEqual(self.request(app, '/api/archives/delete', 'POST', {})[0], '403 Forbidden')
+                self.assertEqual(self.request(app, '/api/archives/delete', 'POST', {})[0], '401 Unauthorized')
                 token, csrf = app.web.sessions.create()
                 status, _, body = self.request(app, '/api/capabilities', cookie='pcc_session='+token)
                 self.assertEqual(status, '200 OK')
                 self.assertTrue(json.loads(body)['backup_create'])
-                self.assertFalse(json.loads(body)['archive_delete'])
+                self.assertTrue(json.loads(body)['archive_delete'])
+                name = 'PlexConfig_2026.11.09_17.58.28.tar.gz'
+                row = {'name': name, 'size': '1', 'device': '2', 'inode': '3', 'modified_ns': '4'}
+                call.side_effect = [None, [name]]
+                status, _, body = self.request(app, '/api/archives/delete', 'POST',
+                    {'archives': [row], 'confirmed': True}, 'pcc_session='+token, csrf)
+                self.assertEqual(status, '200 OK')
+                self.assertEqual(json.loads(body), {'deleted': [name]})
+                call.assert_called_with('delete_archives', {'confirmed': True, 'archives': [
+                    {'name': name, 'size': 1, 'device': 2, 'inode': 3, 'modified_ns': 4},
+                ]})
 
     def test_missing_or_invalid_bootstrap_never_creates_usable_account(self):
         with tempfile.TemporaryDirectory() as d:
