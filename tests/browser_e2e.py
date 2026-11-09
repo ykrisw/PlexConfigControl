@@ -314,6 +314,8 @@ def main():
                     page.get_by_role('tab',name=title,exact=True).click()
                     visible=page.locator('.pcc-page:visible');expect(visible).to_be_visible()
                     expect(page.locator('.pcc-logo')).to_have_css('color','rgb(255, 191, 0)')
+                    expect(page.locator('.pcc-nav [aria-selected=true]')).to_have_css(
+                        'color','rgb(255, 103, 21)' if theme=='Light' else 'rgb(255, 191, 0)')
                     page.mouse.move(10,10)
                     assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),f'{title} overflows horizontally'
                     heights.append(visible.bounding_box()['height'])

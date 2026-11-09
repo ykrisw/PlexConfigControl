@@ -7,7 +7,7 @@
 .pcc-shell .pcc-logo{width:20px;height:24px;color:#ffbf00;flex-shrink:0}
 .pcc-shell .pcc-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:0 20px}
 .pcc-shell .pcc-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:60px;border:0;border-bottom:3px solid transparent;background:none;color:light-dark(var(--pcc-ink),#fff);font:600 14px Arial,sans-serif;cursor:pointer}
-.pcc-shell .pcc-nav button[aria-selected=true]{border-bottom-color:var(--pcc-selection-accent);color:var(--pcc-active-ink)}
+.pcc-shell .pcc-nav button[aria-selected=true]{border-bottom-color:var(--pcc-selection-accent);color:var(--pcc-selection-accent)}
 .pcc-shell .pcc-nav button span{max-width:100%;overflow-wrap:anywhere;text-align:center}
 .pcc-shell .pcc-nav svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5}
 .pcc-shell .pcc-main{display:flex;flex:1 0 auto;padding:14px var(--pcc-inset) 18px}
@@ -52,7 +52,6 @@
   --pcc-selected: light-dark(#c8d2db, #203b56);
   --pcc-selection-accent: light-dark(#ff6715, #ffbf00);
   --pcc-scroll-thumb: light-dark(#8597ad, #738295);
-  --pcc-active-ink: light-dark(#963600, #ffbf00);
 }
 
 /* Own the page surface explicitly, including transparent areas between cards. */
