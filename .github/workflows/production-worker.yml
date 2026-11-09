@@ -35,10 +35,18 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build the panel and worker images
         run: |
+          # Reproduce a source ZIP extracted under umask 077.
+          chmod -R go-rwx plexconfigcontrol
           docker build --tag plexconfigcontrol:panel-check .
           docker build --file Dockerfile.worker --tag plexconfigcontrol:worker-check \
             --build-arg PCC_PANEL_IMAGE=plexconfigcontrol:panel-check \
             --build-arg "PLEX_IMAGE=$PLEX_IMAGE" .
+      - name: Check that the unprivileged panel can import its source
+        run: |
+          docker run --rm --network none --read-only --user 568:568 \
+            --security-opt no-new-privileges:true --cap-drop ALL \
+            --entrypoint python plexconfigcontrol:panel-check \
+            -c 'import plexconfigcontrol.runtime'
       - name: Check the real worker entrypoint without a NAS or host mounts
         run: |
           docker run --rm --network none --read-only --tmpfs /tmp \

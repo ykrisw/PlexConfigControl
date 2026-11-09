@@ -4,7 +4,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
 WORKDIR /opt/plexconfigcontrol
 COPY pyproject.toml ./
 COPY plexconfigcontrol ./plexconfigcontrol
-RUN pip install --no-cache-dir '.[server]' \
+RUN chmod -R a+rX plexconfigcontrol \
+    && pip install --no-cache-dir '.[server]' \
     && groupadd --gid 568 pcc \
     && useradd --uid 568 --gid 568 --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin pcc \
     && mkdir -p /var/lib/plexconfigcontrol \
