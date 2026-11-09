@@ -1,0 +1,125 @@
+{
+  "groups": [
+    {"name": "Panel WWW", "description": "Wybierz adres i port, pod którymi otworzysz PlexConfigControl."},
+    {"name": "Kopie zapasowe", "description": "Wskaż miejsce przechowywania kopii i logów operacji."},
+    {"name": "Połączenie z TrueNAS", "description": "Połączenie wykonawcy z API TrueNAS i weryfikacja certyfikatu."},
+    {"name": "Zaawansowane", "description": "Zmień te ustawienia, jeśli automatyczne wykrywanie konfiguracji Plexa wymaga korekty."}
+  ],
+  "questions": [
+    {
+      "variable": "panel", "group": "Panel WWW", "label": "",
+      "schema": {"type": "dict", "attrs": [
+        {
+          "variable": "host_ip", "label": "Adres IP TrueNAS",
+          "description": "Adres NAS-a w Twojej sieci lokalnej.",
+          "schema": {"type": "string", "required": true}
+        },
+        {
+          "variable": "host_port", "label": "Port panelu HTTPS",
+          "description": "Jeśli port 8787 jest zajęty, wpisz inny wolny port.",
+          "schema": {"type": "int", "min": 1024, "max": 65535, "default": 8787, "required": true}
+        },
+        {
+          "variable": "verifier_file", "label": "Plik weryfikatora pierwszego hasła",
+          "description": "Wskaż prywatny plik z weryfikatorem wygenerowanym podczas przygotowania instalacji.",
+          "schema": {"type": "string", "required": true}
+        }
+      ]}
+    },
+    {
+      "variable": "backup", "group": "Kopie zapasowe", "label": "",
+      "schema": {"type": "dict", "attrs": [
+        {
+          "variable": "archive_parent", "label": "Miejsce przechowywania kopii zapasowych Plex",
+          "description": "Wybierz dataset lub folder dostępny przez SMB. Aplikacja utworzy w nim nowy folder kopii oraz podfolder Logs.",
+          "schema": {"type": "hostpath", "required": true}
+        },
+        {
+          "variable": "folder_name", "label": "Nazwa nowego folderu na kopie i logi",
+          "description": "W wybranej lokalizacji użyj wolnej nazwy folderu.",
+          "schema": {"type": "string", "default": "Plex Config", "max_length": 80, "required": true}
+        },
+        {
+          "variable": "archive_prefix", "label": "Domyślny początek nazwy archiwum",
+          "description": "Użyj liter A–Z, cyfr, podkreśleń lub myślników. Zacznij od litery lub cyfry. Data i rozszerzenie zostaną dopisane automatycznie.",
+          "schema": {"type": "string", "default": "PlexConfig", "max_length": 64, "required": true}
+        }
+      ]}
+    },
+    {
+      "variable": "connection", "group": "Połączenie z TrueNAS", "label": "",
+      "schema": {"type": "dict", "attrs": [
+        {
+          "variable": "api_url", "label": "Adres API TrueNAS",
+          "description": "Domyślnie używany jest adres IP panelu. Wpisz adres w formacie wss://adres/api/current, jeśli certyfikat TrueNAS wymaga nazwy hosta.",
+          "schema": {"type": "string", "default": ""}
+        },
+        {
+          "variable": "api_user", "label": "Użytkownik API TrueNAS",
+          "description": "Podaj nazwę konta używanego przez wykonawcę kopii i przywracania.",
+          "schema": {"type": "string", "required": true}
+        },
+        {
+          "variable": "api_key_file", "label": "Plik klucza API",
+          "description": "Wpisz ścieżkę do prywatnego pliku. Klucz jest odczytywany wyłącznie przez wykonawcę.",
+          "schema": {"type": "string", "required": true}
+        },
+        {
+          "variable": "api_ca_file", "label": "Plik certyfikatu zaufania TrueNAS",
+          "description": "Wskaż plik PEM używany do sprawdzenia certyfikatu TrueNAS.",
+          "schema": {"type": "string", "required": true}
+        }
+      ]}
+    },
+    {
+      "variable": "plex", "group": "Zaawansowane", "label": "",
+      "schema": {"type": "dict", "attrs": [
+        {
+          "variable": "storage_mode", "label": "Lokalizacja konfiguracji Plexa",
+          "schema": {"type": "string", "default": "automatic", "required": true, "enum": [
+            {"value": "automatic", "description": "Wykryj automatycznie"},
+            {"value": "manual", "description": "Wskaż ścieżkę ręcznie"}
+          ]}
+        },
+        {
+          "variable": "manual_source", "label": "Ścieżka konfiguracji Plex",
+          "description": "Podaj rzeczywiste źródło montowania /config aplikacji plex.",
+          "schema": {"type": "hostpath", "show_if": [["storage_mode", "=", "manual"]], "required": true}
+        }
+      ]}
+    },
+    {
+      "variable": "state",
+      "group": "Zaawansowane",
+      "label": "Pamięć ustawień aplikacji",
+      "description": "TrueNAS tworzy osobny iXVolume na ustawienia, konto i zdjęcie.",
+      "schema": {
+        "type": "dict",
+        "$ref": [
+          "normalize/ix_volume"
+        ],
+        "attrs": [
+          {
+            "variable": "dataset_name",
+            "label": "Nazwa iXVolume",
+            "schema": {
+              "type": "string",
+              "default": "state",
+              "required": true,
+              "hidden": true
+            }
+          },
+          {
+            "variable": "acl_enable",
+            "label": "ACL",
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "hidden": true
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

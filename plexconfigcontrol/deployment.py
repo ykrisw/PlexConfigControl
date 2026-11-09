@@ -81,6 +81,7 @@ class Deployment:
     def compose(self):
         panel = {
             'image': self.panel_image,
+            'pull_policy': 'never',
             'user': '568:568',
             'restart': 'unless-stopped',
             'read_only': True,
@@ -101,6 +102,7 @@ class Deployment:
         }
         worker = {
             'image': self.worker_image,
+            'pull_policy': 'never',
             'user': '0:0',
             'restart': 'unless-stopped',
             'read_only': True,
