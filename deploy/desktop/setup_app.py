@@ -58,6 +58,23 @@ def split_events(buffer):
     return lines[:-1], lines[-1]
 
 
+def prompt_feedback(event):
+    """Keep a rejected entry's explanation beside its input field."""
+    lines = event.get('context', '').splitlines()
+    if not lines:
+        return ''
+    last = lines[-1].strip()
+    prefixes = ('Hasło nie może', 'Hasła się różnią.', 'Hasło jest za długie.',
+                'Wpisz poprawną nazwę folderu,', 'Podaj poprawny adres IPv4',
+                'The password must', 'The passwords do not match.',
+                'The password is too long.', 'Enter a valid folder name',
+                'Enter a valid IPv4')
+    if last.startswith(prefixes) or ('Folder ' in last and
+            ('już istnieje. Wpisz inną nazwę.' in last or 'already exists. Enter another name.' in last)):
+        return last
+    return ''
+
+
 class TrustHost(paramiko.MissingHostKeyPolicy):
     def __init__(self, ask, approved):
         self.ask = ask
@@ -416,7 +433,7 @@ class SetupWindow:
                 self.field.pack(fill='x')
                 self.field.focus_set()
         self.prompt_label.config(text=text)
-        self.note.config(text=self.tx('Your entries are kept only while this installer window is open.', 'Wpisane dane są zachowane tylko na czas otwarcia tego okna.'))
+        self.note.config(text=prompt_feedback(event) or self.tx('Your entries are kept only while this installer window is open.', 'Wpisane dane są zachowane tylko na czas otwarcia tego okna.'))
 
     def answer(self):
         event = self.pending

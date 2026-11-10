@@ -71,3 +71,10 @@ class DesktopSetupTests(unittest.TestCase):
             self.assertIs(installer.connect('192.0.2.10', 'admin'), client)
         self.assertEqual(ask.call_args.args[0]['type'], 'ssh-password')
         self.assertEqual(client.connect.call_args.kwargs['password'], 'account-secret')
+
+    def test_rejected_entries_show_the_specific_correction_in_both_languages(self):
+        for message in ('Hasła się różnią. Wpisz je ponownie.',
+                        'The passwords do not match. Enter them again.',
+                        'Folder /mnt/Pool/Kopie już istnieje. Wpisz inną nazwę.'):
+            self.assertEqual(self.module.prompt_feedback({'context': 'Earlier context\n' + message}), message)
+        self.assertEqual(self.module.prompt_feedback({'context': 'Folder kopii: /mnt/Pool/Kopie'}), '')
