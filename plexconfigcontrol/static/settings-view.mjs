@@ -26,7 +26,7 @@ export function mountSettingsView(root,client,{preferences,onChanged}={}) {
       '[data-language-label]':tx('Language','Język'),'[data-appearance]':tx('Appearance','Wygląd'),
       '[data-theme-label]':tx('Theme','Motyw'),'[data-about]':tx('About','O aplikacji'),
       '[data-application-label]':tx('Application','Aplikacja'),'[data-version-label]':tx('Version','Wersja'),
-      '[data-version]':tx('Development preview','Wersja rozwojowa'),'[data-created-label]':tx('Created by','Autor'),
+      '[data-version]':'1.0.10','[data-created-label]':tx('Created by','Autor'),
       '[data-details-label]':tx('Details','Szczegóły'),
       '[data-details]':tx('PlexConfigControl is designed for installation as a TrueNAS SCALE App, with application settings stored in an iXVolume.','PlexConfigControl jest przeznaczony do instalacji jako aplikacja TrueNAS SCALE. Ustawienia programu są przechowywane w iXVolume.'),
     };

@@ -47,15 +47,15 @@ def main():
 """
 
 
-def build(source, output):
+def build(source, output, *, entry_point=ENTRY_POINT, launcher=LAUNCHER):
     package = source.read_bytes()
     with ZipFile(source) as archive:
-        if ENTRY_POINT not in archive.namelist() or archive.testzip() is not None:
+        if entry_point not in archive.namelist() or archive.testzip() is not None:
             raise ValueError("Expected a complete PlexConfigControl release ZIP")
     payload = "\n".join(textwrap.wrap(base64.b64encode(package).decode("ascii"), width=76))
     with output.open("x", encoding="utf-8") as file:
-        file.write(LAUNCHER)
-        file.write(f"ENTRY_POINT = {ENTRY_POINT!r}\n")
+        file.write(launcher)
+        file.write(f"ENTRY_POINT = {entry_point!r}\n")
         file.write(f"SHA256 = {hashlib.sha256(package).hexdigest()!r}\n")
         file.write(f'PACKAGE = """\n{payload}\n"""\n')
         file.write('\nif __name__ == "__main__":\n    sys.exit(main())\n')

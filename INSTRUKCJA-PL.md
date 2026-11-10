@@ -1,4 +1,4 @@
-# PlexConfigControl Release Candidate
+# PlexConfigControl 1.0.10
 
 ## Wymagania
 

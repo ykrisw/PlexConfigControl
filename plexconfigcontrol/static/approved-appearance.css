@@ -7,11 +7,7 @@
 .pcc-shell .pcc-section-title,.pcc-shell .pcc-backup-action h2,
 .pcc-restore .pcc-card:not(.pcc-archive-card) .pcc-heading h2{font:600 20px/1.5 Arial,sans-serif;margin:0}
 .pcc-shell :is(.pcc-notice,.pcc-notification,.pcc-notification-dialog),
-.pcc-restore .pcc-notice{border-width:3px!important;border-style:solid;border-color:#e5b321!important;background:var(--pcc-bg)}
-.pcc-shell .pcc-backup :is([data-operation-result],[data-submission]).pcc-notice,
-.pcc-shell .pcc-restore .pcc-operation-workspace .pcc-notice {
-  border-color:light-dark(#ff6715,#e5b321)!important;
-}
+.pcc-restore .pcc-notice{border-width:3px!important;border-style:solid;border-color:light-dark(#ff6715,#e5b321)!important;background:var(--pcc-bg)}
 .pcc-shell :is(.pcc-archives,.pcc-events,.pcc-about),
 .pcc-restore .pcc-archive-card{display:flex;flex-direction:column;min-height:0}
 .pcc-shell .pcc-scroll-list,.pcc-restore [data-archive-list]{display:flex;flex-direction:column;gap:8px;flex:1 1 0;height:0;min-height:0;max-height:none;overflow-y:auto;overflow-x:hidden;background:var(--pcc-card)}

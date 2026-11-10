@@ -1,0 +1,128 @@
+Kreator instalacji PlexConfigControl na TrueNAS.	PlexConfigControl installation wizard for TrueNAS.
+Wskaż prywatny katalog na puli danych, poza obszarem Apps.	Choose a private directory on a data pool, outside Apps storage.
+Katalog nadrzędny dla plików prywatnych musi już istnieć.	The parent directory for private files must already exist.
+Prywatny katalog musi należeć do roota i mieć uprawnienia 0700.	The private directory must be owned by root with mode 0700.
+Wymagany jest procesor x86-64 (amd64).	An x86-64 (amd64) processor is required.
+Adres {ip} nie jest przypisany do tego serwera. Podaj lokalny adres IPv4 TrueNAS.	Address {ip} is not assigned to this server. Enter a local TrueNAS IPv4 address.
+Adresy IPv4 TrueNAS:	TrueNAS IPv4 addresses:
+Wybierz numer lub wpisz adres IPv4 TrueNAS:	Choose a number or enter a TrueNAS IPv4 address:
+Adres IPv4 TrueNAS	TrueNAS IPv4 address
+Podaj poprawny adres IPv4 lub wybierz numer z listy.	Enter a valid IPv4 address or choose a number from the list.
+Nie można sprawdzić portu {port} pod adresem {ip}. Sprawdź adres IPv4 TrueNAS.	Could not check port {port} at {ip}. Verify the TrueNAS IPv4 address.
+Port panelu	Panel port
+Podaj port od 1024 do 65535.	Enter a port between 1024 and 65535.
+Port {port} jest zajęty. Wybierz inny.	Port {port} is in use. Choose another port.
+Plik CA nie może być dowiązaniem symbolicznym.	The CA file must not be a symbolic link.
+Certyfikat HTTPS TrueNAS nie pasuje do adresu lub brakuje zaufanej CA.	The TrueNAS HTTPS certificate does not match the address or a trusted CA is missing.
+Sprawdź sekcję HTTPS w INSTRUKCJA-PL.md.	See the HTTPS section in INSTALL-EN.md.
+Certyfikat lub plik CA już istnieje. Sprawdź stan przed ponowieniem.	The certificate or CA file already exists. Check the current configuration before retrying.
+Zaimportowano {CERT_NAME}. Wybierz go w ustawieniach HTTPS TrueNAS.	Imported {CERT_NAME}. Select it in the TrueNAS HTTPS settings.
+Podaj ścieżkę datasetu, np. /mnt/Pula/Dataset albo Pula/Dataset.	Enter a dataset path, such as /mnt/Pool/Dataset or Pool/Dataset.
+Wybierz dataset na kopie:	Choose a dataset for backups:
+Numer z listy lub własna ścieżka:	Enter a number or a custom path:
+Dataset na kopie [/mnt/Pula/Dataset]:	Backup dataset [/mnt/Pool/Dataset]:
+Wybierz numer z listy lub wpisz pełną ścieżkę.	Choose a number from the list or enter the full path.
+Nazwa nowego folderu kopii	Name of the new backup folder
+Wpisz poprawną nazwę folderu, bez ukośników i znaków specjalnych.	Enter a valid folder name without slashes or special characters.
+Folder {parent / folder} już istnieje. Wpisz inną nazwę.	Folder {parent / folder} already exists. Enter another name.
+Nie udało się sprawdzić poprzedniego przygotowania ({label}).	Could not check the previous setup ({label}).
+Znaleziono pozostałości poprzedniego przygotowania: {', '.join(existing)}. Katalog ustawień: {private}.	Found records from the previous setup: {', '.join(existing)}. Settings directory: {private}.
+Jeśli chcesz użyć zapisanych ustawień, uruchom:	To use the saved settings, run:
+Aby zacząć od nowa, uruchom kreator w trybie instalacji.	To start over, run the wizard in installation mode.
+PlexConfigControl już istnieje w Apps. Ta paczka służy do nowej instalacji.	PlexConfigControl already exists in Apps. This package is for a fresh installation.
+Wolumen stanu PlexConfigControl już istnieje. Sprawdź poprzednią instalację.	The PlexConfigControl state volume already exists. Check the previous installation.
+Poprzednie przygotowanie zmieniło się. Uruchom kreator ponownie.	The previous setup changed. Run the wizard again.
+Nie można bezpiecznie usunąć pliku {path.name}.	Could not safely remove {path.name}.
+Konto o tej nazwie nie pasuje do konta technicznego instalatora.	The account does not match the installer service account.
+Grupa nie pasuje do grupy technicznej instalatora lub ma innych użytkowników.	The group does not match the installer service group or has other members.
+Uprawnienia o tej nazwie nie pasują do ustawień instalatora.	The privileges do not match the installer settings.
+Klucz API o tej nazwie należy do innego konta.	The API key with that name belongs to another account.
+Konto ma dodatkowe klucze API.	The account has additional API keys.
+Usunięto poprzednie przygotowanie PlexConfigControl.	Removed the previous PlexConfigControl setup records.
+Wskaż rzeczywisty, istniejący katalog archiwów pod /mnt.	Choose an existing archive directory under /mnt.
+Wybierz i uruchom pulę aplikacji w TrueNAS → Apps.	Select and activate the Apps pool in TrueNAS → Apps.
+Wybierz katalog archiwów poza pamięcią TrueNAS Apps.	Choose an archive directory outside TrueNAS Apps storage.
+Archiwa muszą być poza datasetem konfiguracji Plexa.	The archive directory must be outside the Plex configuration dataset.
+Katalog prywatny i folder kopii muszą być osobne.	The private directory and the backup folder must be separate.
+Podaj nazwę DNS bez schematu, portu i ścieżki.	Enter a DNS name without a scheme, port or path.
+Nazwa API musi wskazywać wyłącznie podany adres TrueNAS.	The API hostname must resolve only to the selected TrueNAS address.
+Certyfikat API TrueNAS zweryfikowany.	TrueNAS API certificate verified.
+Port {args.port} jest zajęty pod adresem {args.ip}. Wybierz inny port.	Port {args.port} is in use at {args.ip}. Choose another port.
+Dataset Plexa:	Plex dataset:
+Obraz Plexa:	Plex image:
+Folder kopii:	Backup folder:
+Prywatne pliki instalacji:	Private setup files:
+Nowe hasło do panelu PlexConfigControl:	New PlexConfigControl panel password:
+Hasło nie może być puste.	The password must not be empty.
+Powtórz hasło:	Repeat the password:
+Hasła się różnią. Wpisz je ponownie.	The passwords do not match. Enter them again.
+Hasło jest za długie. Wpisz krótsze.	The password is too long. Enter a shorter one.
+Ponowna instalacja zastąpi konto techniczne i ustawienia kreatora. Kopie i certyfikat CA zostaną zachowane.	Starting over replaces the service account and wizard settings. Backups and the CA certificate are preserved.
+utworzyć konto techniczne i zainstalować aplikację	create the service account and install the app
+utworzyć konto techniczne i pliki	create the service account and files
+"od nowa"	"start over"
+"tak"	"yes"
+Wpisz {confirmation}, aby {action}:	Type {confirmation} to {action}:
+Przygotowanie anulowane.	Setup canceled.
+Ustawienia instalatora gotowe. Plik {config}	Installer settings saved in {config}
+Jeśli PlexConfigControl nie pojawił się w Apps, możesz ponowić instalację:	If PlexConfigControl did not appear in Apps, you can resume installation:
+Nazwa DNS w istniejącym certyfikacie HTTPS TrueNAS.	DNS name on the existing TrueNAS HTTPS certificate.
+Publiczny plik PEM zaufanej CA TrueNAS.	Public PEM file for the trusted TrueNAS CA.
+Plik settings.json z przerwanej instalacji.	settings.json file from an interrupted installation.
+Uruchom polecenie przez sudo w Shell TrueNAS.	Run this command with sudo in TrueNAS Shell.
+--wznow służy wyłącznie do ponowienia instalacji.	--resume is only for resuming an installation.
+Uruchom kreator w Shell TrueNAS. Brakuje klienta API TrueNAS.	Run the wizard in TrueNAS Shell. The TrueNAS API client is missing.
+Wybrany folder kopii:	Selected backup folder:
+Prywatny katalog poza SMB (np. /mnt/Pula/PCC-Private):	Private directory outside SMB shares (e.g. /mnt/Pool/PCC-Private):
+Sprawdzono wymagania lokalne. Budowa obrazów i połączenie workera zostaną sprawdzone przy instalacji.	Local requirements checked. Image builds and the worker connection are checked during installation.
+Wybrany folder kopii już istnieje. Podaj inną nazwę folderu.	The selected backup folder already exists. Enter another folder name.
+Nie potwierdzono konfiguracji Plexa. Sprawdź, czy aplikacja plex działa i używa osobnego iXVolume dla /config ({error.code}).	Could not verify Plex configuration. Confirm that plex is running and uses a dedicated iXVolume for /config ({error.code}).
+Przerwano: {error}	Stopped: {error}
+Przerwano przez użytkownika. Jeśli kreator rozpoczął instalację, sprawdź jej stan w Apps.	Canceled. If installation began, check its status in Apps.
+Przerwano ({type(error).__name__}). Sprawdź stan konta i plików przed ponowieniem.	Stopped ({type(error).__name__}). Check the account and setup files before retrying.
+"konto techniczne"	"service account"
+"grupa techniczna"	"service group"
+"uprawnienia techniczne"	"service privileges"
+"klucz API"	"API key"
+"sprawdz"	"check"
+"certyfikat"	"certificate"
+"ustawienia"	"settings"
+"instaluj"	"install"
+["--wznow", str(config)]	["--resume", str(config)]
+"--wznow", type	"--resume", dest="wznow", type
+"--prywatny", type	"--private-directory", dest="prywatny", type
+"--archiwa", type	"--archives", dest="archiwa", type
+"--prefiks", default	"--prefix", dest="prefiks", default
+"INSTALUJ.sh"	"INSTALL.sh"
+Wpisz {APP}, aby zatwierdzić wskazane ścieżki:	Type {APP} to confirm the listed paths:
+Plex zmienił się od czasu budowy obrazu. Uruchom instalator ponownie.	Plex changed after the image was built. Run the installer again.
+PlexConfigControl gotowy. Otwórz	PlexConfigControl is ready. Open
+Wymagany jest TrueNAS 25.10.8 lub nowszy w wersji stabilnej.	TrueNAS 25.10.8 or later is required.
+Użycie: sudo sh deploy/install.sh /ścieżka/do/ustawienia.json	Usage: sudo sh deploy/install.sh /path/to/settings.json
+Uruchom instalator jako administrator TrueNAS.	Run the installer as a TrueNAS administrator.
+Nie można odczytać pliku ustawień.	Could not read the settings file.
+Aplikacja plexconfigcontrol już istnieje lub nie udało się odczytać jej stanu.	The plexconfigcontrol app already exists or its state could not be read.
+Wykryto Plex SQLite %s w obrazie %s	Detected Plex SQLite %s in image %s
+Budowanie obrazów aplikacji. Pierwsze uruchomienie może potrwać kilka minut.	Building application images. The first installation may take several minutes.
+Sprawdzanie zgodności Plex SQLite i procesu wykonującego kopie.	Checking Plex SQLite and the backup worker.
+Rejestracja w TrueNAS Apps i sprawdzanie gotowości panelu.	Registering the app in TrueNAS Apps and checking panel readiness.
+Uruchom w Shell TrueNAS: sudo python3	Run in TrueNAS Shell: sudo python3
+Możesz też dopisać opcje kreatora, np. sprawdz.	You can pass wizard options such as check.
+Uruchom instalator przez sudo w Shell TrueNAS.	Run the installer with sudo in TrueNAS Shell.
+Paczka wewnątrz instalatora jest uszkodzona. Pobierz plik ponownie.	The embedded package is damaged. Download the file again.
+Paczka sprawdzona. Uruchamiam kreator PlexConfigControl.	Package verified. Starting the PlexConfigControl wizard.
+PlexConfigControl_Instalator.py	PlexConfigControl_Installer.py
+Rozpakuj cały ZIP. Plik instalatora .py musi leżeć obok tego skrótu.	Extract the ZIP. Keep the .py installer next to this launcher.
+Brakuje klienta OpenSSH. Potrzebne są polecenia ssh i scp.	OpenSSH Client is required for ssh and scp.
+Adres IPv4 lub nazwa TrueNAS:	TrueNAS IPv4 address or hostname:
+Użytkownik SSH TrueNAS z dostępem do sudo:	TrueNAS SSH user with sudo access:
+Podaj poprawny adres i nazwę użytkownika.	Enter a valid address and username.
+TrueNAS nie zwrócił poprawnej ścieżki tymczasowej.	TrueNAS did not return a valid temporary path.
+Plik instalatora pozostał na TrueNAS w	The installer file is still on TrueNAS in
+Kreator przerwał pracę. Plik do ewentualnego wznowienia jest na TrueNAS w	The wizard stopped. The installer can be resumed on TrueNAS from
+Adres IPv4 lub nazwa TrueNAS	TrueNAS IPv4 address or hostname
+Uzytkownik SSH TrueNAS z dostepem do sudo	TrueNAS SSH user with sudo access
+Podaj poprawny adres i nazwe uzytkownika.	Enter a valid address and username.
+Plik do ewentualnego wznowienia na TrueNAS:	Installer file for resuming on TrueNAS:
+Otworz skrot z rozpakowanego folderu lub uruchom wspolny skrypt SSH zgodnie z instrukcja.	Open this launcher in the extracted folder or run the SSH script as shown in the guide.
+Nacisnij Enter, aby zamknac okno.	Press Enter to close this window.

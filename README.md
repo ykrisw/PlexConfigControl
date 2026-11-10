@@ -6,14 +6,13 @@ iXVolume storage for its own settings and state.
 
 ## Download
 
-[PlexConfigControl installer for Windows, macOS and Linux](release/PlexConfigControl_Instalator_Windows_macOS_Linux.zip)
-is the current Release Candidate package. Extract the ZIP and open the
-launcher for your computer. Each launcher transfers the same installer to
-TrueNAS over SSH and opens the installation wizard there.
+PlexConfigControl 1.0.10 is available in two installer ZIPs for Windows,
+macOS and Linux. Extract the ZIP and open the launcher for your computer.
+Each launcher transfers the installer to TrueNAS over SSH and starts the
+wizard in the selected package language.
 
-For platform, Plex storage and HTTPS requirements, see the
-[Polish installation guide](INSTRUKCJA-PL.md). The ZIP includes instructions
-for the three launchers and the standalone TrueNAS Shell installer.
+- [English installer](release/PlexConfigControl_Installer_Windows_macOS_Linux_EN.zip) · [English installation guide](INSTALL-EN.md)
+- [Polski instalator](release/PlexConfigControl_Instalator_Windows_macOS_Linux.zip) · [Polska instrukcja instalacji](INSTRUKCJA-PL.md)
 
 The restricted UI test installation in `deploy/TEST-INSTALL.md` remains a
 separate development workflow.
