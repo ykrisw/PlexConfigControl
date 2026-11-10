@@ -302,11 +302,14 @@ def main(argv=None):
                       help='Prepare the confirmed paths after Apps provisions the iXVolume')
     mode.add_argument('--install', action='store_true',
                       help='Install the reviewed configuration as one application in TrueNAS Apps')
+    parser.add_argument('--confirmed', action='store_true', help=argparse.SUPPRESS)
     mode.add_argument('--prepare-catalog', type=Path, metavar='OUTPUT',
                       help='Prepare a native Apps version directory for the reviewed settings')
     parser.add_argument('--catalog-template', type=Path)
     parser.add_argument('--catalog-version', default='0.1.0')
     args = parser.parse_args(argv)
+    if args.confirmed and not args.install:
+        parser.error('--confirmed requires --install')
     try:
         with args.configuration.open(encoding='utf-8') as stream:
             values = json.load(stream)
@@ -322,10 +325,10 @@ def main(argv=None):
         if args.prepare_compose or args.prepare_catalog or args.install:
             if args.prepare_catalog and args.catalog_template is None:
                 raise InstallError('The catalog template directory is required')
-            print(json.dumps(review, indent=2), file=sys.stderr)
-            print(f'Type {APP} to prepare these paths: ', file=sys.stderr, end='', flush=True)
-            if input() != APP:
-                return 1
+            if not args.confirmed:
+                print(json.dumps(review, indent=2), file=sys.stderr)
+                if input(f'Wpisz {APP}, aby zatwierdzić wskazane ścieżki: ') != APP:
+                    return 1
             if args.install:
                 reference = None
                 if args.plex_runtime is not None:
@@ -333,7 +336,13 @@ def main(argv=None):
                     if ' '.join(runtime) != args.plex_runtime or runtime[1] != deployment.sqlite_version:
                         raise InstallError('Plex zmienił się od czasu budowy obrazu. Uruchom instalator ponownie.')
                     reference = runtime[0]
-                print(json.dumps(install_app(api, settings, prepared, confirmed=True, plex_reference=reference)))
+                result = install_app(api, settings, prepared, confirmed=True, plex_reference=reference)
+                if args.plex_runtime:
+                    address = ipaddress.ip_address(result['host_ip'])
+                    host = f'[{address}]' if address.version == 6 else str(address)
+                    print(f"PlexConfigControl gotowy. Otwórz https://{host}:{result['port']}")
+                else:
+                    print(json.dumps(result))
             elif args.prepare_catalog:
                 output = prepare_catalog(api, settings, prepared, values, args.catalog_template,
                                          args.catalog_version, args.prepare_catalog, confirmed=True)

@@ -3,6 +3,7 @@ import os
 import stat
 import threading
 from pathlib import Path
+from .archive_discovery import ArchiveDiscovery
 from .archive_store import NAME, file_identity
 from .archives import validate_archive, InvalidArchive
 from .locking import operation_lock
@@ -93,10 +94,13 @@ class RestoreValidation:
                             if stage=='HASHING_ARCHIVE' and done<=info.st_size else None))
                     if file_identity(os.fstat(fd))!=identity:
                         raise InvalidArchive('Archive changed during validation')
+                    if file_identity(os.stat(name,dir_fd=directory,follow_symlinks=False))!=identity:
+                        raise InvalidArchive('Archive changed during validation')
                 finally:
                     os.close(fd)
             finally:
                 os.close(directory)
+            ArchiveDiscovery(self.archive_directory,self.state_directory,self.history).remember_verified(name,identity)
             with self.store.transaction() as operation:
                 operation.archive_validated(result.sha256)
                 operation.validation_details={'archive':name,'status':'VALID','reason':None,

@@ -112,9 +112,9 @@ class Backup:
                                 self.state, stage, name, result.sha256,
                                 overwrite.name, original_identity)
                     self.progress.update('PUBLISHING_ARCHIVE')
-                    publish_new(output,self.destination,name,result.sha256,intent)
+                    identity=publish_new(output,self.destination,name,result.sha256,intent)
                     published=True
-                    ArchiveDiscovery(self.destination,self.state,self.history).remember_created(name)
+                    ArchiveDiscovery(self.destination,self.state,self.history).remember_created(name,identity)
                 if self._workspace_pending():
                     raise RuntimeError('Private backup workspace cleanup requires verification')
                 if overwrite is not None:

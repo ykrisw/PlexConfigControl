@@ -1,7 +1,7 @@
 #!/bin/sh
 # Production installer entry point. No deployment occurs before explicit confirmation.
 set -eu
-if [ "$#" -ne 1 ]; then
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ] || { [ "$#" -eq 2 ] && [ "$2" != '--confirmed' ]; }; then
     printf 'Użycie: sudo sh deploy/install.sh /ścieżka/do/ustawienia.json\n' >&2
     exit 2
 fi
@@ -9,6 +9,7 @@ case "$1" in
     /*) config=$1 ;;
     *) config=$PWD/$1 ;;
 esac
+confirmation=${2-}
 [ "$(id -u)" -eq 0 ] || { printf 'Uruchom instalator jako administrator TrueNAS.\n' >&2; exit 1; }
 cd "$(dirname "$0")/.."
 [ -r "$config" ] || { printf 'Nie można odczytać pliku ustawień.\n' >&2; exit 1; }
@@ -24,11 +25,13 @@ EOF
 worker=plexconfigcontrol-worker:0.1.0-base
 initializer=$PWD/design/truenas-installation/initialize-plex-sqlite.sh
 printf 'Wykryto Plex SQLite %s w obrazie %s\n' "$sqlite" "$plex"
+printf '%s\n' 'Budowanie obrazów aplikacji. Pierwsze uruchomienie może potrwać kilka minut.'
 docker build --tag "$panel" .
 docker build --file Dockerfile.worker --target worker-base --tag "$worker" \
     --build-arg "PCC_PANEL_IMAGE=$panel" .
 cache=$(docker volume create)
 trap 'docker volume rm "$cache" >/dev/null 2>&1 || true' EXIT
+printf '%s\n' 'Sprawdzanie zgodności Plex SQLite i procesu wykonującego kopie.'
 docker run --rm --network none --read-only --user 0:0 --cap-drop ALL \
     --security-opt no-new-privileges:true --env "PCC_SQLITE_VERSION=$sqlite" \
     --tmpfs /config:ro --tmpfs /transcode:ro --mount "source=$cache,target=/runtime" \
@@ -44,6 +47,11 @@ docker run --rm --network none --read-only --tmpfs /tmp \
     --sqlite-version "$sqlite"
 docker volume rm "$cache" >/dev/null
 trap - EXIT
+set --
+if [ "$confirmation" = '--confirmed' ]; then
+    set -- --confirmed
+fi
+printf '%s\n' 'Rejestracja w TrueNAS Apps i sprawdzanie gotowości panelu.'
 exec python3 -m plexconfigcontrol.host_install "$config" \
     --panel-image "$panel" --worker-image "$worker" --sqlite-version "$sqlite" \
-    --plex-runtime "$runtime" --install
+    --plex-runtime "$runtime" --install "$@"

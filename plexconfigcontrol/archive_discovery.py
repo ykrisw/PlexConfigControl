@@ -5,6 +5,7 @@ files which appear/disappear between scans cannot be reconstructed. No hashes or
 archive extraction on scans, no ACL changes and no app/Plex/snapshot operations.
 """
 import hashlib
+import json
 import os
 import re
 import secrets
@@ -13,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from .archive_store import ArchiveStore
+from .archive_store import ArchiveStore, archive_matches
 from .locking import operation_lock, OperationBusy
 from .operations import Phase
 from .publication_intent import pending
@@ -33,8 +34,10 @@ class ArchiveDiscovery:
                        'PRIMARY KEY(scope,name))')
             db.execute('CREATE TABLE IF NOT EXISTS archive_log_outbox ('
                        'scope TEXT, name TEXT PRIMARY KEY, body TEXT NOT NULL)')
+            db.execute('CREATE TABLE IF NOT EXISTS archive_verified ('
+                       'scope TEXT, name TEXT, identity TEXT NOT NULL, PRIMARY KEY(scope,name))')
 
-    def remember_created(self, name):
+    def remember_created(self, name, identity=None):
         """Backup coordinator calls under its operation lock after publication.
 
         Persist origin knowledge even if the user later clears BACKUP history.
@@ -46,6 +49,29 @@ class ArchiveDiscovery:
         with self.history.connect() as db:
             db.execute('INSERT OR REPLACE INTO archive_seen VALUES (?,?,?,?)',
                        (self.scope, item.name, str(item.device), str(item.inode)))
+            if identity is not None:
+                self._save_verification(db, name, identity)
+
+    def _save_verification(self, db, name, identity):
+        db.execute('INSERT OR REPLACE INTO archive_verified VALUES (?,?,?)',
+                   (self.scope, name, json.dumps(identity)))
+
+    def remember_verified(self, name, identity):
+        with self.history.connect() as db:
+            self._save_verification(db, name, identity)
+
+    def verified_names(self, rows):
+        with self.history.connect() as db:
+            identities = dict(db.execute('SELECT name,identity FROM archive_verified WHERE scope=?', (self.scope,)))
+        verified = set()
+        for item in rows:
+            if item.name not in identities:
+                continue
+            identity = json.loads(identities[item.name])
+            if (all(identity[key] == getattr(item, key) for key in ('device', 'inode', 'size', 'modified_ns'))
+                    and archive_matches(self.directory, item.name, identity)):
+                verified.add(item.name)
+        return verified
 
     def scan(self):
         try:
@@ -91,6 +117,7 @@ class ArchiveDiscovery:
                            (self.scope, log_name, body))
             for name in seen.keys()-current:
                 db.execute('DELETE FROM archive_seen WHERE scope=? AND name=?', (self.scope, name))
+                db.execute('DELETE FROM archive_verified WHERE scope=? AND name=?', (self.scope, name))
 
     def _flush_logs(self):
         """Create-only permanent records, with a durable private retry outbox.

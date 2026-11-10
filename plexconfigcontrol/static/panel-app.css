@@ -46,6 +46,7 @@ html{color-scheme:light dark;background:light-dark(#b5b9be,#151d28)}body{margin:
 .pcc-shell .pcc-history-filters button{min-height:45px;border:0;background:var(--pcc-line)}
 .pcc-shell .pcc-history-filters button[aria-pressed=true]{background:var(--pcc-selection-accent);color:light-dark(var(--pcc-ink),#000)}
 .pcc-shell .pcc-history .pcc-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;margin-bottom:12px}
+.pcc-shell .pcc-history [data-archive-count]{margin:2px 0 0;font-size:.875rem}
 .pcc-shell .pcc-history h2{font-size:16px;font-weight:600;margin:0}
 .pcc-shell .pcc-history-actions{display:flex;gap:8px;flex-wrap:wrap}
 .pcc-shell .pcc-event-row{display:flex;align-items:center;gap:13px;min-height:52px;border:1px solid var(--pcc-line);border-radius:9px;padding:8px 14px;background:var(--pcc-card);cursor:pointer}

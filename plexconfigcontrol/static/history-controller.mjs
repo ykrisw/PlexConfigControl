@@ -3,12 +3,12 @@ export function createHistoryController(client, render, {
 } = {}) {
   let entries = [], selected = new Set(), filter = 'ALL';
   let loading = false, busy = false, available = false, disposed = false, timer;
-  let error = '', notice = '', archiveLogs = null;
+  let error = '', notice = '', archiveLogs = null, archiveCount = null, verifiedCount = null;
   const lifecycle = new AbortController();
   function emit() {
     if (disposed) return;
     render({entries: entries.filter(row => filter === 'ALL' || row.kind === filter),
-      selected: [...selected], filter, loading, busy, available, error, notice, archiveLogs,
+      selected: [...selected], filter, loading, busy, available, error, notice, archiveLogs, archiveCount, verifiedCount,
       counts: {all: entries.length, backup: entries.filter(x => x.kind === 'BACKUP').length,
         restore: entries.filter(x => x.kind === 'RESTORE').length,
         success: entries.filter(x => x.status === 'SUCCESS').length,
@@ -23,6 +23,21 @@ export function createHistoryController(client, render, {
       if (!Array.isArray(rows) || rows.some(row => !Number.isSafeInteger(row.id) || row.id <= 0)) throw Error('Invalid history response');
       entries = rows;
       archiveLogs = null;
+      archiveCount = null;
+      verifiedCount = null;
+      if (typeof client.archives === 'function') {
+        try {
+          const archives = await client.archives(lifecycle.signal, {verification: true});
+          if (disposed) return;
+          if (Array.isArray(archives)) {
+            archiveCount = archives.length;
+            if (archives.every(item => typeof item?.verified === 'boolean'))
+              verifiedCount = archives.filter(item => item.verified).length;
+          }
+        } catch {
+          if (disposed) return;
+        }
+      }
       if(typeof client.operation==='function'){
         try{
           const operation=await client.operation(lifecycle.signal);
@@ -36,7 +51,7 @@ export function createHistoryController(client, render, {
       selected = new Set([...selected].filter(id => ids.has(id)));
       available = true; error = '';
     } catch (failure) {
-      if (!disposed) { available = false; error = failure.message || 'History unavailable'; }
+      if (!disposed) { available = false; archiveCount = null; verifiedCount = null; error = failure.message || 'History unavailable'; }
     } finally {
       loading = false; emit();
       if (!disposed) timer = schedule(refresh, 5000);

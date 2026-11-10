@@ -131,6 +131,8 @@ class PortableArchiveTests(unittest.TestCase):
             os.utime(external_file, (1234567890, 1234567890))
             self.assertEqual([path.name for path in external.iterdir()], [name])
             original_identity = ArchiveStore(destination, state).list()[0]
+            discovery = Web(state, destination).discovery
+            self.assertEqual(discovery.verified_names([original_identity]), {name})
             logs_before = {path.name: path.read_bytes() for path in (destination/'Logs').iterdir()}
             history.clear([event['id'] for event in history.list()])
             ArchiveStore(destination, state).delete([original_identity], confirmed=True)
@@ -201,10 +203,11 @@ class PortableArchiveTests(unittest.TestCase):
             app = Web(root/'fresh state', destination, truenas_api=Host())
             token, csrf = app.sessions.create()
             def request(path, body=None):
+                path, _, query = path.partition('?')
                 data = json.dumps(body).encode() if body is not None else b''
                 status = []
                 result = b''.join(app({'REQUEST_METHOD': 'POST' if body is not None else 'GET',
-                    'PATH_INFO': path, 'CONTENT_TYPE': 'application/json',
+                    'PATH_INFO': path, 'QUERY_STRING': query, 'CONTENT_TYPE': 'application/json',
                     'CONTENT_LENGTH': str(len(data)), 'wsgi.input': io.BytesIO(data),
                     'HTTP_COOKIE': 'pcc_session='+token, 'HTTP_X_CSRF_TOKEN': csrf},
                     lambda code, headers: status.append(code)))
@@ -214,12 +217,22 @@ class PortableArchiveTests(unittest.TestCase):
             status, listed = request('/api/archives')
             self.assertEqual(status, '200 OK')
             self.assertEqual([item['name'] for item in listed], [NAME])
+            self.assertNotIn('verified', listed[0])
+            self.assertFalse(request('/api/archives?verification=1')[1][0]['verified'])
             self.assertEqual(app.history.list()[0]['kind'], 'ARCHIVE_DETECTED')
             self.assertEqual(app.history.list()[0]['archive'], NAME)
             status, result = request('/api/restore/validate', {'archive': NAME})
             self.assertEqual(status, '200 OK')
             self.assertEqual(result['sha256'], created.sha256)
             self.assertEqual(result['phase'], 'WAITING_FOR_PLEX_STOP')
+            self.assertTrue(request('/api/archives?verification=1')[1][0]['verified'])
+            request('/api/restore/cancel', {})
+            app.history.clear([entry['id'] for entry in app.history.list()])
+            self.assertTrue(request('/api/archives?verification=1')[1][0]['verified'])
+            replacement = destination/'replacement'
+            shutil.copyfile(external/NAME, replacement)
+            replacement.replace(destination/NAME)
+            self.assertFalse(request('/api/archives?verification=1')[1][0]['verified'])
 
     def test_incomplete_copy_is_rejected_then_complete_copy_can_be_validated(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -7,33 +7,48 @@
 - Istniejący dataset ZFS na archiwa, poza pamięcią Apps. Jeśli chcesz widzieć kopie przez SMB, wybierz dataset dostępny przez Twój udział. Instalator utworzy w nim nowy folder na archiwa i jego podfolder `Logs`.
 - Lokalny Shell TrueNAS z dostępem przez `sudo`, dostępny port panelu, poprawny certyfikat HTTPS API TrueNAS oraz dostęp do rejestru obrazów Docker i repozytoriów pakietów wykorzystywanych podczas budowy.
 
-## 1. Rozpakuj paczkę
+## 1. Uruchom instalator
 
-Skopiuj `PlexConfigControl_RC_Install.zip` przez SMB na NAS. W przykładzie zastąp ścieżkę do ZIP-a swoją. Suma SHA-256 paczki jest podana przy pobraniu. Możesz ją porównać przed rozpakowaniem.
+Skopiuj `PlexConfigControl_Instalator.py` przez SMB na TrueNAS. Wklej do Shell
+poniższe polecenie ze ścieżką do skopiowanego pliku.
 
 ```bash
-ZIP='/mnt/MojaPula/MojDataset/PlexConfigControl_RC_Install.zip'
-PCC_DIR=$(sudo mktemp -d /var/tmp/pcc-rc.XXXXXXXX)
-sudo install -m 600 -- "$ZIP" "$PCC_DIR/installer.zip" &&
-sudo sha256sum "$PCC_DIR/installer.zip"
+sudo python3 '/mnt/MojaPula/MojDataset/PlexConfigControl_Instalator.py'
 ```
 
-Jeśli suma się zgadza, w tym samym Shell wklej poniższy blok.
+Instalator sam sprawdza i rozpakowuje paczkę. Dla osobno pobranego ZIP-a
+skorzystaj z poniższego bloku.
+
+Skopiuj ZIP instalatora przez SMB na NAS. W poniższym bloku wpisz ścieżkę do pliku oraz sumę SHA-256 podaną przy pobraniu. Następnie wklej cały blok do Shell TrueNAS.
 
 ```bash
-sudo python3 -m zipfile -e "$PCC_DIR/installer.zip" "$PCC_DIR" &&
-sudo sh -c 'cd "$1" && sha256sum -c --quiet SHA256SUMS && exec sh INSTALUJ.sh' sh "$PCC_DIR/PlexConfigControl_RC_Install"
+(
+  set -e
+  ZIP='/mnt/MojaPula/MojDataset/PlexConfigControl_RC_Install_Kreator.zip'
+  SHA='WKLEJ_SUMĘ_SHA256_Z_LINKU'
+  PCC_DIR=$(sudo mktemp -d /var/tmp/pcc-rc.XXXXXXXX)
+  sudo install -m 600 -- "$ZIP" "$PCC_DIR/installer.zip"
+  printf '%s  %s\n' "$SHA" "$PCC_DIR/installer.zip" | sudo sha256sum -c -
+  sudo python3 -m zipfile -e "$PCC_DIR/installer.zip" "$PCC_DIR"
+  PCC_START="$PCC_DIR/PlexConfigControl_RC_Install/INSTALUJ.sh"
+  printf 'Kreator instalacji: %s\n' "$PCC_START"
+  sudo sh "$PCC_START"
+)
 ```
 
 ## 2. Odpowiedz na pytania kreatora
 
-- Podaj lokalny adres IPv4 TrueNAS i pełną ścieżkę datasetu, np. `/mnt/MojaPula/MojDataset`.
-- Zatwierdź domyślną nazwę folderu `Plex Config` i port `8787` lub wpisz własne. Jeśli folder o wybranej nazwie już istnieje, wybierz nową nazwę.
+- Zatwierdź wykryty adres IPv4 TrueNAS klawiszem Enter albo wybierz numer, gdy adresów jest kilka. Możesz też wpisać adres ręcznie. Następnie wybierz dataset z listy lub wpisz ścieżkę, np. `/mnt/MojaPula/MojDataset`.
+- Zatwierdź nazwę folderu kopii i port klawiszem Enter lub wpisz własne. Jeśli nazwa folderu jest zajęta, kreator szuka wolnej nazwy z numerem, np. `Plex Config 2`. Przy zajętym porcie proponuje pierwszy wolny port spośród dziesięciu kolejnych.
 - Ustaw hasło do panelu PlexConfigControl. Skrypt zapyta o nie dwa razy i nie wyświetli go podczas pisania.
-- Sprawdź podsumowanie i wpisz `przygotuj`. Powstanie dedykowane konto techniczne z rolami odczytu aplikacji i obsługi migawek oraz plik ustawień w prywatnym katalogu `/mnt/<nazwa-puli>/PCC-Private`. Ten katalog ma znajdować się poza udziałem SMB. Jeśli udostępniasz całą pulę, wskaż inny prywatny katalog opcją `--prywatny`.
-- Po zbudowaniu obrazów sprawdź ścieżki i wpisz `plexconfigcontrol`. Aplikacja pojawi się w **Apps → Installed**. Instalator zweryfikuje gotowość panelu i workera.
+- Sprawdź podsumowanie i wpisz `tak`. Gdy kreator wykryje pozostałości po odinstalowanej aplikacji, wpisz `od nowa`, aby zastąpić jej konto techniczne i prywatne ustawienia. Dotychczasowe archiwa zachowują się w osobnym folderze. Jeśli w Apps nadal istnieje aplikacja albo jej wolumen stanu, kreator przerwie instalację.
+- Kreator zapisze prywatne ustawienia w `/mnt/<nazwa-puli>/PCC-Private`. Wybierz katalog poza udziałami SMB. Jeśli udostępniasz całą pulę, wskaż prywatną ścieżkę przez `--prywatny`.
+- Poczekaj na komunikat „PlexConfigControl gotowy” z adresem panelu. Aplikacja pojawi się w **Apps → Installed**. Pierwsza budowa obrazów może potrwać kilka minut.
 
-Możesz też uruchomić kreator z opcjami, np. z inną nazwą folderu, prefiksem archiwum lub portem. Opcje sprawdzisz przez `sudo sh INSTALUJ.sh --help` z rozpakowanego katalogu.
+Jeśli chcesz najpierw sprawdzić lokalne wymagania, użyj polecenia
+`sudo sh "$PCC_START" sprawdz`. Sprawdzenie nie tworzy konta, plików ani
+wolumenów. W dalszych przykładach w miejsce `$PCC_START` wstaw ścieżkę
+wypisaną po rozpakowaniu albo ustaw tę zmienną na podaną ścieżkę.
 
 ### HTTPS TrueNAS
 
@@ -42,7 +57,7 @@ Kreator próbuje zweryfikować aktywny certyfikat TrueNAS. Jeśli certyfikat pas
 Jeśli domyślny certyfikat TrueNAS pasuje tylko do `localhost`, możesz użyć dotychczasowej, poprawnej konfiguracji DNS i certyfikatu albo przygotować certyfikat LAN. W tym drugim przypadku wykonaj, podstawiając swój adres i prywatną ścieżkę z kreatora:
 
 ```bash
-sudo sh "$PCC_DIR/PlexConfigControl_RC_Install/INSTALUJ.sh" certyfikat \
+sudo sh "$PCC_START" certyfikat \
   --ip 192.168.1.120 --prywatny '/mnt/MojaPula/PCC-Private'
 ```
 
@@ -50,10 +65,15 @@ Następnie w **System → General → GUI → Settings** zapisz nazwę poprzedni
 
 ### Wznowienie po błędzie
 
-Jeżeli kreator zapisał `settings.json`, ale aplikacja jeszcze nie powstała, możesz ponowić etap instalacji bez tworzenia konta od nowa:
+Jeżeli kreator zapisał `settings.json`, ale aplikacja jeszcze nie powstała, możesz ponowić etap instalacji bez tworzenia konta od nowa.
+
+Jeśli używasz jednoplikowego instalatora, skopiuj polecenie wznowienia wypisane
+przez kreator. Wskazuje ono pobrany plik `PlexConfigControl_Instalator.py` i
+zapisany plik ustawień. Dla instalacji z rozpakowanego ZIP-a użyj poniższego
+polecenia.
 
 ```bash
-sudo sh "$PCC_DIR/PlexConfigControl_RC_Install/INSTALUJ.sh" \
+sudo sh "$PCC_START" \
   --wznow '/mnt/MojaPula/PCC-Private/settings.json'
 ```
 

@@ -2,13 +2,18 @@
 
 PlexConfigControl is an application for manual Plex configuration backups and
 restores, designed for installation as a **TrueNAS SCALE App**, with persistent
-iXVolume storage for its own settings and state. Installers for other platforms
-may be developed in future versions; they are not currently available.
+iXVolume storage for its own settings and state.
 
-**Release Candidate.** For a fresh installation on a compatible x86-64 TrueNAS
-host, see the [Polish installation guide](INSTRUKCJA-PL.md). The installer runs
-from TrueNAS Shell and registers PlexConfigControl in Apps. See the guide for
-Plex storage, HTTPS and platform requirements and the verification scope.
+## Download
+
+[PlexConfigControl installer for Windows, macOS and Linux](release/PlexConfigControl_Instalator_Windows_macOS_Linux.zip)
+is the current Release Candidate package. Extract the ZIP and open the
+launcher for your computer. Each launcher transfers the same installer to
+TrueNAS over SSH and opens the installation wizard there.
+
+For platform, Plex storage and HTTPS requirements, see the
+[Polish installation guide](INSTRUKCJA-PL.md). The ZIP includes instructions
+for the three launchers and the standalone TrueNAS Shell installer.
 
 The restricted UI test installation in `deploy/TEST-INSTALL.md` remains a
 separate development workflow.

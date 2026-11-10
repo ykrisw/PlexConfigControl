@@ -16,7 +16,7 @@ export function mountHistoryView(root, client, {language = 'en', timezone = 'Eur
       <button type="button" data-filter="RESTORE"><span data-filter-label></span> <span data-filter-count></span></button>
     </div>
     <section class="pcc-card pcc-events">
-      <div class="pcc-heading"><h2 data-heading></h2><div class="pcc-history-actions">
+      <div class="pcc-heading"><div><h2 data-heading></h2><p data-archive-count></p></div><div class="pcc-history-actions">
         <button type="button" data-download></button><button type="button" data-clear></button></div></div>
       <p class="pcc-notice" data-notice role="status" aria-live="polite" hidden></p>
       <p data-empty role="status"></p><div class="pcc-scroll-list" data-events></div>
@@ -59,8 +59,14 @@ export function mountHistoryView(root, client, {language = 'en', timezone = 'Eur
     find('[data-total]').textContent = value.counts.all;
     find('[data-success]').textContent = value.counts.success;
     find('[data-failed]').textContent = value.counts.failed;
+    const archiveCountText = value.archiveCount === null
+      ? (value.loading ? tx('Checking archives…','Sprawdzanie archiwów…')
+        : tx('Archives in folder unavailable','Liczba archiwów w folderze niedostępna'))
+      : tx(`Archives in folder: ${value.archiveCount}`,`Archiwa w folderze: ${value.archiveCount}`);
+    find('[data-archive-count]').textContent = value.verifiedCount === null ? archiveCountText
+      : `${archiveCountText} · ${tx(`Verified: ${value.verifiedCount}`,`Zweryfikowane: ${value.verifiedCount}`)}`;
     const counts = {ALL:value.counts.all,BACKUP:value.counts.backup,RESTORE:value.counts.restore};
-    const names = {ALL:tx('All','Wszystkie'),BACKUP:tx('Backup','Kopie'),RESTORE:tx('Restore','Przywracanie')};
+    const names = {ALL:tx('All','Wszystkie'),BACKUP:tx('Backup jobs','Operacje kopii'),RESTORE:tx('Restore','Przywracanie')};
     for (const button of root.querySelectorAll('[data-filter]')) {
       button.querySelector('[data-filter-label]').textContent = names[button.dataset.filter];
       button.querySelector('[data-filter-count]').textContent = `(${counts[button.dataset.filter]})`;

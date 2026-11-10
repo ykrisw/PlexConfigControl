@@ -162,7 +162,9 @@ export class PanelClient {
   }
   recovery(signal) { return this.request('/api/recovery', {signal}); }
   operation(signal) { return this.request('/api/operation', {signal}); }
-  archives(signal) { return this.request('/api/archives', {signal}); }
+  archives(signal, {verification = false} = {}) {
+    return this.request(verification ? '/api/archives?verification=1' : '/api/archives', {signal});
+  }
   status(signal) { return this.request('/api/status', {signal}); }
   readiness(signal) { return this.request('/api/restore/readiness', {signal}); }
 

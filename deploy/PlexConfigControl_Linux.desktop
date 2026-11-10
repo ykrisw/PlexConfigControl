@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=PlexConfigControl Installer
+Name[pl]=Zainstaluj PlexConfigControl
+Comment=Open the TrueNAS installation wizard over SSH
+Comment[pl]=Otwórz kreator instalacji na TrueNAS przez SSH
+Icon=system-run
+TryExec=/bin/bash
+Exec=/bin/bash -c "if [ -n \\"\\$1\\" ]; then cd -- \\"\\$(dirname -- \\"\\$1\\")\\" && /bin/bash ./PlexConfigControl_macOS.command; status=\\$?; else echo 'Otworz skrot z rozpakowanego folderu lub uruchom wspolny skrypt SSH zgodnie z instrukcja.'; status=1; fi; read -r -p 'Nacisnij Enter, aby zamknac okno. '; exit \\$status" pcc %k
+Terminal=true
+Categories=System;

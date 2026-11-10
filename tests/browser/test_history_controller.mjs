@@ -89,6 +89,40 @@ test('archive detection is informational history, downloadable and not counted a
   view.controller.dispose();
 });
 
+test('the current archive count is independent of backup jobs and becomes unavailable on a listing error',async()=>{
+  const detected = {id:4,kind:'ARCHIVE_DETECTED',status:'INFO',archive:'external.tar.gz'};
+  let archives = [{name:'external.tar.gz',verified:false}];
+  const view = setup({
+    history:async()=>[detected],
+    archives:async(_signal, options)=>{
+      assert.deepEqual(options,{verification:true});
+      if (archives === null) throw Error('Archive folder unavailable');
+      return archives;
+    },
+  });
+  await flush();
+  assert.equal(view.states.at(-1).archiveCount,1);
+  assert.equal(view.states.at(-1).verifiedCount,0);
+  assert.equal(view.states.at(-1).counts.backup,0);
+  archives = [{name:'external.tar.gz',verified:true}];
+  await view.controller.refresh();
+  assert.equal(view.states.at(-1).archiveCount,1);
+  assert.equal(view.states.at(-1).verifiedCount,1);
+  view.controller.setFilter('BACKUP');
+  assert.equal(view.states.at(-1).archiveCount,1);
+  assert.deepEqual(view.states.at(-1).entries,[]);
+  archives = [];
+  await view.controller.refresh();
+  assert.equal(view.states.at(-1).archiveCount,0);
+  assert.equal(view.states.at(-1).verifiedCount,0);
+  archives = null;
+  await view.controller.refresh();
+  assert.equal(view.states.at(-1).archiveCount,null);
+  assert.equal(view.states.at(-1).verifiedCount,null);
+  assert.equal(view.states.at(-1).available,true);
+  view.controller.dispose();
+});
+
 
 test('history exposes queued permanent logs without claiming a read-only destination was written',async()=>{
   const view=setup({history:async()=>events,operation:async()=>({archive_discovery:{pending_logs:3,permanent_logs_enabled:false}})});

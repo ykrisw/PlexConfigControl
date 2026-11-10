@@ -33,14 +33,15 @@ def publish_new(source,destination,name,expected_sha256,staging_callback):
                 while chunk:=input_file.read(1024*1024):
                     digest.update(chunk); output.write(chunk)
             output.flush(); os.fsync(output.fileno())
-        if digest.hexdigest()!=expected_sha256:
-            raise PublishError('Source changed since verification')
-        # link is atomic and fails if the final filename already exists.
-        os.link(stage,name,src_dir_fd=directory,dst_dir_fd=directory,follow_symlinks=False)
-        os.fsync(directory)
-        os.unlink(stage,dir_fd=directory); created=False
-        os.fsync(directory)
-        return name
+            if digest.hexdigest()!=expected_sha256:
+                raise PublishError('Source changed since verification')
+            # Keep the verified inode open through publication so a replaced
+            # destination path cannot be recorded as the verified archive.
+            os.link(stage,name,src_dir_fd=directory,dst_dir_fd=directory,follow_symlinks=False)
+            os.fsync(directory)
+            os.unlink(stage,dir_fd=directory); created=False
+            os.fsync(directory)
+            return file_identity(os.fstat(output.fileno()))
     finally:
         try:
             if created:

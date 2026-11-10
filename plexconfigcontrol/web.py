@@ -347,7 +347,13 @@ class Web:
             if self.archives is None:
                 return respond('503 Service Unavailable',{'error':'Archive location is not configured'})
             try:
-                return respond('200 OK',[archive_wire(asdict(item)) for item in self.discovery.scan()])
+                rows = self.discovery.scan()
+                items = [archive_wire(asdict(item)) for item in rows]
+                if environ.get('QUERY_STRING') == 'verification=1':
+                    verified = self.discovery.verified_names(rows)
+                    for item in items:
+                        item['verified'] = item['name'] in verified
+                return respond('200 OK', items)
             except OSError:
                 return respond('503 Service Unavailable',{'error':'Archive location is unavailable'})
         if path=='/api/archives/delete' and method=='POST':
