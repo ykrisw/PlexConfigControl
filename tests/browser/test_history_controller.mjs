@@ -136,8 +136,11 @@ test('adding and verifying an archive updates backup events and both file counte
 });
 
 
-test('history exposes queued permanent logs without claiming a read-only destination was written',async()=>{
-  const view=setup({history:async()=>events,operation:async()=>({archive_discovery:{pending_logs:3,permanent_logs_enabled:false}})});
-  await flush();assert.deepEqual(view.states.at(-1).archiveLogs,{pending:3,enabled:false});
-  assert.equal(view.states.at(-1).available,true);view.controller.dispose();
+test('history loads events without polling operation diagnostics',async()=>{
+  let calls = 0;
+  const view = setup({history:async()=>events, operation:async()=>{ calls++; }});
+  await flush();
+  assert.deepEqual(view.states.at(-1).entries, events);
+  assert.equal(calls, 0);
+  view.controller.dispose();
 });

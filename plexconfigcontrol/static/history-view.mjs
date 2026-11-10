@@ -80,10 +80,7 @@ export function mountHistoryView(root, client, {language = 'en', timezone = 'Eur
       CLEARED: tx('Selected history records removed. Permanent log files were preserved.', 'Usunięto zaznaczone wpisy historii. Trwałe pliki logów zostały zachowane.'),
       CLEAR_UNCONFIRMED: tx('Deletion could not be confirmed. Review the refreshed list before trying again.', 'Nie udało się potwierdzić usunięcia. Przed kolejną próbą sprawdź odświeżoną listę.'),
     };
-    const logNotice=value.archiveLogs?.pending>0?
-      tx(`Permanent archive-event logs awaiting write: ${value.archiveLogs.pending}. ${value.archiveLogs.enabled?'Check access to backup folder/Logs.':'Archive storage is read-only in this installation.'}`,
-         `Trwałe logi zdarzeń archiwów oczekujące na zapis: ${value.archiveLogs.pending}. ${value.archiveLogs.enabled?'Sprawdź dostęp do folderu kopii/Logs.':'Folder archiwów w tej instalacji jest tylko do odczytu.'}`):'';
-    const message = value.error || notices[value.notice] || logNotice;
+    const message = value.error || notices[value.notice] || '';
     find('[data-notice]').hidden = !message; find('[data-notice]').textContent = message;
     const empty = find('[data-empty]');
     empty.hidden = Boolean(value.entries.length);
