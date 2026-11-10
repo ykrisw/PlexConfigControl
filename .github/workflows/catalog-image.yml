@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      IMAGE: ghcr.io/ykrisw/plexconfigcontrol
+      IMAGE: ghcr.io/ykrisw/plexconfigcontrol-catalog
       TAG: 1.0.10-catalog.1
     steps:
       - uses: actions/checkout@v4
@@ -39,13 +39,26 @@ jobs:
             --tag plexconfigcontrol:test .
       - name: Test catalog mode in a real container
         run: python tests/container_smoke.py --catalog
+      - name: Save the tested image and checksum
+        run: |
+          docker tag plexconfigcontrol:test "$IMAGE:$TAG"
+          docker save "$IMAGE:$TAG" | gzip > plexconfigcontrol-catalog-amd64.tar.gz
+          sha256sum plexconfigcontrol-catalog-amd64.tar.gz > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plexconfigcontrol-catalog-amd64
+          path: |
+            plexconfigcontrol-catalog-amd64.tar.gz
+            SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
       - name: Publish tested image
         env:
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
-          docker tag plexconfigcontrol:test "$IMAGE:$TAG"
           docker push "$IMAGE:$TAG"
           printf 'Published `%s`\n' "$(docker image inspect --format '{{index .RepoDigests 0}}' "$IMAGE:$TAG")" >> "$GITHUB_STEP_SUMMARY"
       - name: Check anonymous registry access

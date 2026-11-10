@@ -1,6 +1,6 @@
 images:
   panel:
-    repository: ghcr.io/ykrisw/plexconfigcontrol
+    repository: ghcr.io/ykrisw/plexconfigcontrol-catalog
     tag: 1.0.10-catalog.1
   container_utils_image:
     repository: ghcr.io/truenas/containers/container-utils
