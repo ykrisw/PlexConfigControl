@@ -1,0 +1,5 @@
+setup:
+  language: pl
+  password_pl: Przykladowe-haslo-testowe
+  archives_pl: /mnt/inna-pula/Kopie Plex
+  port_pl: 28788

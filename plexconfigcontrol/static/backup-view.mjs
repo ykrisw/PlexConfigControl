@@ -4,7 +4,7 @@ import {backupResult} from './operation-outcome.mjs';
 import {mountRecoveryView} from './recovery-view.mjs';
 import {createBackupController,archiveIdentity} from './backup-controller.mjs';
 
-export function mountBackupView(root,client,{language='en',timezone='Europe/London'}={}){
+export function mountBackupView(root,client,{language='en',timezone='Europe/London',catalog=false}={}){
   const document=root.ownerDocument,pl=language==='pl',tx=(en,polish)=>pl?polish:en;
   root.classList.add('pcc-backup');
   root.innerHTML=`
@@ -54,6 +54,12 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
     '[data-submission-retry]':tx('Retry Same Request','Ponów to samo żądanie'),
   };
   for(const [selector,text]of Object.entries(labels))find(selector).textContent=text;
+  if(catalog){
+    find('.pcc-plex').hidden=true;
+    find('.pcc-backup-action').hidden=true;
+    find('[data-delete]').hidden=true;
+    find('[data-delete]').parentElement.append(find('[data-refresh]'));
+  }
   dialog.setAttribute('aria-label',tx('Confirm archive deletion','Potwierdź usunięcie archiwów'));
   backupDialog.setAttribute('aria-label',tx('Choose Backup Action','Wybierz działanie kopii zapasowej'));
   const dateFormat=new Intl.DateTimeFormat(pl?'pl-PL':'en-GB',{dateStyle:'medium',timeZone:timezone});

@@ -1,0 +1,148 @@
+groups:
+- name: Setup / Instalacja
+  description: Choose a language / Wybierz język
+questions:
+- variable: setup
+  label: ''
+  group: Setup / Instalacja
+  schema:
+    type: dict
+    attrs:
+    - variable: language
+      label: Installation language / Język instalacji
+      schema:
+        type: string
+        default: en
+        required: true
+        enum:
+        - value: en
+          description: English
+        - value: pl
+          description: Polski
+    - variable: password_en
+      label: Panel password
+      description: Use at least 12 characters (up to 72 UTF-8 bytes).
+      schema:
+        show_if:
+        - - language
+          - '='
+          - en
+        type: string
+        private: true
+        default: ''
+        max_length: 72
+    - variable: archives_en
+      label: Archive folder
+      description: Select an existing folder with PlexConfigControl archives. The
+        app reads this folder without changing it.
+      schema:
+        show_if:
+        - - language
+          - '='
+          - en
+        type: hostpath
+        default: ''
+    - variable: port_en
+      label: HTTPS port
+      description: Use the default unless the port is already in use.
+      schema:
+        show_if:
+        - - language
+          - '='
+          - en
+        type: int
+        default: 28787
+        min: 1024
+        max: 65535
+    - variable: certificate_en
+      label: HTTPS certificate (optional)
+      description: Select a certificate matching the NAS address you use in your browser.
+      schema:
+        show_if:
+        - - language
+          - '='
+          - en
+        type: int
+        'null': true
+        $ref:
+        - definitions/certificate
+    - variable: password_pl
+      label: Hasło do panelu
+      description: Użyj co najmniej 12 znaków (maksymalnie 72 bajty w UTF-8).
+      schema:
+        show_if:
+        - - language
+          - '='
+          - pl
+        type: string
+        private: true
+        default: ''
+        max_length: 72
+    - variable: archives_pl
+      label: Folder archiwów
+      description: Wybierz istniejący folder z archiwami PlexConfigControl. Aplikacja
+        ma do niego dostęp tylko do odczytu.
+      schema:
+        show_if:
+        - - language
+          - '='
+          - pl
+        type: hostpath
+        default: ''
+    - variable: port_pl
+      label: Port HTTPS
+      description: Zostaw domyślny port, jeśli jest wolny.
+      schema:
+        show_if:
+        - - language
+          - '='
+          - pl
+        type: int
+        default: 28787
+        min: 1024
+        max: 65535
+    - variable: certificate_pl
+      label: Certyfikat HTTPS (opcjonalnie)
+      description: Wybierz certyfikat pasujący do adresu NAS używanego w przeglądarce.
+      schema:
+        show_if:
+        - - language
+          - '='
+          - pl
+        type: int
+        'null': true
+        $ref:
+        - definitions/certificate
+- variable: state
+  label: ''
+  group: Setup / Instalacja
+  schema:
+    type: dict
+    hidden: true
+    attrs:
+    - variable: type
+      label: ''
+      schema:
+        type: string
+        hidden: true
+        default: ix_volume
+    - variable: ix_volume_config
+      label: ''
+      schema:
+        type: dict
+        hidden: true
+        $ref:
+        - normalize/ix_volume
+        attrs:
+        - variable: dataset_name
+          label: ''
+          schema:
+            type: string
+            default: state
+            hidden: true
+        - variable: acl_enable
+          label: ''
+          schema:
+            type: boolean
+            default: false
+            hidden: true

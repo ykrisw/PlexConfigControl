@@ -1,6 +1,6 @@
 // No session timeout: polling checks service state, never user inactivity.
 export function createDashboardController(client, render, {
-  onSignedOut = () => {}, schedule = setTimeout, cancel = clearTimeout,
+  onSignedOut = () => {}, schedule = setTimeout, cancel = clearTimeout, monitorPlex = true,
 } = {}) {
   const lifecycle = new AbortController();
   const state = {plex: 'UNKNOWN', busy: false, error: ''};
@@ -36,7 +36,7 @@ export function createDashboardController(client, render, {
   function dispose() {
     disposed = true; lifecycle.abort(); cancel(timer);
   }
-  emit(); void poll();
+  emit(); if(monitorPlex) void poll();
   return {
     logout: () => mutate(() => client.logout(lifecycle.signal), 'logout'),
     changePassword(current, password, confirmation) {

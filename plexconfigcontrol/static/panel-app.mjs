@@ -63,6 +63,7 @@ function mountScrollbar(list) {
 }
 
 export function mountPanelApp(root) {
+  const catalog = root.dataset.catalog;
   let epoch = 0, cleanup = () => {}, stopped = false;
   const client = new PanelClient({onSessionExpired: () => showLogin('Sign in required')});
   function reset() { epoch++; cleanup(); cleanup = () => {}; root.replaceChildren(); }
@@ -72,6 +73,11 @@ export function mountPanelApp(root) {
     root.className = 'pcc-shell'; root.dataset.theme = 'system';
     root.innerHTML = '<header class="pcc-header"><div class="pcc-brand">PlexConfigControl</div></header><form class="pcc-login"><h2>Sign In</h2><label>Password<input name="password" type="password" autocomplete="current-password" required maxlength="4096"></label><p role="alert" class="pcc-notice"></p><button type="submit">Sign In</button></form>';
     const form = root.querySelector('form'), notice = form.querySelector('[role=alert]');
+    if (catalog === 'pl') {
+      form.querySelector('h2').textContent = 'Zaloguj się';
+      form.querySelector('label').firstChild.textContent = 'Hasło';
+      form.querySelector('button').textContent = 'Zaloguj się';
+    }
     notice.textContent = message;
     let busy = false;
     const submit = async event => {
@@ -99,11 +105,11 @@ export function mountPanelApp(root) {
     reset();
     const viewDisposers = new Map();
     const signedOut = reason => showLogin(reason === 'password_changed_history_pending' ? 'Password changed. Sign in with your new password. The History entry could not be confirmed.' : reason === 'password_changed' ? 'Password changed. Sign in with your new password.' : '');
-    const shell = mountPanelShell(root, {theme: prefs.theme, onNavigate(key, section) {
+    const shell = mountPanelShell(root, {theme: prefs.theme, catalog: Boolean(catalog), onNavigate(key, section) {
       if (viewDisposers.has(key)) return;
-      if (key === 'dashboard') viewDisposers.set(key, mountDashboardView(section, client, {language: prefs.language, onSignedOut: signedOut}));
-      else if (key === 'backup') viewDisposers.set(key,mountBackupView(section,client,{language:prefs.language,timezone:prefs.timezone}));
-      else if (key === 'restore') viewDisposers.set(key, mountRestoreView(section, client,{language:prefs.language}));
+      if (key === 'dashboard') viewDisposers.set(key, mountDashboardView(section, client, {language: prefs.language, onSignedOut: signedOut,catalog:Boolean(catalog)}));
+      else if (key === 'backup') viewDisposers.set(key,mountBackupView(section,client,{language:prefs.language,timezone:prefs.timezone,catalog:Boolean(catalog)}));
+      else if (key === 'restore') viewDisposers.set(key, mountRestoreView(section, client,{language:prefs.language,catalog:Boolean(catalog)}));
       else if (key === 'history') viewDisposers.set(key, mountHistoryView(section, client, {language:prefs.language,timezone:prefs.timezone}));
       else if (key === 'settings') viewDisposers.set(key,mountSettingsView(section,client,{preferences:prefs,onChanged(next){
         const languageChanged=prefs.language!==next.language;

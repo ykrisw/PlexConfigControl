@@ -1,7 +1,7 @@
 import {createDashboardController} from './dashboard-controller.mjs';
 import {createPhotoController} from './photo-controller.mjs';
 
-export function mountDashboardView(root, client, {onSignedOut, language = 'en'} = {}) {
+export function mountDashboardView(root, client, {onSignedOut, language = 'en', catalog = false} = {}) {
   const pl = language === 'pl';
   const tx = (en, polish) => pl ? polish : en;
   root.innerHTML = `
@@ -35,6 +35,7 @@ export function mountDashboardView(root, client, {onSignedOut, language = 'en'} 
     <p data-photo-notice class="pcc-notice" role="alert" hidden></p>
     <p class="pcc-notice" data-dashboard-error role="alert" hidden></p>`;
   const find = selector => root.querySelector(selector);
+  if(catalog) find('.pcc-plex').hidden=true;
   const dialog = find('dialog'), form = find('form'), photoDialog=find('[data-photo-dialog]');
   const lifecycle = new AbortController();
   const labels = {
@@ -71,7 +72,7 @@ export function mountDashboardView(root, client, {onSignedOut, language = 'en'} 
     find('[data-dashboard-error]').hidden = !error || dialog.open;
     find('[data-dashboard-error]').textContent = error;
     find('[data-password-error]').textContent = dialog.open ? error : '';
-  }, {onSignedOut});
+  }, {onSignedOut, monitorPlex: !catalog});
   const image=find('[data-profile-photo]'),placeholder=find('[data-photo-placeholder]');
   const photoController=createPhotoController(client,state=>{
     photoState=state;updateActions();

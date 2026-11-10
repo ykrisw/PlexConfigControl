@@ -7,7 +7,7 @@ const paths = [
   '<path d="m9 3-1 3-3 1 1 4-2 2 2 3 3-1 3 2 3-2 3 1 2-3-2-2 1-4-3-1-1-3z"/><circle cx="12" cy="11" r="3"/>',
 ];
 
-export function mountPanelShell(root, {onNavigate = () => {}, theme = 'System'} = {}) {
+export function mountPanelShell(root, {onNavigate = () => {}, theme = 'System', catalog = false} = {}) {
   const document = root.ownerDocument;
   const link = document.createElement('link');
   link.rel = 'stylesheet'; link.href = '/assets/panel-layout.css';
@@ -50,7 +50,11 @@ export function mountPanelShell(root, {onNavigate = () => {}, theme = 'System'} 
   }
   setTheme(theme); select('dashboard');
   function setLanguage(language) {
-    const names=language==='pl'?['Pulpit','Kopia zapasowa','Przywracanie','Historia','Ustawienia']:panels;
+    const names=language==='pl'?['Pulpit','Kopia zapasowa','Przywracanie','Historia','Ustawienia']:[...panels];
+    if(catalog) {
+      names[1]=language==='pl'?'Archiwa':'Archives';
+      names[2]=language==='pl'?'Weryfikacja':'Verification';
+    }
     for (const [index,title] of panels.entries()) buttons.get(title.toLowerCase()).querySelector('span').textContent=names[index];
   }
   return {sections, select, setTheme, setLanguage, dispose() {

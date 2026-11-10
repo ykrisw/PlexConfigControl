@@ -1,7 +1,9 @@
 import io
+import importlib.util
 import json
 import os
 import ssl
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -97,6 +99,56 @@ class RuntimeTests(unittest.TestCase):
                 call.assert_called_with('delete_archives', {'confirmed': True, 'archives': [
                     {'name': name, 'size': 1, 'device': 2, 'inode': 3, 'modified_ns': 4},
                 ]})
+
+    @unittest.skipUnless(importlib.util.find_spec('bcrypt'), 'Catalog password support requires the server extras')
+    def test_catalog_install_language_login_and_repeatable_read_only_verification(self):
+        import bcrypt
+        from plexconfigcontrol.archives import REQUIRED
+        from plexconfigcontrol.operations import Phase
+
+        password = 'catalog-test-password'
+        verifier = bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=12)).decode()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            archives = root/'archives'
+            archives.mkdir()
+            name = 'PlexConfig_2026.11.10_09.00.00.tar.gz'
+            with tarfile.open(archives/name, 'w:gz') as archive:
+                for member_name in REQUIRED:
+                    member = tarfile.TarInfo(member_name)
+                    member.size = 4
+                    archive.addfile(member, io.BytesIO(b'test'))
+            original = (archives/name).read_bytes()
+            for language in ('en', 'pl'):
+                with self.subTest(language=language):
+                    config = Configuration(root/language, 'localhost', archives=archives,
+                                           catalog_language=language)
+                    app, _, _ = prepare(config, verifier)
+                    self.assertIn(f'data-catalog="{language}"'.encode(), self.request(app, '/')[2])
+                    status, headers, data = self.request(app, '/api/login', 'POST', {'password':password})
+                    self.assertEqual(status, '200 OK')
+                    cookie = headers['Set-Cookie'].split(';')[0]
+                    self.assertTrue(cookie.startswith('pcc_catalog_session='))
+                    csrf = json.loads(data)['csrf']
+                    self.assertEqual(json.loads(self.request(app, '/api/settings', cookie=cookie)[2])['language'], language)
+                    for path in ('/api/backup/start', '/api/restore/execute', '/api/archives/delete'):
+                        self.assertEqual(self.request(app, path, 'POST', {}, cookie, csrf)[0], '403 Forbidden')
+                    for _ in range(2):
+                        code, _, body = self.request(app, '/api/restore/validate', 'POST', {'archive':name}, cookie, csrf)
+                        self.assertEqual(code, '200 OK')
+                        self.assertEqual(json.loads(body)['phase'], 'SUCCESS')
+                    with app.web.operation_store.transaction() as operation:
+                        self.assertEqual(operation.phase, Phase.SUCCESS)
+                        self.assertIsNone(operation.snapshot_id)
+                        operation.begin('RESTORE')
+                        operation.validation_details = {'archive':name, 'status':'VALIDATING'}
+                    app.web.progress.start('RESTORE')
+                    app, _, _ = prepare(config)
+                    with app.web.operation_store.transaction() as operation:
+                        self.assertEqual(operation.phase, Phase.FAILED)
+                    self.assertEqual(app.web.history.list()[0]['status'], 'FAILED')
+            self.assertEqual(list(archives.iterdir()), [archives/name])
+            self.assertEqual((archives/name).read_bytes(), original)
 
     def test_missing_or_invalid_bootstrap_never_creates_usable_account(self):
         with tempfile.TemporaryDirectory() as d:

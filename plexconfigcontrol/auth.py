@@ -63,7 +63,14 @@ class Account:
             salt, digest, iterations, stage, failures, blocked = row
             if blocked > now:
                 return {'authenticated': False, 'blocked_until': blocked, 'remaining': 0}
-            valid = hmac.compare_digest(self.derive(password, salt, iterations), digest)
+            if iterations == 0 and salt == b'':
+                # Catalog bootstrap accounts start with a bcrypt verifier.
+                # Reject long inputs explicitly for bcrypt versions that truncate them.
+                import bcrypt
+                encoded = password.encode('utf-8')
+                valid = len(encoded) <= 72 and bcrypt.checkpw(encoded, digest)
+            else:
+                valid = hmac.compare_digest(self.derive(password, salt, iterations), digest)
             if valid:
                 db.execute('UPDATE account SET stage=0,failures=0,blocked_until=0 WHERE id=1')
                 return {'authenticated': True, 'blocked_until': 0, 'remaining': 5,

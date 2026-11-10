@@ -7,7 +7,7 @@ import {restorePresentation,restoreError} from './restore-messages.mjs';
 
 // Mount inside the application's main content area, below the five-tab header.
 // Archive names, validation results and errors are always inserted as text.
-export function mountRestoreView(root, client, {language='en'}={}) {
+export function mountRestoreView(root, client, {language='en',catalog=false}={}) {
   const pl=language==='pl',tx=(en,polish)=>pl?polish:en;
   root.classList.add('pcc-restore');
   root.innerHTML = `
@@ -21,12 +21,12 @@ export function mountRestoreView(root, client, {language='en'}={}) {
       <button type="button" class="pcc-primary" data-restore-action="validate" disabled>${tx('Validate Archive','Zweryfikuj archiwum')}</button>
     </section>
     <section class="pcc-card pcc-operation-workspace" hidden>
-      <h2>${tx('Restore status','Stan przywracania')}</h2>
+      <h2>${catalog?tx('Verification status','Stan weryfikacji'):tx('Restore status','Stan przywracania')}</h2>
       <section data-recovery hidden></section>
       <div data-operation-result class="pcc-notice" role="status" aria-live="polite" hidden><span data-restore-summary></span><span data-restore-plex hidden></span></div>
       <div data-validation-progress hidden role="status" aria-live="polite"></div>
       <div class="pcc-stage-progress" hidden>
-        <progress max="100" aria-label="${tx('Current restore stage progress','Postęp bieżącego etapu przywracania')}"></progress>
+        <progress max="100" aria-label="${catalog?tx('Archive verification progress','Postęp weryfikacji archiwum'):tx('Current restore stage progress','Postęp bieżącego etapu przywracania')}"></progress>
         <span data-stage-percent aria-hidden="true" hidden></span>
       </div>
       <div data-validation-notice class="pcc-notice" hidden role="status" aria-live="polite"></div>
@@ -53,6 +53,7 @@ export function mountRestoreView(root, client, {language='en'}={}) {
   const validate = find('[data-restore-action="validate"]');
   const cancel = find('[data-restore-action="cancel"]');
   const status = find('[data-plex-state]');
+  if(catalog)status.closest('.pcc-plex').hidden=true;
   const result = find('[data-operation-result]'), summary = find('[data-restore-summary]');
   const resultPlex = find('[data-restore-plex]');
   const recovery=mountRecoveryView(find('[data-recovery]'),client,{language});
@@ -85,6 +86,9 @@ export function mountRestoreView(root, client, {language='en'}={}) {
     renderResultPlex();
     selected = state.selected;
     const view=restorePresentation(state,language);
+    const validation=state.snapshot?.operation?.operation;
+    if(catalog&&!view.notice&&validation?.phase==='SUCCESS'&&validation.validation_details?.status==='VALID')
+      view.notice=tx('Archive verified.','Archiwum zweryfikowane.');
     validate.disabled = view.validateDisabled||loading||!archiveAvailable;
     cancel.hidden = !view.cancelVisible;
     cancel.disabled = view.cancelDisabled;
@@ -112,7 +116,8 @@ export function mountRestoreView(root, client, {language='en'}={}) {
     const locked=showWorkspace({active,snapshot,result:resultText||view.notice||find('[data-submission-text]').textContent});
     progress.textContent=view.progressText||
       (locked&&!view.notice&&find('[data-recovery]').hidden&&find('[data-submission]').hidden
-        ? tx('Waiting for restore status…','Oczekiwanie na stan przywracania…'):'');
+        ? (catalog?tx('Waiting for verification status…','Oczekiwanie na stan weryfikacji…'):
+          tx('Waiting for restore status…','Oczekiwanie na stan przywracania…')):'');
     progress.hidden=!progress.textContent;
     showProgress(locked&&!view.waiting&&find('[data-recovery]').hidden,snapshot?.progress);
   };

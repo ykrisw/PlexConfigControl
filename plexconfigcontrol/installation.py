@@ -13,15 +13,22 @@ def password_verifier(password):
     return f'pbkdf2-sha256${ITERATIONS}${salt.hex()}${digest.hex()}'
 
 
-def initialize_from_verifier(account,verifier):
+def initialize_from_verifier(account,verifier,*,catalog=False):
     if not isinstance(verifier,str) or len(verifier)>256:
         raise ValueError('Invalid installation verifier')
-    match=re.fullmatch(r'pbkdf2-sha256\$([0-9]{6,7})\$([0-9a-f]{64})\$([0-9a-f]{64})',verifier)
-    if not match or not 600_000<=int(match[1])<=2_000_000:
-        raise ValueError('Invalid installation verifier')
+    if catalog:
+        # TrueNAS renders its password field to a bcrypt verifier before passing it to Compose.
+        if not re.fullmatch(r'\$2b\$12\$[./A-Za-z0-9]{53}',verifier):
+            raise ValueError('Invalid catalog installation verifier')
+        salt,digest,iterations=b'',verifier.encode('ascii'),0
+    else:
+        match=re.fullmatch(r'pbkdf2-sha256\$([0-9]{6,7})\$([0-9a-f]{64})\$([0-9a-f]{64})',verifier)
+        if not match or not 600_000<=int(match[1])<=2_000_000:
+            raise ValueError('Invalid installation verifier')
+        salt,digest,iterations=bytes.fromhex(match[2]),bytes.fromhex(match[3]),int(match[1])
     with account.connect() as db:
         db.execute('INSERT INTO account(id,salt,digest,iterations) VALUES(1,?,?,?)',
-                   (bytes.fromhex(match[2]),bytes.fromhex(match[3]),int(match[1])))
+                   (salt,digest,iterations))
 
 
 def main():

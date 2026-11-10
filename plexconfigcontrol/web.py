@@ -32,13 +32,18 @@ from .outcome import describe_outcome
 from .profile_photo import ProfilePhoto,InvalidPhoto,PhotoChanged,MAX_UPLOAD
 
 class Web:
-    def __init__(self,state_directory,archive_directory=None,truenas_api=None,*,archive_deletion_enabled=True,archive_logs_enabled=True,recovery_inspector=None,execution_service=None,archive_deleter=None):
+    def __init__(self,state_directory,archive_directory=None,truenas_api=None,*,archive_deletion_enabled=True,archive_logs_enabled=True,recovery_inspector=None,execution_service=None,archive_deleter=None,catalog_language=None):
         if execution_service is not None:
             if (not isinstance(execution_service, ExecutionGateway) or archive_directory is None
                     or execution_service.state != Path(state_directory).resolve()
                     or execution_service.destination != Path(archive_directory).resolve()):
                 raise ValueError('Execution backend must use the panel state and archive directories')
         self.execution=execution_service
+        if catalog_language is not None and (catalog_language not in ('en','pl') or truenas_api is not None
+                or execution_service is not None or archive_deletion_enabled or archive_logs_enabled):
+            raise ValueError('Catalog mode only permits read-only archive access')
+        self.catalog_language=catalog_language
+        self.session_cookie='pcc_catalog_session' if catalog_language is not None else 'pcc_session'
         self.state_directory=state_directory
         self.recovery_inspector=recovery_inspector
         self.operation_store=StateStore(state_directory)
@@ -93,6 +98,10 @@ class Web:
                 '/assets/approved-appearance.css':'approved-appearance.css'}
         if method=='GET' and path=='/':
             body=files('plexconfigcontrol').joinpath('static/index.html').read_bytes()
+            if self.catalog_language is not None:
+                language=self.catalog_language.encode('ascii')
+                body=body.replace(b'<html lang="en">',b'<html lang="'+language+b'">',1)
+                body=body.replace(b'id="pcc-app"',b'id="pcc-app" data-catalog="'+language+b'"',1)
             start_response('200 OK',[
                 ('Content-Type','text/html; charset=utf-8'),
                 ('Content-Length',str(len(body))),('Cache-Control','no-store'),
@@ -110,7 +119,7 @@ class Web:
         cookie=SimpleCookie()
         try: cookie.load(environ.get('HTTP_COOKIE',''))
         except CookieError: return respond('400 Bad Request',{'error':'Invalid cookie'})
-        token=cookie['pcc_session'].value if 'pcc_session' in cookie else None
+        token=cookie[self.session_cookie].value if self.session_cookie in cookie else None
         data={}
         photo_upload=path=='/api/account/photo' and method=='POST'
         if method=='POST' and not photo_upload:
@@ -146,7 +155,7 @@ class Web:
                 return respond('409 Conflict',{'error':'Credentials changed during sign-in. Try again.'})
             except Exception:
                 return respond('503 Service Unavailable',{'error':'Sign-in could not be confirmed'})
-            headers.append(('Set-Cookie','pcc_session='+token+'; Path=/; Secure; HttpOnly; SameSite=Strict'))
+            headers.append(('Set-Cookie',self.session_cookie+'='+token+'; Path=/; Secure; HttpOnly; SameSite=Strict'))
             return respond('200 OK',{'authenticated':True,'csrf':csrf})
         if not self.sessions.authenticated(token):
             return respond('401 Unauthorized',{'error':'Sign in required'})
@@ -248,7 +257,7 @@ class Web:
             cleanup_pending=False
             try: self.sessions.revoke_all()
             except Exception: cleanup_pending=True
-            headers.append(('Set-Cookie','pcc_session=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Strict'))
+            headers.append(('Set-Cookie',self.session_cookie+'=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Strict'))
             history_recorded=True
             try: self.history.add('PASSWORD_CHANGE','SUCCESS','Panel password changed. Prior credential-bound sessions invalidated.')
             except Exception: history_recorded=False
@@ -258,7 +267,7 @@ class Web:
             return respond('200 OK',result)
         if path=='/api/logout' and method=='POST':
             self.sessions.logout(token)
-            headers.append(('Set-Cookie','pcc_session=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Strict'))
+            headers.append(('Set-Cookie',self.session_cookie+'=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Strict'))
             return respond('200 OK',{'authenticated':False})
         if path=='/api/settings' and method in ('GET','POST'):
             try: prefs=self.settings.update(**data) if method=='POST' else self.settings.read()
@@ -321,7 +330,7 @@ class Web:
             if self.archives is None:
                 return respond('503 Service Unavailable',{'error':'Archive location is not configured'})
             service=RestoreValidation(self.archives.directory,self.state_directory,
-                                      self.operation_store,self.history)
+                                      self.operation_store,self.history,validation_only=self.catalog_language is not None)
             try:
                 if path=='/api/restore/cancel':
                     service.cancel()

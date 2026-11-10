@@ -28,8 +28,17 @@ class Configuration:
     snapshot_dataset: str | None = None
     execution_socket: Path | None = None
     execution_uid: int | None = None
+    catalog_language: str | None = None
+    catalog_certificate: bool = False
 
     def __post_init__(self):
+        if self.catalog_language is not None:
+            if (self.catalog_language not in ('en', 'pl') or self.archives is None or
+                    any((self.truenas_url, self.api_username, self.api_key_file,
+                         self.snapshot_dataset, self.execution_socket, self.ca_file))):
+                raise ValueError('Catalog mode requires archives and forbids host integration')
+        elif self.catalog_certificate:
+            raise ValueError('Catalog TLS settings require catalog mode')
         if self.execution_socket is not None:
             if (not self.execution_socket.is_absolute() or self.archives is None
                     or type(self.execution_uid) is not int or self.execution_uid < 0
@@ -63,7 +72,13 @@ class Configuration:
         uid=env.get('PCC_EXECUTION_UID')
         return cls(state,host,port,Path(archives) if archives else None,url,user,key,
                    env.get('PCC_CA_FILE'),env.get('PCC_PLEX_CONFIG_DATASET') or None,
-                   Path(endpoint) if endpoint else None,int(uid) if uid is not None else None)
+                   Path(endpoint) if endpoint else None,int(uid) if uid is not None else None,
+                   env.get('PCC_CATALOG_LANGUAGE'),env.get('PCC_CATALOG_CERTIFICATE')=='1')
+
+    def tls_material(self):
+        if self.catalog_certificate:
+            return Path('/catalog-panel.crt'),Path('/catalog-panel.key')
+        return ensure_tls(self.state,self.public_host)
 
 
 class ReadOnlyTrueNAS:
@@ -154,7 +169,8 @@ def prepare(config,verifier=None):
              read_secret(config.api_key_file),config.ca_file,timeout=10),config.snapshot_dataset)
     web=Web(config.state,archive_directory=config.archives,truenas_api=api,
             archive_deletion_enabled=execution is not None,archive_logs_enabled=False,
-            execution_service=execution,archive_deleter=api.delete_archives if execution is not None else None)
+            execution_service=execution,archive_deleter=api.delete_archives if execution is not None else None,
+            catalog_language=config.catalog_language)
     if config.snapshot_dataset is not None:
         if api is None:
             raise ValueError('Snapshot inspection connection is unavailable')
@@ -164,10 +180,13 @@ def prepare(config,verifier=None):
             existing=db.execute('SELECT id FROM account WHERE id=1').fetchone()
         if not existing:
             if not verifier: raise ValueError('First installation requires PCC_BOOTSTRAP_VERIFIER')
-            initialize_from_verifier(web.account,verifier)
-        cert,key=ensure_tls(config.state,config.public_host)
+            if config.catalog_language is not None:
+                web.settings.update(language=config.catalog_language)
+            initialize_from_verifier(web.account,verifier,catalog=config.catalog_language is not None)
+        cert,key=config.tls_material()
     try:
-        reconcile_startup(web.operation_store,web.progress,web.history,config.state)
+        reconcile_startup(web.operation_store,web.progress,web.history,config.state,
+                          validation_only=config.catalog_language is not None)
     except OperationBusy:
         if execution is None:
             raise
@@ -190,10 +209,9 @@ def main():
         from gunicorn.app.base import BaseApplication
         class Server(BaseApplication):
             def load_config(self):
-                from .tls import ensure_tls
                 config.state.mkdir(parents=True,exist_ok=True,mode=0o700)
                 with operation_lock(config.state):
-                    cert,key=ensure_tls(config.state,config.public_host)
+                    cert,key=config.tls_material()
                 for name,value in {'bind':f'0.0.0.0:{config.port}','workers':1,
                     'worker_class':'gthread','threads':4,'timeout':60,'graceful_timeout':60,
                     'certfile':str(cert),'keyfile':str(key),'worker_tmp_dir':'/tmp',

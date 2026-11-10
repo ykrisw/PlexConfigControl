@@ -1,0 +1,5 @@
+setup:
+  language: en
+  password_en: Example-render-only
+  archives_en: /mnt/testpool/Plex Config
+  port_en: 28787

@@ -1,0 +1,41 @@
+{% set tpl = ix_lib.base.render.Render(values) %}
+{% set lang = values.setup.language %}
+{% if lang not in ["en", "pl"] %}
+  {% do tpl.funcs.fail("Choose English or Polish.") %}
+{% endif %}
+{% set password = values.setup.get("password_" ~ lang) or "" %}
+{% set archive = values.setup.get("archives_" ~ lang) or "" %}
+{% if password | length < 12 %}
+  {% do tpl.funcs.fail("Hasło musi mieć co najmniej 12 znaków." if lang == "pl" else "Enter a password with at least 12 characters.") %}
+{% endif %}
+{% if not archive.startswith("/mnt/") %}
+  {% do tpl.funcs.fail("Wybierz istniejący folder archiwów pod /mnt." if lang == "pl" else "Select an existing archive folder under /mnt.") %}
+{% endif %}
+{% set certificate = values.setup.get("certificate_" ~ lang) %}
+{% set port = {"bind_mode": "published", "port_number": values.setup.get("port_" ~ lang, 28787)} %}
+{% set panel = tpl.add_container("panel", "panel") %}
+{% do panel.set_user(568, 568) %}
+{% do panel.set_read_only(true) %}
+{% do panel.environment.add_env("PCC_CATALOG_LANGUAGE", lang) %}
+{% do panel.environment.add_env("PCC_PUBLIC_HOST", "localhost") %}
+{% do panel.environment.add_env("PCC_ARCHIVE_DIRECTORY", "/archives") %}
+{% do panel.environment.add_env("PCC_BOOTSTRAP_VERIFIER", tpl.funcs.bcrypt_hash(password)) %}
+{% if certificate %}
+  {% set tls = values.ix_certificates[certificate] %}
+  {% do panel.configs.add("panel-certificate", tls.certificate, "/catalog-panel.crt") %}
+  {% do panel.configs.add("panel-private-key", tls.privatekey, "/catalog-panel.key") %}
+  {% do panel.environment.add_env("PCC_CATALOG_CERTIFICATE", "1") %}
+{% else %}
+  {% do tpl.notes.add_info("Przy pierwszym otwarciu przeglądarka może zgłosić niezaufany certyfikat. W ustawieniach aplikacji możesz wybrać zaufany certyfikat NAS." if lang == "pl" else "Your browser may report an untrusted certificate on first open. You can select a trusted NAS certificate in the app settings.") %}
+{% endif %}
+{% do panel.healthcheck.use_built_in() %}
+{% do panel.add_port(port, {"container_port": 8443}) %}
+{% do panel.add_storage("/tmp", {"type": "tmpfs", "tmpfs_config": {"size": 64}}) %}
+{% do panel.add_storage("/var/lib/plexconfigcontrol", values.state) %}
+{% do panel.add_storage("/archives", {"type": "host_path", "read_only": true, "host_path_config": {"path": archive, "create_host_path": false}}) %}
+{% set permissions = tpl.deps.perms("permissions") %}
+{% do permissions.add_or_skip_action("/var/lib/plexconfigcontrol", values.state, {"uid": 568, "gid": 568, "mode": "check"}) %}
+{% do permissions.activate() %}
+{% do panel.depends.add_dependency("permissions", "service_completed_successfully") %}
+{% do tpl.portals.add(port, {"scheme": "https", "name": "Otwórz panel" if lang == "pl" else "Open Panel"}) %}
+{{ tpl.render() | tojson }}

@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 dependencies = ["websocket-client>=1.9,<2"]
 
 [project.optional-dependencies]
-server = ["gunicorn==25.2.0", "cryptography==50.0.2", "tzdata>=2026.1", "Pillow==13.0.0"]
+server = ["gunicorn==25.2.0", "cryptography==50.0.2", "tzdata>=2026.1", "Pillow==13.0.0", "bcrypt>=4.2,<6"]
 browser-tests = ["playwright>=1.56,<2"]
 apple-tests = ["selenium>=4.27,<5"]
 

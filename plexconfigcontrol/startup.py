@@ -5,7 +5,7 @@ from .publication_intent import pending
 from .outcome import describe_outcome
 
 
-def reconcile_startup(store, progress, history, state_directory):
+def reconcile_startup(store, progress, history, state_directory, *, validation_only=False):
     """Mark interrupted work; never delete snapshots or restart Plex on startup.
 
     Must run once during service startup, not once per HTTP worker. The operation
@@ -24,6 +24,17 @@ def reconcile_startup(store, progress, history, state_directory):
             snapshot=operation.snapshot_id
             if not interrupted:
                 return {'interrupted':False,'phase':phase.value,'snapshot_id':snapshot}
+            # A catalog verification never stages files or changes Plex.
+            safe_retry=(validation_only and phase==Phase.VALIDATING and operation.kind=='RESTORE'
+                        and not snapshot and not pending(state_directory))
+            if safe_retry:
+                operation.phase=Phase.FAILED
+                operation.validation_details={'archive':(operation.validation_details or {}).get('archive'),
+                    'status':'INTERRUPTED','reason':'Application restarted before validation completed'}
+                progress.fail_closed(False)
+                history.add('ARCHIVE_VALIDATION','FAILED','Archive verification was interrupted.',
+                            operation.validation_details['archive'])
+                return {'interrupted':True,'phase':Phase.FAILED.value,'snapshot_id':None}
             # Even without a snapshot there may be a private workspace or a
             # destination staging file. Never silently allow another operation.
             operation.phase=Phase.RECOVERY_REQUIRED

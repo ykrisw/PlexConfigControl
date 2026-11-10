@@ -12,11 +12,12 @@ from .publication_intent import pending
 from .progress import Progress
 
 class RestoreValidation:
-    def __init__(self, archive_directory, state_directory, store, history):
+    def __init__(self, archive_directory, state_directory, store, history, *, validation_only=False):
         self.archive_directory=Path(archive_directory)
         self.state_directory=state_directory
         self.store=store
         self.history=history
+        self.validation_only=validation_only
         self.progress=Progress(state_directory)
 
     def validate(self, name):
@@ -103,14 +104,18 @@ class RestoreValidation:
             ArchiveDiscovery(self.archive_directory,self.state_directory,self.history).remember_verified(name,identity)
             with self.store.transaction() as operation:
                 operation.archive_validated(result.sha256)
+                if self.validation_only:
+                    operation.phase=Phase.SUCCESS
                 operation.validation_details={'archive':name,'status':'VALID','reason':None,
                     'sha256':result.sha256,'files':result.files,'bytes_read':result.bytes_read,
                     'file_identity':identity}
-            self.progress.update('WAITING_FOR_PLEX_STOP')
+            self.progress.update('COMPLETED' if self.validation_only else 'WAITING_FOR_PLEX_STOP')
             self.history.add('ARCHIVE_VALIDATION','SUCCESS',
+                             'Archive contents verified.' if self.validation_only else
                              'Archive contents verified; waiting for manual Plex stop.',name)
             return {'archive':name,'sha256':result.sha256,'files':result.files,
-                    'bytes_read':result.bytes_read,'phase':'WAITING_FOR_PLEX_STOP'}
+                    'bytes_read':result.bytes_read,
+                    'phase':'SUCCESS' if self.validation_only else 'WAITING_FOR_PLEX_STOP'}
         except Exception as error:
             # Only archive-validator messages are safe to show verbatim. OS
             # exceptions can contain host paths; unexpected errors can contain secrets.

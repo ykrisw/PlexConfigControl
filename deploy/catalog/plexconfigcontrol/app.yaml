@@ -1,0 +1,24 @@
+annotations:
+  min_scale_version: 25.10.8
+app_version: 1.0.10
+categories:
+  - storage
+description: Browse and verify existing PlexConfigControl archives on TrueNAS.
+home: https://github.com/ykrisw/PlexConfigControl
+keywords:
+  - plex
+  - archives
+  - backup
+lib_version: 2.3.18
+name: plexconfigcontrol
+title: PlexConfigControl
+train: community
+version: 1.0.0
+sources:
+  - https://github.com/ykrisw/PlexConfigControl
+run_as_context:
+  - description: The panel runs unprivileged. It only reads the selected archive folder.
+    uid: 568
+    gid: 568
+    user_name: apps
+    group_name: apps
