@@ -1,3 +1,11 @@
+const backupEventKinds = new Set(['BACKUP', 'ARCHIVE_DETECTED', 'ARCHIVE_VALIDATION']);
+
+function matchesFilter(row, filter) {
+  if (filter === 'ALL') return true;
+  if (filter === 'BACKUP') return backupEventKinds.has(row.kind);
+  return row.kind === filter;
+}
+
 export function createHistoryController(client, render, {
   schedule = setTimeout, cancel = clearTimeout,
 } = {}) {
@@ -7,9 +15,9 @@ export function createHistoryController(client, render, {
   const lifecycle = new AbortController();
   function emit() {
     if (disposed) return;
-    render({entries: entries.filter(row => filter === 'ALL' || row.kind === filter),
+    render({entries: entries.filter(row => matchesFilter(row, filter)),
       selected: [...selected], filter, loading, busy, available, error, notice, archiveLogs, archiveCount, verifiedCount,
-      counts: {all: entries.length, backup: entries.filter(x => x.kind === 'BACKUP').length,
+      counts: {all: entries.length, backup: entries.filter(row => matchesFilter(row, 'BACKUP')).length,
         restore: entries.filter(x => x.kind === 'RESTORE').length,
         success: entries.filter(x => x.status === 'SUCCESS').length,
         failed: entries.filter(x => x.status === 'FAILED').length}});
@@ -101,7 +109,7 @@ export function createHistoryController(client, render, {
       filter = value; selected.clear(); emit();
     },
     select(id, checked) {
-      if (disposed || busy || loading || !available || !entries.some(row => row.id === id && (filter === 'ALL' || row.kind === filter))) return;
+      if (disposed || busy || loading || !available || !entries.some(row => row.id === id && matchesFilter(row, filter))) return;
       if (checked) selected.add(id); else selected.delete(id);
       error = ''; notice = ''; emit();
     },

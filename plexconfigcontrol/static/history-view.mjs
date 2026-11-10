@@ -66,7 +66,7 @@ export function mountHistoryView(root, client, {language = 'en', timezone = 'Eur
     find('[data-archive-count]').textContent = value.verifiedCount === null ? archiveCountText
       : `${archiveCountText} · ${tx(`Verified: ${value.verifiedCount}`,`Zweryfikowane: ${value.verifiedCount}`)}`;
     const counts = {ALL:value.counts.all,BACKUP:value.counts.backup,RESTORE:value.counts.restore};
-    const names = {ALL:tx('All','Wszystkie'),BACKUP:tx('Backup jobs','Operacje kopii'),RESTORE:tx('Restore','Przywracanie')};
+    const names = {ALL:tx('All','Wszystkie'),BACKUP:tx('Backup events','Zdarzenia kopii'),RESTORE:tx('Restore','Przywracanie')};
     for (const button of root.querySelectorAll('[data-filter]')) {
       button.querySelector('[data-filter-label]').textContent = names[button.dataset.filter];
       button.querySelector('[data-filter-count]').textContent = `(${counts[button.dataset.filter]})`;

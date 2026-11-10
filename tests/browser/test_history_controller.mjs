@@ -78,22 +78,24 @@ test('download uses selected identities and disposed requests cannot deliver a f
 });
 
 
-test('archive detection is informational history, downloadable and not counted as a successful backup',async()=>{
+test('archive detection is a selectable backup event without being counted as a success',async()=>{
   const detected={id:4,kind:'ARCHIVE_DETECTED',status:'INFO',archive:'external.tar.gz'};
   const view=setup({history:async()=>[detected,...events],downloadHistory:async ids=>({ids})});await flush();
   assert.equal(view.states.at(-1).counts.all,4);
   assert.equal(view.states.at(-1).counts.success,2);
-  assert.equal(view.states.at(-1).counts.backup,1);
+  assert.equal(view.states.at(-1).counts.backup,2);
+  view.controller.setFilter('BACKUP');
+  assert.deepEqual(view.states.at(-1).entries,[detected,events[1]]);
   view.controller.select(4,true);assert.deepEqual((await view.controller.download([4])).ids,[4]);
-  view.controller.setFilter('BACKUP');assert.equal(view.states.at(-1).entries.some(row=>row.id===4),false);
   view.controller.dispose();
 });
 
-test('the current archive count is independent of backup jobs and becomes unavailable on a listing error',async()=>{
+test('adding and verifying an archive updates backup events and both file counters without a restore',async()=>{
   const detected = {id:4,kind:'ARCHIVE_DETECTED',status:'INFO',archive:'external.tar.gz'};
-  let archives = [{name:'external.tar.gz',verified:false}];
+  const validation = {id:5,kind:'ARCHIVE_VALIDATION',status:'SUCCESS',archive:detected.archive};
+  let archives = [], history = [];
   const view = setup({
-    history:async()=>[detected],
+    history:async()=>history,
     archives:async(_signal, options)=>{
       assert.deepEqual(options,{verification:true});
       if (archives === null) throw Error('Archive folder unavailable');
@@ -101,15 +103,25 @@ test('the current archive count is independent of backup jobs and becomes unavai
     },
   });
   await flush();
+  view.controller.setFilter('BACKUP');
+  assert.equal(view.states.at(-1).archiveCount,0);
+  assert.equal(view.states.at(-1).counts.backup,0);
+  archives = [{name:detected.archive,verified:false}];
+  history = [detected];
+  await view.controller.refresh();
   assert.equal(view.states.at(-1).archiveCount,1);
   assert.equal(view.states.at(-1).verifiedCount,0);
-  assert.equal(view.states.at(-1).counts.backup,0);
-  archives = [{name:'external.tar.gz',verified:true}];
+  assert.equal(view.states.at(-1).counts.backup,1);
+  assert.deepEqual(view.states.at(-1).entries,[detected]);
+  archives = [{name:detected.archive,verified:true}];
+  history = [validation,detected];
   await view.controller.refresh();
   assert.equal(view.states.at(-1).archiveCount,1);
   assert.equal(view.states.at(-1).verifiedCount,1);
-  view.controller.setFilter('BACKUP');
-  assert.equal(view.states.at(-1).archiveCount,1);
+  assert.equal(view.states.at(-1).counts.backup,2);
+  assert.deepEqual(view.states.at(-1).entries,[validation,detected]);
+  view.controller.setFilter('RESTORE');
+  assert.equal(view.states.at(-1).counts.restore,0);
   assert.deepEqual(view.states.at(-1).entries,[]);
   archives = [];
   await view.controller.refresh();

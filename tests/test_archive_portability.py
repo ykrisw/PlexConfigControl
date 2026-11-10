@@ -219,13 +219,15 @@ class PortableArchiveTests(unittest.TestCase):
             self.assertEqual([item['name'] for item in listed], [NAME])
             self.assertNotIn('verified', listed[0])
             self.assertFalse(request('/api/archives?verification=1')[1][0]['verified'])
-            self.assertEqual(app.history.list()[0]['kind'], 'ARCHIVE_DETECTED')
-            self.assertEqual(app.history.list()[0]['archive'], NAME)
+            self.assertEqual([(item['kind'], item['archive']) for item in request('/api/history')[1]],
+                             [('ARCHIVE_DETECTED', NAME)])
             status, result = request('/api/restore/validate', {'archive': NAME})
             self.assertEqual(status, '200 OK')
             self.assertEqual(result['sha256'], created.sha256)
             self.assertEqual(result['phase'], 'WAITING_FOR_PLEX_STOP')
             self.assertTrue(request('/api/archives?verification=1')[1][0]['verified'])
+            self.assertEqual([(item['kind'], item['archive']) for item in request('/api/history')[1]],
+                             [('ARCHIVE_VALIDATION', NAME), ('ARCHIVE_DETECTED', NAME)])
             request('/api/restore/cancel', {})
             app.history.clear([entry['id'] for entry in app.history.list()])
             self.assertTrue(request('/api/archives?verification=1')[1][0]['verified'])
