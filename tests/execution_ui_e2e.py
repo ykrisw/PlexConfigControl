@@ -150,6 +150,7 @@ def backup_case(browser, output, language, theme, width, *, check_only=False):
         expect(page.locator('[data-create-heading]')).to_have_count(0)
         expect(page.locator('.pcc-archives .pcc-heading [data-refresh]')).to_have_text('Odśwież' if language=='pl' else 'Refresh')
         assert page.locator('.pcc-backup-action').evaluate('(card)=>getComputedStyle(card).paddingTop')=='8px'
+        expect(page.locator('[data-execution-note]')).to_have_css('margin-bottom','0px')
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
         expect(page.locator('[data-prefix-label]')).to_have_text(
             'Nazwa archiwum (Pozostaw puste dla nazwy PlexConfig)' if language=='pl'
