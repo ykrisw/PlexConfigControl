@@ -128,7 +128,7 @@ def check_dialog(page, dialog, theme):
     from playwright.sync_api import expect
     expect(dialog).to_be_visible()
     expect(dialog).to_have_css('border-top-width','3px')
-    expect(dialog).to_have_css('border-top-color','rgb(229, 179, 33)')
+    expect(dialog).to_have_css('border-top-color','rgb(255, 103, 21)' if theme=='light' else 'rgb(229, 179, 33)')
     assert dialog.evaluate('''element=>{const sample=document.createElement('div');
         sample.style.background='var(--pcc-bg)';element.append(sample);
         const expected=getComputedStyle(sample).backgroundColor;sample.remove();
@@ -147,7 +147,10 @@ def backup_case(browser, output, language, theme, width, *, check_only=False):
     try:
         page.goto(ORIGIN)
         create=page.locator('[data-create]');expect(create).to_be_enabled()
-        expect(page.locator('[data-create-heading]')).to_have_text('Utwórz kopię zapasową' if language=='pl' else 'Create Backup')
+        expect(page.locator('[data-create-heading]')).to_have_count(0)
+        expect(page.locator('.pcc-archives .pcc-heading [data-refresh]')).to_have_text('Odśwież' if language=='pl' else 'Refresh')
+        assert page.locator('.pcc-backup-action').evaluate('(card)=>getComputedStyle(card).paddingTop')=='8px'
+        assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
         expect(page.locator('[data-prefix-label]')).to_have_text(
             'Nazwa archiwum (Pozostaw puste dla nazwy PlexConfig)' if language=='pl'
             else 'Archive name (Leave blank to use HomePlex)')
@@ -266,7 +269,7 @@ def restore_case(browser, output, language, theme, width):
 def main():
     from playwright.sync_api import sync_playwright
     engine=os.environ.get('PCC_TEST_BROWSER','chromium')
-    if engine not in ('chromium','firefox','msedge'):raise ValueError('Unsupported fixture browser')
+    if engine not in ('chromium','firefox','webkit','msedge'):raise ValueError('Unsupported fixture browser')
     output=Path('dist/browser-screenshots')/engine/'execution-ui';output.mkdir(parents=True,exist_ok=True)
     with sync_playwright() as playwright:
         browser=playwright.chromium.launch(channel='msedge') if engine=='msedge' else getattr(playwright,engine).launch()

@@ -9,7 +9,7 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
   root.classList.add('pcc-backup');
   root.innerHTML=`
     <section class="pcc-plex"><strong data-server></strong><span data-plex-state="UNKNOWN">UNKNOWN</span></section>
-    <section class="pcc-card pcc-backup-action pcc-action-card"><div class="pcc-heading"><h2 data-create-heading></h2><button type="button" data-refresh></button></div>
+    <section class="pcc-card pcc-backup-action pcc-action-card">
       <label class="pcc-backup-name"><span data-prefix-label></span>
         <input data-backup-prefix type="text" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_\\-]{0,63}" aria-describedby="pcc-backup-prefix-help" autocomplete="off" spellcheck="false"></label>
       <p id="pcc-backup-prefix-help" data-prefix-help></p><button type="button" class="pcc-primary" data-create disabled></button>
@@ -28,7 +28,7 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
         <p data-submission-check-feedback hidden></p></div><p data-operation-result class="pcc-notice" role="status" aria-live="polite" hidden></p>
       <button type="button" data-return-to-archives hidden></button>
     </section>
-    <section class="pcc-card pcc-archives"><div class="pcc-heading"><h2 data-existing></h2><button type="button" data-delete disabled></button></div>
+    <section class="pcc-card pcc-archives"><div class="pcc-heading"><h2 data-existing></h2><div class="pcc-archive-actions"><button type="button" data-refresh></button><button type="button" data-delete disabled></button></div></div>
       <p data-access-note hidden></p><p class="pcc-notice" data-notice role="status" aria-live="polite" hidden></p><p data-empty role="status"></p><div class="pcc-scroll-list" data-archives></div></section>
     <dialog class="pcc-notification-dialog pcc-password-dialog" aria-label="Confirm archive deletion"><h3 data-confirm-heading></h3><p data-confirm-text></p>
       <ul data-confirm-files></ul><div class="pcc-dialog-actions"><button type="button" data-cancel></button><button type="button" data-confirm></button></div></dialog>
@@ -36,7 +36,7 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
       <div class="pcc-dialog-actions"><button type="button" data-backup-cancel></button><button type="button" data-backup-another></button><button type="button" data-backup-overwrite></button></div></dialog>`;
   const find=selector=>root.querySelector(selector),list=find('[data-archives]'),dialog=find('dialog'),backupDialog=find('[data-backup-dialog]');
   const labels={
-    '[data-server]':tx('Plex Server','Serwer Plex'),'[data-create-heading]':tx('Create Backup','Utwórz kopię zapasową'),
+    '[data-server]':tx('Plex Server','Serwer Plex'),
     '[data-refresh]':tx('Refresh','Odśwież'),
     '[data-operation-heading]':tx('Backup status','Stan kopii zapasowej'),
     '[data-return-to-archives]':tx('Return to archives','Wróć do listy kopii'),
