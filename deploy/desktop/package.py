@@ -21,37 +21,15 @@ def package(artifacts, output):
         targets = {
             'windows': bundle / 'Windows',
             'linux': bundle / 'Linux',
-            'macos-x86_64': bundle / 'PlexConfigControl Setup.app/Contents/Resources/x86_64',
-            'macos-arm64': bundle / 'PlexConfigControl Setup.app/Contents/Resources/arm64',
+            'macos-arm64': bundle,
         }
         for platform, destination in targets.items():
-            destination.mkdir(parents=True)
+            destination.mkdir(parents=True, exist_ok=True)
             with tarfile.open(artifacts / f'{platform}.tar.gz') as archive:
                 archive.extractall(destination, filter='data')
-        app = bundle / 'PlexConfigControl Setup.app/Contents'
-        (app / 'MacOS').mkdir()
-        (app / 'Info.plist').write_text('''<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-<key>CFBundleIdentifier</key><string>com.plexconfigcontrol.desktop-setup</string>
-<key>CFBundleName</key><string>PlexConfigControl Setup</string>
-<key>CFBundleExecutable</key><string>launch</string>
-<key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleVersion</key><string>4</string>
-</dict></plist>
-''')
-        launcher = app / 'MacOS/launch'
-        launcher.write_text('''#!/bin/sh
-set -eu
-arch=$(uname -m)
-case "$arch" in arm64|x86_64) ;; *) exit 1 ;; esac
-root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-exec "$root/Resources/$arch/PlexConfigControl Setup.app/Contents/MacOS/PlexConfigControl Setup" "$@"
-''')
-        launcher.chmod(0o755)
         for name in ('INSTALL-EN.md', 'INSTRUKCJA-PL.md', 'LICENSE'):
             (bundle / name).write_bytes((ROOT / name).read_bytes())
-        (bundle / 'BUILD-INFO.txt').write_text('PlexConfigControl 1.0.10\nNative installers for Windows x64, Linux x64 and macOS Intel/Apple Silicon.\n')
+        (bundle / 'BUILD-INFO.txt').write_text('PlexConfigControl 1.0.10\nNative installers for Windows x64, Linux x64 and macOS Apple Silicon.\n')
         result = output / NAME
         with ZipFile(result, 'w', compression=ZIP_DEFLATED, compresslevel=6) as archive:
             for path in sorted(bundle.rglob('*')):

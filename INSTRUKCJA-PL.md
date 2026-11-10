@@ -4,7 +4,7 @@ Rozpakuj ZIP i otwórz instalator odpowiedni dla Twojego komputera.
 
 | Komputer | Uruchom |
 |---|---|
-| macOS, Intel lub Apple Silicon | `PlexConfigControl Setup.app` |
+| macOS, Apple Silicon (M1 lub nowszy) | `PlexConfigControl Setup.app` |
 | Windows 10/11, 64-bit | `Windows/PlexConfigControl Setup.exe` |
 | Ubuntu 22.04+, Mint 21+, Debian 12+, 64-bit z pulpitem | `Linux/PlexConfigControl Setup` |
 
