@@ -1,0 +1,175 @@
+#!/usr/bin/expect -f
+# Native dialogs drive the same authenticated setup as the terminal launcher.
+encoding system utf-8
+log_user 0
+set timeout 120
+set resources [file normalize [file join [file dirname [info script]] .. Resources]]
+set shortcut [file join $resources PlexConfigControl_macOS.command]
+
+set dialog_script {
+    on run argv
+        set mode to item 1 of argv
+        set messageText to item 2 of argv
+        set titleText to "PlexConfigControl"
+        if mode is "list" then
+            set choices to items 3 thru -1 of argv
+            set picked to choose from list choices with title titleText with prompt messageText
+            if picked is false then error number -128
+            return item 1 of picked
+        else if mode is "notice" then
+            display notification messageText with title titleText
+        else if mode is "info" then
+            display dialog messageText with title titleText buttons {"OK"} default button "OK"
+        else if mode is "confirm" then
+            set actionButton to item 3 of argv
+            set cancelButton to item 4 of argv
+            display dialog messageText with title titleText buttons {cancelButton, actionButton} default button 2 cancel button 1
+        else if mode is "password" then
+            return text returned of (display dialog messageText with title titleText default answer "" with hidden answer)
+        else
+            return text returned of (display dialog messageText with title titleText default answer (item 3 of argv))
+        end if
+    end run
+}
+
+proc dialog {mode message args} {
+    global dialog_script
+    if {$mode eq "confirm"} { lappend args [localized Anuluj Cancel] }
+    if {[catch {exec /usr/bin/osascript - $mode $message {*}$args << $dialog_script} result]} {
+        if {$mode eq "notice"} { return }
+        exit 1
+    }
+    return $result
+}
+
+proc answer {text} {
+    # The terminal protocol accepts one line. Do not pass control characters.
+    if {[regexp {[[:cntrl:]]} $text]} {
+        dialog info "Use a single line of text without control characters."
+        exit 1
+    }
+    send -- "$text\r"
+}
+
+proc localized {polish english} {
+    global pl
+    return [expr {$pl ? $polish : $english}]
+}
+
+foreach name {PlexConfigControl_macOS.command PlexConfigControl_Instalator.py PlexConfigControl_Installer.py} {
+    if {![file readable [file join $resources $name]]} {
+        dialog info "Brakuje plików wewnątrz aplikacji. Pobierz nową paczkę. / App files are missing. Download a fresh copy."
+        exit 1
+    }
+}
+
+set pl [expr {[dialog list "Język instalatora / Setup language" Polski English] eq "Polski"}]
+set language [expr {$pl ? "2" : "1"}]
+set error_message ""
+set panel_url ""
+spawn -noecho /bin/bash $shortcut
+match_max 16384
+expect {
+    -exact {Choose language [1]: } {
+        answer $language
+        exp_continue
+    }
+    -re {(Adres SSH TrueNAS|TrueNAS SSH address)[^\r\n]*: $} {
+        answer [dialog text [localized "Adres TrueNAS w formacie użytkownik@adres" "TrueNAS address as user@host"] ""]
+        exp_continue
+    }
+    -re {Are you sure you want to continue connecting[^\r\n]*\?\s*$} {
+        if {![regexp {SHA256:[a-zA-Z0-9+/=]+} $expect_out(buffer) fingerprint]} {
+            dialog info [localized "Nie udało się odczytać odcisku klucza serwera." "Could not read the server key fingerprint."]
+            exit 1
+        }
+        dialog confirm "[localized {Porównaj odcisk klucza z TrueNAS przed połączeniem.} {Compare this fingerprint with TrueNAS before connecting.}]\n\n$fingerprint" [localized Połącz Connect]
+        answer yes
+        exp_continue
+    }
+    -re {(Nowe hasło do panelu PlexConfigControl|New PlexConfigControl panel password|Powtórz hasło|Repeat the password|Confirm password)[^\r\n]*: $} {
+        answer [dialog password $expect_out(1,string)]
+        exp_continue
+    }
+    -re {(?i)(\[sudo\] password for [^:\r\n]+|password|enter passphrase[^:\r\n]*):\s*$} {
+        set prompt $expect_out(1,string)
+        answer [dialog password "[localized {Uwierzytelnianie połączenia} {Connection authentication}]\n$prompt"]
+        exp_continue
+    }
+    -re {(Numer z listy lub własna ścieżka|Enter a number or a custom path): $} {
+        set choices {}
+        foreach line [split $expect_out(buffer) "\n"] {
+            if {[regexp {^\s*\d+\. .+\(/mnt/[^\r\n]+\)\r?$} $line]} {
+                lappend choices [string trim $line]
+            }
+        }
+        if {[llength $choices]} {
+            set selected [dialog list [localized {Wybierz miejsce na archiwa kopii} {Choose where to keep the backup archives}] {*}$choices]
+            regexp {^(\d+)\.} $selected -> index
+            answer $index
+        } else {
+            answer [dialog text [localized {Ścieżka miejsca na kopie} {Path to the backup location}] "/mnt/"]
+        }
+        exp_continue
+    }
+    -re {(Nazwa nowego folderu kopii|Name of the new backup folder)( \[([^\]]+)\])?: $} {
+        set default [expr {[info exists expect_out(3,string)] ? $expect_out(3,string) : ""}]
+        answer [dialog text [localized {Nazwa folderu na archiwa i logi} {Folder name for backups and logs}] $default]
+        exp_continue
+    }
+    -re {(Port panelu|Panel port|Adres IPv4 TrueNAS|TrueNAS IPv4 address|Wybierz numer lub wpisz adres IPv4 TrueNAS|Choose a number or enter a TrueNAS IPv4 address|Dataset na kopie|Backup dataset)( \[([^\]]+)\])?: $} {
+        set default [expr {[info exists expect_out(3,string)] ? $expect_out(3,string) : ""}]
+        answer [dialog text $expect_out(1,string) $default]
+        exp_continue
+    }
+    -re {(?m)^(.*(?:Wpisz (od nowa|tak), aby|Type (start over|yes) to)[^\r\n]*): $} {
+        set word [expr {$pl ? $expect_out(2,string) : $expect_out(3,string)}]
+        set prompt $expect_out(1,string)
+        if {$word in {"od nowa" "start over"}} {
+            set message [localized {Zastąpić ustawienia poprzedniej instalacji i zainstalować PlexConfigControl? Istniejące kopie zostaną zachowane.} {Replace the previous setup and install PlexConfigControl? Existing backups will be kept.}]
+            set button [localized Zainstaluj Install]
+        } elseif {[regexp -nocase {zaktualizować|update it} $prompt]} {
+            set message [localized {Zaktualizować PlexConfigControl?} {Update PlexConfigControl?}]
+            set button [localized Aktualizuj Update]
+        } elseif {[regexp -nocase {poprzednią wersję|previous version} $prompt]} {
+            set message [localized {Uruchomić poprzednią wersję PlexConfigControl?} {Start the previous version of PlexConfigControl?}]
+            set button [localized Uruchom Start]
+        } else {
+            set message [localized {Zainstalować PlexConfigControl?} {Install PlexConfigControl?}]
+            set button [localized Zainstaluj Install]
+        }
+        dialog confirm $message $button
+        answer $word
+        set timeout 1200
+        dialog notice [localized {Instalator pracuje. To może potrwać kilka minut.} {Setup is working. This can take a few minutes.}]
+        exp_continue
+    }
+    -re {(https://[a-zA-Z0-9.:-]+)[\r\n]} {
+        set panel_url $expect_out(1,string)
+        exp_continue
+    }
+    -re {(?m)^(?:Przerwano: |Stopped: |ERROR: )([^\r\n]+)\r?\n} {
+        set error_message $expect_out(1,string)
+        exp_continue
+    }
+    timeout {
+        dialog info [localized {Przekroczono czas oczekiwania. Sprawdź stan PlexConfigControl w TrueNAS Apps.} {The wizard timed out. Check the app status in TrueNAS Apps.}]
+        exit 1
+    }
+    eof {
+        set status [lindex [wait] 3]
+        if {$status != 0} {
+            if {$error_message eq ""} {
+                set error_message [localized {Instalator zakończył się błędem. Uruchom wariant terminalowy, aby zobaczyć szczegóły.} {Setup ended with an error. Run the terminal version to see the details.}]
+            }
+            dialog info $error_message
+            exit $status
+        }
+        if {$panel_url ne ""} {
+            dialog confirm "[localized {PlexConfigControl jest gotowy.} {PlexConfigControl is ready.}]\n\n$panel_url" [localized {Otwórz panel} {Open panel}]
+            exec /usr/bin/open $panel_url
+        } else {
+            dialog info [localized {Kreator zakończył pracę.} {Setup finished.}]
+        }
+    }
+}

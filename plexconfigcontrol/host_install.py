@@ -27,8 +27,13 @@ from .plex_runtime import PlexRuntimeError, detect_plex_runtime
 APPS_MOUNT = '/mnt/.ix-apps'
 SQLITE_INITIALIZER = Path(__file__).resolve().parents[1]/'design/truenas-installation/initialize-plex-sqlite.sh'
 UID = 568
+PRIVATE_FILES = {
+    'api_key_file': ('truenas-key', UID, 0o600),
+    'verifier_file': ('panel-verifier', UID, 0o600),
+    'api_ca_file': ('truenas-ca.pem', 0, 0o644),
+}
 _READ_METHODS = {'system.version', 'docker.config', 'app.query', 'app.config',
-                 'app.ix_volume.query', 'filesystem.statfs'}
+                 'app.ix_volume.query', 'filesystem.statfs', 'core.get_jobs'}
 
 
 class InstallError(RuntimeError):
@@ -58,11 +63,14 @@ class LocalMiddleware:
         except (OSError, subprocess.SubprocessError, ValueError):
             raise InstallError(f'TrueNAS did not confirm {method}') from None
 
-    def allocate_state(self, deployment):
+    def allocate_state(self, deployment, *, managed_private=False):
         name = deployment.panel_image.rsplit('/', 1)[-1]
         if ':' not in name or '@' in deployment.panel_image:
             raise InstallError('The locally built panel image requires an explicit tag')
         repository, tag = deployment.panel_image.rsplit(':', 1)
+        volumes = [('state', '/var/lib/plexconfigcontrol')]
+        if managed_private:
+            volumes.append(('pcc', '/var/lib/plexconfigcontrol-private'))
         return self._call('app.create', ({
             'app_name': APP, 'catalog_app': 'ix-app', 'train': 'stable', 'version': '1.4.8',
             'values': {
@@ -70,9 +78,9 @@ class LocalMiddleware:
                 'entrypoint': ['/bin/sleep'], 'command': ['infinity'],
                 'disable_builtin_healthcheck': True, 'restart_policy': 'no',
                 'run_as_custom_user': True, 'run_as': {'user': UID, 'group': UID},
-                'storage': [{'type': 'ix_volume', 'read_only': False,
-                             'mount_path': '/var/lib/plexconfigcontrol',
-                             'ix_volume_config': {'dataset_name': 'state', 'acl_enable': False}}],
+                'storage': [{'type': 'ix_volume', 'read_only': False, 'mount_path': mount,
+                             'ix_volume_config': {'dataset_name': name, 'acl_enable': False}}
+                            for name, mount in volumes],
             },
         },), job=True)
 
@@ -89,6 +97,9 @@ class LocalMiddleware:
                 return client.call('app.update', APP, {'custom_compose_config': compose}, job=True)
         except Exception:
             raise InstallError('TrueNAS did not confirm app.update') from None
+
+    def stop(self):
+        return self._call('app.stop', (APP,), job=True)
 
     def start(self):
         return self._call('app.start', (APP,), job=True)
@@ -138,7 +149,7 @@ def require_truenas_version(version):
         raise InstallError('Wymagany jest TrueNAS 25.10.8 lub nowszy w wersji stabilnej.')
 
 
-def _prepare(api, settings, *, provisioned=False):
+def _prepare(api, settings, *, provisioned=False, managed_private=False):
     require_truenas_version(api.call('system.version'))
     if not provisioned and api.call('app.query', [['name', '=', APP]], {'select': ['name']}) != []:
         raise InstallError('PlexConfigControl already exists or its name cannot be checked')
@@ -149,7 +160,9 @@ def _prepare(api, settings, *, provisioned=False):
     state = APPS_MOUNT + '/app_mounts/' + APP + '/state'
     volumes = api.call('app.ix_volume.query', [['app_name', '=', APP]])
     if provisioned:
-        if volumes != [{'app_name': APP, 'name': 'state'}]:
+        expected = [{'app_name': APP, 'name': name} for name in
+                    (('pcc', 'state') if managed_private else ('state',))]
+        if sorted(volumes, key=lambda item: item['name']) != expected:
             raise InstallError('TrueNAS must provision the dedicated PlexConfigControl state volume first')
         if _zfs(api, state) != (f'{apps_dataset}/app_mounts/{APP}/state', state):
             raise InstallError('The managed state volume does not match the expected dataset')
@@ -162,14 +175,17 @@ def _prepare(api, settings, *, provisioned=False):
         raise InstallError('Choose archive storage outside the managed Apps dataset')
     storage = plan_storage(api, archive_parent, manual_source=data.pop('manual_source', None),
                            folder_name=data.pop('folder_name', None), archive_prefix=data.pop('archive_prefix', None))
+    private_sources = {field: data[field] for field in PRIVATE_FILES}
+    if managed_private:
+        data.update({field: str(Path(state).with_name('pcc') / filename)
+                     for field, (filename, _, _) in PRIVATE_FILES.items()})
     deployment = Deployment(**data, state=state,
                             archives=str(Path(storage.parent)/storage.naming.folder_name),
                             plex_config=storage.plex.source, plex_dataset=storage.plex.dataset)
     if archive_dataset == deployment.plex_dataset or archive_dataset.startswith(deployment.plex_dataset + '/'):
         raise InstallError('Archive storage must be separate from the Plex configuration dataset')
-    _verify_private_file(deployment.api_key_file, owner=UID)
-    _verify_private_file(deployment.verifier_file, owner=UID)
-    _verify_private_file(deployment.api_ca_file)
+    for field, (_, owner, _) in PRIVATE_FILES.items():
+        _verify_private_file(private_sources[field], owner=owner if owner == UID else None)
     _verify_local_images(deployment)
     return deployment, storage, (archive_dataset, archive_mount)
 
@@ -179,11 +195,11 @@ def prepare(api, settings, *, provisioned=False):
     return _prepare(api, settings, provisioned=provisioned)[0]
 
 
-def prepare_compose(api, settings, expected, *, confirmed=False):
+def prepare_compose(api, settings, expected, *, confirmed=False, managed_private=False):
     """Create the selected output once and render Compose after verifying both mounts."""
     if confirmed is not True or os.geteuid() != 0:
         raise InstallError('Explicit administrator confirmation is required')
-    current = _prepare(api, settings, provisioned=True)
+    current = _prepare(api, settings, provisioned=True, managed_private=managed_private)
     if current != expected:
         raise InstallError('Installation settings changed after review')
     deployment, plan, archive_filesystem = current
@@ -246,6 +262,8 @@ def prepare_catalog(api, settings, expected, values, template_root, version, out
 
 
 def _ready(deployment, *, timeout=90):
+    from .setup_protocol import emit
+    emit('stage', code='VERIFY_APP')
     host = ipaddress.ip_address(deployment.host_ip)
     authority = f'[{host}]' if host.version == 6 else str(host)
     deadline = time.monotonic() + timeout
@@ -264,25 +282,67 @@ def _ready(deployment, *, timeout=90):
     raise InstallError('TrueNAS created the app, but the panel and worker did not report readiness')
 
 
-def install_app(api, settings, expected, *, confirmed=False, plex_reference=None):
+def _store_managed_private(api, deployment, values):
+    private = Path(deployment.state).with_name('pcc')
+    dataset = api.call('docker.config')['dataset']
+    if (private.resolve(strict=True) != private
+            or _zfs(api, str(private)) != (f'{dataset}/app_mounts/{APP}/pcc', str(private))):
+        raise InstallError('The managed private iXVolume could not be verified')
+    info = private.lstat()
+    if not stat.S_ISDIR(info.st_mode) or info.st_uid != 0 or any(private.iterdir()):
+        raise InstallError('The managed private iXVolume must be empty and owned by root')
+    private.chmod(0o700)
+    source_settings = {**values['panel'], **values['connection']}
+    for field, (filename, owner, mode) in PRIVATE_FILES.items():
+        source = Path(source_settings[field])
+        _verify_private_file(source, owner=owner if owner == UID else None)
+        target = private / filename
+        fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, mode)
+        with os.fdopen(fd, 'wb') as stream:
+            os.fchown(stream.fileno(), owner, owner)
+            os.fchmod(stream.fileno(), mode)
+            stream.write(source.read_bytes())
+            stream.flush()
+            os.fsync(stream.fileno())
+    stored = {**values, 'panel': {**values['panel'], 'verifier_file': deployment.verifier_file},
+              'connection': {**values['connection'], 'api_key_file': deployment.api_key_file,
+                             'api_ca_file': deployment.api_ca_file}}
+    fd = os.open(private / 'settings.json', os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+        json.dump(stored, stream, indent=2)
+        stream.flush()
+        os.fsync(stream.fileno())
+    fd = os.open(private, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def install_app(api, settings, expected, *, confirmed=False, plex_reference=None, managed_values=None):
     """Install once under a fixed Apps name. Interrupted installs are never replayed."""
     if confirmed is not True or os.geteuid() != 0:
         raise InstallError('Explicit administrator confirmation is required')
-    if _prepare(api, settings) != expected:
+    managed = managed_values is not None
+    current = _prepare(api, settings, managed_private=True) if managed else _prepare(api, settings)
+    if current != expected:
         raise InstallError('Installation settings changed after review')
     deployment = expected[0]
-    runtime_compose = None
-    if plex_reference is not None:
-        runtime_compose = with_plex_sqlite(deployment.compose(), plex_reference,
-            deployment.sqlite_version, SQLITE_INITIALIZER.read_text(encoding='utf-8'))
-    bootstrap = api.allocate_state(deployment)
+    bootstrap = api.allocate_state(deployment, managed_private=True) if managed else api.allocate_state(deployment)
     if not isinstance(bootstrap, dict) or bootstrap.get('name') != APP or bootstrap.get('custom_app') is not False:
         raise InstallError('TrueNAS did not confirm the state allocation app')
-    compose = prepare_compose(api, settings, expected, confirmed=True)
+    if managed:
+        compose = prepare_compose(api, settings, expected, confirmed=True, managed_private=True)
+        _store_managed_private(api, deployment, managed_values)
+    else:
+        compose = prepare_compose(api, settings, expected, confirmed=True)
+    if plex_reference is not None:
+        compose = with_plex_sqlite(deployment.compose(), plex_reference,
+            deployment.sqlite_version, SQLITE_INITIALIZER.read_text(encoding='utf-8'))
     converted = api.convert()
     if not isinstance(converted, dict) or converted.get('name') != APP or converted.get('custom_app') is not True:
         raise InstallError('TrueNAS did not confirm conversion of PlexConfigControl')
-    installed = api.configure(runtime_compose if runtime_compose is not None else compose)
+    installed = api.configure(compose)
     if not isinstance(installed, dict) or installed.get('name') != APP or installed.get('custom_app') is not True:
         raise InstallError('TrueNAS did not confirm the final PlexConfigControl configuration')
     if installed.get('state') == 'STOPPED':
@@ -303,20 +363,21 @@ def main(argv=None):
     mode.add_argument('--install', action='store_true',
                       help='Install the reviewed configuration as one application in TrueNAS Apps')
     parser.add_argument('--confirmed', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--managed-private', action='store_true', help=argparse.SUPPRESS)
     mode.add_argument('--prepare-catalog', type=Path, metavar='OUTPUT',
                       help='Prepare a native Apps version directory for the reviewed settings')
     parser.add_argument('--catalog-template', type=Path)
     parser.add_argument('--catalog-version', default='0.1.0')
     args = parser.parse_args(argv)
-    if args.confirmed and not args.install:
-        parser.error('--confirmed requires --install')
+    if (args.confirmed or args.managed_private) and not args.install:
+        parser.error('--confirmed and --managed-private require --install')
     try:
         with args.configuration.open(encoding='utf-8') as stream:
             values = json.load(stream)
         settings = form_settings(values, panel_image=args.panel_image,
                                  worker_image=args.worker_image, sqlite_version=args.sqlite_version)
         api = LocalMiddleware()
-        prepared = _prepare(api, settings, provisioned=args.prepare_compose)
+        prepared = _prepare(api, settings, provisioned=args.prepare_compose, managed_private=args.managed_private)
         deployment, storage, _ = prepared
         review = {'app': APP, 'state': deployment.state, 'archives': deployment.archives,
                   'logs': deployment.archives + '/Logs', 'archive_prefix': storage.naming.archive_prefix,
@@ -336,7 +397,8 @@ def main(argv=None):
                     if ' '.join(runtime) != args.plex_runtime or runtime[1] != deployment.sqlite_version:
                         raise InstallError('Plex zmienił się od czasu budowy obrazu. Uruchom instalator ponownie.')
                     reference = runtime[0]
-                result = install_app(api, settings, prepared, confirmed=True, plex_reference=reference)
+                result = install_app(api, settings, prepared, confirmed=True, plex_reference=reference,
+                                     managed_values=values if args.managed_private else None)
                 if args.plex_runtime:
                     address = ipaddress.ip_address(result['host_ip'])
                     host = f'[{address}]' if address.version == 6 else str(address)

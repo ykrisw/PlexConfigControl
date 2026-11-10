@@ -34,3 +34,35 @@ class ArchiveStoreTests(unittest.TestCase):
             root=Path(d); target=root/'outside'; target.write_text('keep')
             backup=root/'backup'; backup.mkdir(); (backup/A).symlink_to(target)
             self.assertEqual(ArchiveStore(backup,root/'state').list(),[])
+
+    def test_lists_by_archive_timestamp_across_prefixes_and_copies(self):
+        import os
+
+        names = [
+            'Zulu_2026.11.03_04.15.35.tar.gz',
+            'Alpha_2026.11.04_12.00.00.tar.gz',
+            'Middle_2026.11.04_09.00.00.tar.gz',
+        ]
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            backup = root / 'backup'
+            backup.mkdir()
+            for index, name in enumerate(names):
+                path = backup / name
+                path.touch()
+                # The oldest backup was copied last.
+                os.utime(path, (100 - index, 100 - index))
+            store = ArchiveStore(backup, root / 'state')
+            self.assertEqual([entry.name for entry in store.list()], [names[1], names[2], names[0]])
+
+    def test_lists_gzipped_import_with_a_renamed_unicode_filename(self):
+        import gzip
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            backup = root / 'backup'
+            backup.mkdir()
+            name = 'Kopia Plex przed zmianą.tar.gz'
+            (backup / name).write_bytes(gzip.compress(b'archive'))
+            (backup / 'losowy plik.tar.gz').write_bytes(b'not gzip')
+            self.assertEqual([item.name for item in ArchiveStore(backup, root / 'state').list()], [name])

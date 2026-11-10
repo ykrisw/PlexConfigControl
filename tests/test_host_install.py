@@ -185,3 +185,46 @@ class HostInstallTests(unittest.TestCase):
         self.assertEqual(compose['services']['initialize-plex-sqlite']['image'], reference)
         self.assertTrue(compose['services']['worker']['volumes'][-1]['read_only'])
         self.assertEqual(compose['services']['panel']['volumes'], [])
+
+    def test_managed_install_requests_an_additional_private_ixvolume(self):
+        runner = Mock(return_value=SimpleNamespace(stdout='{}'))
+        LocalMiddleware(runner).allocate_state(Mock(panel_image='plexconfigcontrol:local'), managed_private=True)
+        definition = json.loads(runner.call_args.args[0][4])
+        self.assertEqual([volume['ix_volume_config']['dataset_name'] for volume in definition['values']['storage']],
+                         ['state', 'pcc'])
+
+    def test_managed_private_files_store_only_final_paths(self):
+        from plexconfigcontrol.host_install import PRIVATE_FILES, _store_managed_private
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            private = root / 'pcc'
+            private.mkdir()
+            values = {'panel': {}, 'connection': {}, 'backup': {}, 'plex': {}}
+            deployment = Mock(state=str(root / 'state'))
+            for field, (filename, _, _) in PRIVATE_FILES.items():
+                source = root / filename
+                source.write_text(field)
+                values['panel' if field == 'verifier_file' else 'connection'][field] = str(source)
+                setattr(deployment, field, str(private / filename))
+            api = Mock()
+            api.call.return_value = {'dataset': 'pool/ix-apps'}
+            lstat = Path.lstat
+
+            def verified_stat(path):
+                if path == private:
+                    return SimpleNamespace(st_mode=lstat(path).st_mode, st_uid=0)
+                return lstat(path)
+
+            with patch('plexconfigcontrol.host_install._zfs', return_value=(
+                    f'pool/ix-apps/app_mounts/{APP}/pcc', str(private))), \
+                 patch.object(Path, 'lstat', verified_stat), \
+                 patch('plexconfigcontrol.host_install._verify_private_file'), \
+                 patch('plexconfigcontrol.host_install.os.fchown'):
+                _store_managed_private(api, deployment, values)
+            stored = json.loads((private / 'settings.json').read_text())
+            for field, (filename, _, mode) in PRIVATE_FILES.items():
+                path = private / filename
+                self.assertEqual(path.read_text(), field)
+                self.assertEqual(path.stat().st_mode & 0o777, mode)
+                self.assertEqual(stored['panel' if field == 'verifier_file' else 'connection'][field], str(path))
+            self.assertEqual(private.stat().st_mode & 0o777, 0o700)

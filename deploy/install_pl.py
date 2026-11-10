@@ -12,10 +12,13 @@ import socket
 import ssl
 import stat
 import subprocess
+import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
+from urllib.parse import urlsplit
 
-from plexconfigcontrol.host_install import APPS_MOUNT, APP, InstallError, LocalMiddleware, form_settings, require_truenas_version
+from plexconfigcontrol.host_install import APPS_MOUNT, APP, InstallError, LocalMiddleware, form_settings, require_truenas_version, _verify_private_file
 from plexconfigcontrol.installation import password_verifier
 from plexconfigcontrol.installation_storage import plan_storage
 from plexconfigcontrol.naming import folder_component
@@ -87,6 +90,16 @@ def local_ipv4_addresses(client):
         if not (address.is_loopback or address.is_link_local or address.is_unspecified or address.is_multicast):
             addresses.add(address)
     return sorted(addresses)
+
+
+def ssh_server_address(connection, addresses):
+    if len(connection) != 4:
+        return None
+    try:
+        address = ipaddress.IPv4Address(connection[2])
+    except ipaddress.AddressValueError:
+        return None
+    return address if address in addresses else None
 
 
 def ask_ipv4_address(addresses):
@@ -334,11 +347,16 @@ def previous_preparation_summary(private, files, records):
     return f"Znaleziono pozostałości poprzedniego przygotowania: {', '.join(existing)}. Katalog ustawień: {private}."
 
 
-def check_previous_preparation(client, private):
+def check_previous_preparation(client, private, *, allow_reset=False):
     files, records = previous_preparation(client, private)
     if not (files or records):
         return
     message = previous_preparation_summary(private, files, records)
+    if allow_reset:
+        verified_preparation(client, files, records)
+        print(message, flush=True)
+        print("Można przejść do świeżej instalacji. Zastąpienie poprzedniego przygotowania wymaga potwierdzenia.", flush=True)
+        return
     if len(records) == len(PREPARATION_RECORDS) and len(files) == len(PREPARATION_FILES) and all(
         path.is_file() and not path.is_symlink() for path in files
     ):
@@ -355,13 +373,7 @@ def require_fresh_app(client):
         raise ValueError("Wolumen stanu PlexConfigControl już istnieje. Sprawdź poprzednią instalację.")
 
 
-def reset_previous_preparation(client, private, expected_files, expected_records):
-    require_fresh_app(client)
-    private_directory(private)
-    files, records = previous_preparation(client, private)
-    if files != expected_files or records != expected_records:
-        raise ValueError("Poprzednie przygotowanie zmieniło się. Uruchom kreator ponownie.")
-
+def verified_preparation(client, files, records):
     for path in files:
         info = path.lstat()
         if not stat.S_ISREG(info.st_mode) or info.st_uid not in (0, 568) or info.st_mode & 0o077:
@@ -388,6 +400,18 @@ def reset_previous_preparation(client, private, expected_files, expected_records
     if keys != ([{"id": key["id"]}] if key else []):
         raise ValueError("Konto ma dodatkowe klucze API.")
 
+    return user, group, privilege, key
+
+
+def reset_previous_preparation(client, private, expected_files, expected_records):
+    require_fresh_app(client)
+    private_directory(private)
+    files, records = previous_preparation(client, private)
+    if files != expected_files or records != expected_records:
+        raise ValueError("Poprzednie przygotowanie zmieniło się. Uruchom kreator ponownie.")
+
+    user, group, privilege, key = verified_preparation(client, files, records)
+
     if key:
         client.call("api_key.delete", key["id"])
     if privilege:
@@ -404,7 +428,7 @@ def reset_previous_preparation(client, private, expected_files, expected_records
 def preflight(client, args, private, *, check_preparation=True):
     require_fresh_app(client)
     if check_preparation:
-        check_previous_preparation(client, private)
+        check_previous_preparation(client, private, allow_reset=getattr(args, "desktop", False))
     reference, sqlite_version, _, _ = detect_plex_runtime()
     api = LocalMiddleware()
     parent = args.archiwa
@@ -448,9 +472,10 @@ def preflight(client, args, private, *, check_preparation=True):
     }
     form_settings(values, panel_image="plexconfigcontrol:0.1.0",
                   worker_image="plexconfigcontrol-worker:0.1.0-base", sqlite_version=sqlite_version)
+    private_location = Path(APPS_MOUNT) / "app_mounts" / APP / "pcc" if getattr(args, "desktop", False) else private
     print(f"Dataset Plexa: {plan.plex.dataset}\nObraz Plexa: {reference}\nPlex SQLite: {sqlite_version}"
           f"\nFolder kopii: {target}\nPanel: https://{args.ip}:{args.port}"
-          f"\nPrywatne pliki instalacji: {private}", flush=True)
+          f"\nPrywatne pliki instalacji: {private_location}", flush=True)
     return values, pem
 
 
@@ -468,7 +493,7 @@ def ask_password_verifier():
                 print("Hasło jest za długie. Wpisz krótsze.", flush=True)
 
 
-def settings(client, args, private):
+def settings(client, args, private, *, staging=None):
     values, pem = preflight(client, args, private, check_preparation=False)
     files, records = previous_preparation(client, private)
     replacing = bool(files or records)
@@ -476,6 +501,7 @@ def settings(client, args, private):
         print(previous_preparation_summary(private, files, records), flush=True)
         print("Ponowna instalacja zastąpi konto techniczne i ustawienia kreatora. Kopie i certyfikat CA zostaną zachowane.",
               flush=True)
+    desktop_section(getattr(args, "desktop", False), "USTAW HASŁO DO PANELU", color=33)
     encoded = ask_password_verifier()
 
     action = "utworzyć konto techniczne i zainstalować aplikację" if args.krok == "instaluj" else "utworzyć konto techniczne i pliki"
@@ -485,12 +511,16 @@ def settings(client, args, private):
 
     if replacing:
         reset_previous_preparation(client, private, files, records)
-    private.mkdir(mode=0o700, exist_ok=True)
-    private_directory(private)
     require_fresh_app(client)
     check_previous_preparation(client, private)
-    ca = private / "truenas-ca.pem"
-    key, verifier, config = (private / name for name in PREPARATION_FILES)
+    destination = staging or private
+    if staging is None:
+        private.mkdir(mode=0o700, exist_ok=True)
+        private_directory(private)
+    ca = destination / "truenas-ca.pem"
+    key, verifier, config = (destination / name for name in PREPARATION_FILES)
+    values["panel"]["verifier_file"] = str(verifier)
+    values["connection"].update(api_key_file=str(key), api_ca_file=str(ca))
     if not ca.exists():
         save(ca, pem, mode=0o644)
     group_id = client.call("group.create", {"name": APP, "smb": False})
@@ -508,20 +538,111 @@ def settings(client, args, private):
     return config
 
 
-def deploy(config, *, confirmed=False):
+def deploy(config, *, confirmed=False, desktop=False, managed_private=False):
     command = ["sh", "deploy/install.sh", str(config)]
     if confirmed:
         command.append("--confirmed")
+    if managed_private:
+        command.append("--managed-private")
     result = subprocess.call(command)
-    if result:
+    if result and managed_private:
+        print("Jeśli aplikacja nie pojawiła się w TrueNAS Apps, uruchom instalator ponownie.", flush=True)
+    elif result and desktop:
+        print("Jeśli aplikacja nie została utworzona, otwórz skrót ponownie i wybierz Wznów instalację.", flush=True)
+    elif result:
         retry = resume_command(config)
         print(f"Jeśli PlexConfigControl nie pojawił się w Apps, możesz ponowić instalację:\n{retry}", flush=True)
     return result
 
 
+def installed_app_exists(client):
+    return client.call("app.query", [["name", "=", APP]], {"select": ["name"]}) == [{"name": APP}]
+
+
+def terminal_colors():
+    return sys.stdout.isatty() and os.environ.get("TERM") not in (None, "dumb") and "NO_COLOR" not in os.environ
+
+
+def desktop_section(enabled, title, *, color=36):
+    if not enabled:
+        return
+    line = "─" * 52
+    if terminal_colors():
+        print(f"\n\033[1;{color}m{line}\n  {title}\n{line}\033[0m", flush=True)
+    else:
+        print(f"\n{line}\n  {title}\n{line}", flush=True)
+
+
+def choose_action(installed):
+    first = "Aktualizuj PlexConfigControl" if installed else "Zainstaluj PlexConfigControl"
+    print(f"1. {first}\n2. Sprawdź wymagania")
+    if not installed:
+        print("3. Wznów instalację")
+    actions = {"1": "aktualizuj" if installed else "instaluj", "2": "sprawdz"}
+    if not installed:
+        actions["3"] = "wznowienie"
+    while True:
+        choice = input("Wybierz działanie [1]: ").strip() or "1"
+        if choice in actions:
+            return actions[choice]
+        print("Wybierz numer z menu.")
+
+
+def choose_resume_directory(client):
+    defaults = sorted({
+        Path(*mount.parts[:3]) / "PCC-Private"
+        for _, mount in available_archive_datasets(client)
+        if os.path.lexists(Path(*mount.parts[:3]) / "PCC-Private" / "settings.json")
+    })
+    for number, path in enumerate(defaults, 1):
+        print(f"  {number}. {path}")
+    prompt = "Prywatny katalog ustawień [1]: " if len(defaults) == 1 else "Numer lub ścieżka prywatnego katalogu: "
+    choice = input(prompt).strip()
+    if not choice and len(defaults) == 1:
+        return defaults[0]
+    if choice.isascii() and choice.isdecimal() and 1 <= int(choice) <= len(defaults):
+        return defaults[int(choice) - 1]
+    if not choice:
+        raise ValueError("Nie znaleziono zapisanej instalacji. Podaj jej prywatny katalog.")
+    return Path(choice)
+
+
+def review_resume(client, private):
+    require_fresh_app(client)
+    private = private_directory(private)
+    config = private / "settings.json"
+    _verify_private_file(config, owner=0)
+    for name in ("truenas-key", "panel-verifier"):
+        _verify_private_file(private / name, owner=568)
+    _verify_private_file(private / "truenas-ca.pem")
+    files, records = previous_preparation(client, private)
+    if len(files) != len(PREPARATION_FILES) or len(records) != len(PREPARATION_RECORDS):
+        raise ValueError("Brakuje zapisanych ustawień lub pełnego konta technicznego.")
+    verified_preparation(client, files, records)
+    try:
+        with config.open(encoding="utf-8") as stream:
+            values = json.load(stream)
+        panel, backup = values["panel"], values["backup"]
+        args = SimpleNamespace(
+            ip=ipaddress.IPv4Address(panel["host_ip"]), port=panel["host_port"],
+            archiwa=archive_parent(backup["archive_parent"]), folder=backup["folder_name"],
+            prefiks=backup["archive_prefix"], ca=None,
+            api_host=urlsplit(values["connection"]["api_url"]).hostname,
+        )
+        if type(args.port) is not int or not 1024 <= args.port <= 65535:
+            raise ValueError
+    except (TypeError, KeyError, ValueError):
+        raise ValueError("Zapisane ustawienia instalacji są nieprawidłowe.") from None
+    check_host(client, args.ip)
+    verified, _ = preflight(client, args, private, check_preparation=False)
+    if verified != values:
+        raise ValueError("Zapisane ustawienia różnią się od obecnej konfiguracji TrueNAS.")
+    return config
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("krok", nargs="?", default="instaluj", choices=("sprawdz", "certyfikat", "ustawienia", "instaluj"))
+    parser.add_argument("krok", nargs="?", default="instaluj", choices=("sprawdz", "certyfikat", "ustawienia", "instaluj", "aktualizuj"))
     parser.add_argument("--ip", type=ipaddress.IPv4Address)
     parser.add_argument("--api-host", help="Nazwa DNS w istniejącym certyfikacie HTTPS TrueNAS.")
     parser.add_argument("--ca", type=Path, help="Publiczny plik PEM zaufanej CA TrueNAS.")
@@ -531,7 +652,13 @@ def main():
     parser.add_argument("--prefiks", default="PlexConfig")
     parser.add_argument("--port", type=int)
     parser.add_argument("--wznow", type=Path, help="Plik settings.json z przerwanej instalacji.")
+    parser.add_argument("--desktop", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--ssh-connection", nargs="*", default=(), help=argparse.SUPPRESS)
+    parser.add_argument("--gui", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.gui:
+        from plexconfigcontrol.setup_protocol import enable
+        enable()
     if os.geteuid() != 0:
         parser.error("Uruchom polecenie przez sudo w Shell TrueNAS.")
     if args.wznow and args.krok != "instaluj":
@@ -545,13 +672,47 @@ def main():
     try:
         if args.wznow:
             return deploy(args.wznow)
+        automatic = args.krok == "instaluj" and not any((
+            args.ip, args.api_host, args.ca, args.prywatny, args.archiwa, args.folder, args.port,
+            args.prefiks != "PlexConfig",
+        ))
+        installed = False
+        if automatic:
+            with Client() as client:
+                installed = installed_app_exists(client)
+            desktop_section(args.desktop, "PlexConfigControl  /  Wybór działania")
+            if args.desktop:
+                args.krok = "aktualizuj" if installed else "instaluj"
+            else:
+                args.krok = choose_action(installed)
+        if args.krok == "aktualizuj" or (installed and args.krok == "sprawdz"):
+            from plexconfigcontrol.host_update import run_update
+            checking = args.krok == "sprawdz"
+            desktop_section(args.desktop, "Sprawdzenie aktualizacji" if checking else "Aktualizacja PlexConfigControl")
+            run_update(check_only=checking)
+            if checking and input("Naciśnij Enter, aby zakończyć, lub wpisz 1, aby przejść do aktualizacji: ").strip() == "1":
+                desktop_section(args.desktop, "Aktualizacja PlexConfigControl")
+                run_update()
+            return 0
+        if args.krok == "wznowienie":
+            desktop_section(args.desktop, "Wznów instalację")
+            with Client() as client:
+                config = review_resume(client, choose_resume_directory(client))
+            if input("Wpisz tak, aby wznowić instalację z tych ustawień: ").strip().lower() != "tak":
+                raise ValueError("Przygotowanie anulowane.")
+            return deploy(config, confirmed=True, desktop=args.desktop)
         needs_dataset = args.krok != "certyfikat" and args.archiwa is None
         if args.ip is None or needs_dataset:
             with Client() as client:
                 addresses = local_ipv4_addresses(client) if args.ip is None else []
                 choices = available_archive_datasets(client) if needs_dataset else []
+        desktop_section(args.desktop, "1 / 3  Serwer i miejsce na kopie")
         if args.ip is None:
-            args.ip = ask_ipv4_address(addresses)
+            args.ip = ssh_server_address(args.ssh_connection, addresses) if args.desktop else None
+            if args.ip is None:
+                args.ip = ask_ipv4_address(addresses)
+            else:
+                print(f"Adres TrueNAS z połączenia SSH: {args.ip}")
         if needs_dataset:
             args.archiwa = ask_archive_parent(choices)
         if args.krok != "certyfikat":
@@ -559,13 +720,14 @@ def main():
             if args.folder is None:
                 args.folder = ask_archive_folder(args.archiwa)
             if args.port is None:
-                args.port = ask_panel_port(args.ip)
+                args.port = 8787 if args.desktop and panel_port_available(args.ip, 8787) else ask_panel_port(args.ip)
             if not 1024 <= args.port <= 65535:
                 raise ValueError("Podaj port od 1024 do 65535.")
             args.prywatny = args.prywatny or Path(*args.archiwa.parts[:3]) / "PCC-Private"
             print(f"Wybrany folder kopii: {args.archiwa / args.folder}", flush=True)
         elif args.prywatny is None:
             args.prywatny = Path(input("Prywatny katalog poza SMB (np. /mnt/Pula/PCC-Private): ").strip())
+        desktop_section(args.desktop, "2 / 3  Sprawdzenie ustawień")
         with Client() as client:
             check_host(client, args.ip)
             private = private_directory(args.prywatny)
@@ -576,10 +738,26 @@ def main():
             elif args.krok == "sprawdz":
                 preflight(client, args, private)
                 print("Sprawdzono wymagania lokalne. Budowa obrazów i połączenie workera zostaną sprawdzone przy instalacji.")
+                if not automatic or input("Naciśnij Enter, aby zakończyć, lub wpisz 1, aby przejść do instalacji: ").strip() != "1":
+                    return
+                args.krok = "instaluj"
+                config = settings(client, args, private)
+            elif args.desktop and args.krok == "instaluj":
+                with TemporaryDirectory(prefix="pcc-install-", dir="/run") as temporary:
+                    config = settings(client, args, private, staging=Path(temporary))
+                    desktop_section(True, "3 / 3  Instalacja PlexConfigControl")
+                    result = deploy(config, confirmed=True, desktop=True, managed_private=True)
+                if result == 0:
+                    desktop_section(True, "Instalacja zakończona")
+                return result
             else:
                 config = settings(client, args, private)
         if args.krok == "instaluj":
-            return deploy(config, confirmed=True)
+            desktop_section(args.desktop, "3 / 3  Instalacja PlexConfigControl")
+            result = deploy(config, confirmed=True, desktop=args.desktop)
+            if result == 0:
+                desktop_section(args.desktop, "Instalacja zakończona")
+            return result
     except RenameRequired:
         parser.exit(1, "Wybrany folder kopii już istnieje. Podaj inną nazwę folderu.\n")
     except StorageDiscoveryError as error:

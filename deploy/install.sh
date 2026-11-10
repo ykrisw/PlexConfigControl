@@ -1,34 +1,57 @@
 #!/bin/sh
 # Production installer entry point. No deployment occurs before explicit confirmation.
 set -eu
-if [ "$#" -lt 1 ] || [ "$#" -gt 2 ] || { [ "$#" -eq 2 ] && [ "$2" != '--confirmed' ]; }; then
-    printf 'Użycie: sudo sh deploy/install.sh /ścieżka/do/ustawienia.json\n' >&2
-    exit 2
+stage() {
+    if [ "${PCC_SETUP_PROTOCOL:-0}" = 1 ]; then
+        printf '\nPCC_SETUP_EVENT:{"type":"stage","code":"%s"}\n' "$1"
+    fi
+}
+build_only=no
+if [ "${1-}" = '--build-update' ] && [ "$#" -eq 3 ]; then
+    build_only=yes
+    panel=$2
+    worker=$3
+else
+    if [ "$#" -lt 1 ]; then
+        printf 'Użycie: sudo sh deploy/install.sh /ścieżka/do/ustawienia.json\n' >&2
+        exit 2
+    fi
+    case "$1" in
+        /*) config=$1 ;;
+        *) config=$PWD/$1 ;;
+    esac
+    shift
+    for option do
+        case "$option" in
+            --confirmed|--managed-private) ;;
+            *) exit 2 ;;
+        esac
+    done
+    panel=plexconfigcontrol:0.1.0
+    worker=plexconfigcontrol-worker:0.1.0-base
 fi
-case "$1" in
-    /*) config=$1 ;;
-    *) config=$PWD/$1 ;;
-esac
-confirmation=${2-}
 [ "$(id -u)" -eq 0 ] || { printf 'Uruchom instalator jako administrator TrueNAS.\n' >&2; exit 1; }
 cd "$(dirname "$0")/.."
-[ -r "$config" ] || { printf 'Nie można odczytać pliku ustawień.\n' >&2; exit 1; }
-[ "$(midclt call app.query '[["name","=","plexconfigcontrol"]]' '{"select":["name"]}')" = '[]' ] || {
-    printf '%s\n' 'Aplikacja plexconfigcontrol już istnieje lub nie udało się odczytać jej stanu.' >&2
-    exit 1
-}
-panel=plexconfigcontrol:0.1.0
+if [ "$build_only" = no ]; then
+    [ -r "$config" ] || { printf 'Nie można odczytać pliku ustawień.\n' >&2; exit 1; }
+    [ "$(midclt call app.query '[["name","=","plexconfigcontrol"]]' '{"select":["name"]}')" = '[]' ] || {
+        printf '%s\n' 'Aplikacja plexconfigcontrol już istnieje lub nie udało się odczytać jej stanu.' >&2
+        exit 1
+    }
+fi
 runtime=$(python3 -m plexconfigcontrol.plex_runtime)
 IFS=' ' read -r plex sqlite _ <<EOF
 $runtime
 EOF
-worker=plexconfigcontrol-worker:0.1.0-base
 initializer=$PWD/design/truenas-installation/initialize-plex-sqlite.sh
 printf 'Wykryto Plex SQLite %s w obrazie %s\n' "$sqlite" "$plex"
 printf '%s\n' 'Budowanie obrazów aplikacji. Pierwsze uruchomienie może potrwać kilka minut.'
+stage BUILD_PANEL
 docker build --tag "$panel" .
+stage BUILD_WORKER
 docker build --file Dockerfile.worker --target worker-base --tag "$worker" \
     --build-arg "PCC_PANEL_IMAGE=$panel" .
+stage CHECK_RUNTIME
 cache=$(docker volume create)
 trap 'docker volume rm "$cache" >/dev/null 2>&1 || true' EXIT
 printf '%s\n' 'Sprawdzanie zgodności Plex SQLite i procesu wykonującego kopie.'
@@ -47,10 +70,8 @@ docker run --rm --network none --read-only --tmpfs /tmp \
     --sqlite-version "$sqlite"
 docker volume rm "$cache" >/dev/null
 trap - EXIT
-set --
-if [ "$confirmation" = '--confirmed' ]; then
-    set -- --confirmed
-fi
+[ "$build_only" = no ] || exit 0
+stage REGISTER_APP
 printf '%s\n' 'Rejestracja w TrueNAS Apps i sprawdzanie gotowości panelu.'
 exec python3 -m plexconfigcontrol.host_install "$config" \
     --panel-image "$panel" --worker-image "$worker" --sqlite-version "$sqlite" \

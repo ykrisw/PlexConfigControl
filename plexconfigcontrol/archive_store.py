@@ -2,11 +2,13 @@
 import os
 import stat
 from dataclasses import dataclass
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from .locking import operation_lock, OperationBusy
 from .operations import Phase
 from .state import StateStore
 
-from .naming import ARCHIVE_NAME as NAME
+from .naming import ARCHIVE_NAME as NAME, ARCHIVE_TIMESTAMP
 
 @dataclass(frozen=True)
 class Archive:
@@ -57,10 +59,31 @@ class ArchiveStore:
                     info = os.stat(name, dir_fd=fd, follow_symlinks=False)
                 except FileNotFoundError:
                     continue
-                if stat.S_ISREG(info.st_mode):
+                if stat.S_ISREG(info.st_mode) and (ARCHIVE_TIMESTAMP.search(name) or self._looks_gzipped(fd, name)):
                     result.append(Archive(name, info.st_size, info.st_dev,
                                           info.st_ino, info.st_mtime_ns))
-            return sorted(result, key=lambda item: item.name, reverse=True)
+            # The embedded timestamp survives copies. For renamed archives
+            # without one, use the file modification date in the same timezone.
+            zone = ZoneInfo('Europe/London')
+
+            def newest_first(item):
+                timestamp = ARCHIVE_TIMESTAMP.search(item.name)
+                stamp = timestamp[1] if timestamp else datetime.fromtimestamp(
+                    item.modified_ns // 1_000_000_000, zone).strftime('%Y.%m.%d_%H.%M.%S')
+                return stamp, item.modified_ns, item.name
+
+            return sorted(result, key=newest_first, reverse=True)
+        finally:
+            os.close(fd)
+
+    @staticmethod
+    def _looks_gzipped(directory_fd, name):
+        try:
+            fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory_fd)
+        except OSError:
+            return False
+        try:
+            return stat.S_ISREG(os.fstat(fd).st_mode) and os.read(fd, 3) == b'\x1f\x8b\x08'
         finally:
             os.close(fd)
 

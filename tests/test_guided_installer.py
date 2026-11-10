@@ -269,3 +269,89 @@ class GuidedInstallerTests(unittest.TestCase):
         with patch.object(install_pl.subprocess, 'call', return_value=0) as call:
             self.assertEqual(self.run_wizard('--wznow', '/private/settings.json'), 0)
         call.assert_called_once_with(['sh', 'deploy/install.sh', '/private/settings.json'])
+
+    def test_desktop_uses_entered_panel_password_and_stages_only_the_verifier(self):
+        with tempfile.TemporaryDirectory() as directory:
+            private = Path(directory) / 'old'
+            staging = Path(directory) / 'staging'
+            client = Mock()
+            client.call.side_effect = [12, {"gid": 12}, None, None, {"key": "technical-api-key"}]
+            args = SimpleNamespace(krok="instaluj", desktop=True)
+            with patch.object(install_pl, 'preflight', return_value=({"panel": {}, "connection": {}}, "PEM")), \
+                 patch.object(install_pl, 'previous_preparation', return_value=([], {})), \
+                 patch.object(install_pl, 'require_fresh_app'), \
+                 patch.object(install_pl, 'save') as save, \
+                 patch.object(install_pl, 'ask_password_verifier', return_value='stored-verifier') as ask, \
+                 patch('builtins.input', return_value='tak'):
+                self.assertEqual(install_pl.settings(client, args, private, staging=staging), staging / 'settings.json')
+            ask.assert_called_once_with()
+            self.assertFalse(private.exists())
+            self.assertTrue(all(entry.args[0].parent == staging for entry in save.call_args_list))
+            save.assert_any_call(staging / 'panel-verifier', 'stored-verifier\n', owner=568)
+
+    def test_desktop_menu_offers_resume_only_before_app_creation(self):
+        with patch('builtins.input', side_effect=['3', '2']) as prompt:
+            self.assertEqual(install_pl.choose_action(True), 'sprawdz')
+        self.assertEqual(prompt.call_count, 2)
+        with patch('builtins.input', return_value='3'):
+            self.assertEqual(install_pl.choose_action(False), 'wznowienie')
+
+    def test_resume_checks_saved_parameters_against_current_preflight(self):
+        import json
+        values = {
+            'panel': {'host_ip': '192.168.1.120', 'host_port': 8787},
+            'backup': {'archive_parent': '/mnt/ArchivePool/Family', 'folder_name': 'Kopie',
+                       'archive_prefix': 'PlexConfig'},
+            'connection': {'api_url': 'wss://192.168.1.120/api/current'},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            private = Path(directory)
+            config = private / 'settings.json'
+            config.write_text(json.dumps(values))
+            files = [private / name for name in install_pl.PREPARATION_FILES]
+            records = dict.fromkeys(method for method, *_ in install_pl.PREPARATION_RECORDS)
+            client = Mock()
+            with patch.object(install_pl, 'require_fresh_app'), \
+                 patch.object(install_pl, 'private_directory', return_value=private), \
+                 patch.object(install_pl, '_verify_private_file'), \
+                 patch.object(install_pl, 'previous_preparation', return_value=(files, records)), \
+                 patch.object(install_pl, 'verified_preparation'), \
+                 patch.object(install_pl, 'check_host'), \
+                 patch.object(install_pl, 'preflight', return_value=(values, 'PEM')) as preflight:
+                self.assertEqual(install_pl.review_resume(client, private), config)
+                self.assertEqual(preflight.call_args.args[1].folder, 'Kopie')
+                preflight.return_value = ({**values, 'connection': {}}, 'PEM')
+                with self.assertRaisesRegex(ValueError, 'różnią się'):
+                    install_pl.review_resume(client, private)
+
+    def test_desktop_reuses_only_a_confirmed_ipv4_server_address(self):
+        address = ipaddress.IPv4Address('192.168.1.120')
+        connection = ['192.168.1.20', '52111', str(address), '22']
+        self.assertEqual(install_pl.ssh_server_address(connection, [address]), address)
+        self.assertIsNone(install_pl.ssh_server_address(connection, []))
+        self.assertIsNone(install_pl.ssh_server_address(connection[:3], [address]))
+        connection[2] = '::1'
+        self.assertIsNone(install_pl.ssh_server_address(connection, [address]))
+
+    def test_desktop_check_accepts_verified_leftovers_without_removing_them(self):
+        client = Mock()
+        with tempfile.TemporaryDirectory() as directory:
+            private = Path(directory)
+            path = private / 'settings.json'
+            path.touch(mode=0o600)
+            client.call.side_effect = [[], [], [], [], []]
+            with patch.object(Path, 'lstat', return_value=SimpleNamespace(
+                    st_mode=stat.S_IFREG | 0o600, st_uid=0)), patch('builtins.print') as output:
+                install_pl.check_previous_preparation(client, private, allow_reset=True)
+            self.assertTrue(path.exists())
+        self.assertIn('Można przejść do świeżej instalacji', str(output.call_args_list))
+        self.assertNotIn('--wznow', str(output.call_args_list))
+        self.assertTrue(all(entry.args[0].endswith('.query') for entry in client.call.call_args_list))
+
+    def test_desktop_check_still_rejects_an_unrelated_api_key(self):
+        client = Mock()
+        client.call.side_effect = [[], [], [], [{'id': 1, 'username': 'admin'}]]
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, 'innego konta'):
+                install_pl.check_previous_preparation(client, Path(directory), allow_reset=True)
+        self.assertTrue(all(entry.args[0].endswith('.query') for entry in client.call.call_args_list))

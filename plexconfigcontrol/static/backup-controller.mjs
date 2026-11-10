@@ -1,7 +1,9 @@
 import {createSubmission} from './submission-controller.mjs';
 const fields=['name','size','device','inode','modified_ns'];
 export const archiveIdentity=row=>JSON.stringify(fields.map(key=>row[key]));
-const validArchive=row=>row&&typeof row.name==='string'&&/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}_\d{4}\.\d{2}\.\d{2}_\d{2}\.\d{2}\.\d{2}\.tar\.gz$/.test(row.name)&&
+// Match the server's safe filename policy for generated and renamed archives.
+const archiveName=/^[^. /\\<>:"|?*\x00-\x1f\x7f-\x9f\u2028\u2029][^/\\<>:"|?*\x00-\x1f\x7f-\x9f\u2028\u2029]{0,180}\.tar\.gz$/iu;
+const validArchive=row=>row&&typeof row.name==='string'&&archiveName.test(row.name)&&
   fields.slice(1).every(key=>typeof row[key]==='string'&&/^(0|[1-9][0-9]{0,19})$/.test(row[key]));
 
 export function createBackupController(client,render,{schedule=setTimeout,cancel=clearTimeout,makeId}={}){

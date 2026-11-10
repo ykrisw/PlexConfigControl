@@ -5,8 +5,10 @@ from dataclasses import dataclass
 DEFAULT_FOLDER = 'Plex Backup'
 DEFAULT_PREFIX = 'PlexConfig'
 PREFIX = re.compile(r'[A-Za-z0-9][A-Za-z0-9_-]{0,63}\Z')
-ARCHIVE_PATTERN = r'[A-Za-z0-9][A-Za-z0-9_-]{0,63}_\d{4}\.\d{2}\.\d{2}_\d{2}\.\d{2}\.\d{2}\.tar\.gz'
-ARCHIVE_NAME = re.compile(ARCHIVE_PATTERN+r'\Z')
+ARCHIVE_TIMESTAMP = re.compile(r'_(\d{4}\.\d{2}\.\d{2}_\d{2}\.\d{2}\.\d{2})\.tar\.gz\Z', re.IGNORECASE)
+# One visible filename component. Renamed imports still need content validation.
+ARCHIVE_PATTERN = r'[^. /\\<>:"|?*\x00-\x1f\x7f-\x9f\u2028\u2029][^/\\<>:"|?*\x00-\x1f\x7f-\x9f\u2028\u2029]{0,180}\.tar\.gz'
+ARCHIVE_NAME = re.compile(ARCHIVE_PATTERN + r'\Z', re.IGNORECASE)
 
 
 class InvalidNaming(ValueError):

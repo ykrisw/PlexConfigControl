@@ -126,3 +126,67 @@ Podaj poprawny adres i nazwe uzytkownika.	Enter a valid address and username.
 Plik do ewentualnego wznowienia na TrueNAS:	Installer file for resuming on TrueNAS:
 Otworz skrot z rozpakowanego folderu lub uruchom wspolny skrypt SSH zgodnie z instrukcja.	Open this launcher in the extracted folder or run the SSH script as shown in the guide.
 Nacisnij Enter, aby zamknac okno.	Press Enter to close this window.
+"aktualizuj"	"update"
+Nie znaleziono pełnej instalacji PlexConfigControl w TrueNAS Apps.	A full PlexConfigControl installation was not found in TrueNAS Apps.
+Konfiguracja aplikacji różni się od pełnej instalacji obsługiwanej przez kreator.	The application configuration does not match a full installation supported by this wizard.
+Nie można sprawdzić stanu operacji PlexConfigControl.	The PlexConfigControl operation state could not be checked.
+Zakończ bieżącą operację lub odzyskiwanie przed aktualizacją.	Complete the current operation or recovery before updating.
+Konfiguracja aplikacji zmieniła się. Uruchom kreator ponownie.	The application configuration changed. Restart the wizard.
+PlexConfigControl musi zakończyć uruchamianie lub zatrzymywanie.	Wait for PlexConfigControl to finish starting or stopping.
+TrueNAS nie potwierdził zatrzymania PlexConfigControl.	TrueNAS did not confirm that PlexConfigControl stopped.
+TrueNAS nie potwierdził zmiany konfiguracji PlexConfigControl.	TrueNAS did not confirm the PlexConfigControl configuration change.
+Konfiguracja w TrueNAS zmieniła się poza kreatorem. Wymaga sprawdzenia.	The configuration changed outside the wizard. Check the application in TrueNAS Apps.
+Nie można potwierdzić obrazów PlexConfigControl.	The PlexConfigControl images could not be verified.
+Uruchomione kontenery PlexConfigControl nie odpowiadają zapisanym obrazom.	The running PlexConfigControl containers do not match the configured images.
+Aktualizacja anulowana.	Update canceled.
+Nie można potwierdzić istniejącego wolumenu ustawień PlexConfigControl.	The existing PlexConfigControl settings volume could not be verified.
+Plik poprzedniej aktualizacji wymaga sprawdzenia przez administratora.	The previous update record requires administrator review.
+Plik poprzedniej aktualizacji nie pasuje do tej instalacji.	The previous update record does not match this installation.
+Wykryto przerwaną aktualizację. Wpisz tak, aby uruchomić poprzednią wersję:	An interrupted update was detected. Type yes to start the previous version:
+Poprzednia wersja PlexConfigControl działa. Uruchom kreator ponownie, aby ją zaktualizować.	The previous PlexConfigControl version is running. Restart the wizard to update it.
+Uruchom PlexConfigControl w TrueNAS Apps przed aktualizacją.	Start PlexConfigControl in TrueNAS Apps before updating.
+Obraz Plexa zmienił się od instalacji. Ta aktualizacja wymaga zgodnego Plex SQLite.	The Plex image changed after installation. This update requires the matching Plex SQLite.
+Znaleziono pełny PlexConfigControl. Wpisz tak, aby go zaktualizować:	A full PlexConfigControl installation was found. Type yes to update it:
+Obraz Plexa zmienił się podczas budowy. Uruchom kreator ponownie.	The Plex image changed while building. Restart the wizard.
+Aktualizacja przerwana. Przywracam poprzednie obrazy PlexConfigControl.	The update was interrupted. Restoring the previous PlexConfigControl images.
+Nie potwierdzono powrotu do poprzedniej wersji. Uruchom ponownie ten sam kreator.	Rollback could not be confirmed. Open this wizard again.
+Aktualizacja nie powiodła się. Poprzednia wersja działa.	The update failed. The previous version is running.
+PlexConfigControl zaktualizowany. Otwórz	PlexConfigControl updated. Open
+Uruchom aktualizację jako administrator TrueNAS.	Run the update as a TrueNAS administrator.
+PlexConfigControl wykonuje inną operację. Spróbuj po jej zakończeniu.	PlexConfigControl is busy. Try again after the operation finishes.
+Nie można sprawdzić lub zaktualizować PlexConfigControl. Sprawdź stan w TrueNAS Apps.	PlexConfigControl could not be checked or updated. Check its status in TrueNAS Apps.
+'tak'	'yes'
+TrueNAS nadal wykonuje zadanie PlexConfigControl. Spróbuj ponownie po jego zakończeniu.	TrueNAS is still processing a PlexConfigControl job. Try again after it finishes.
+Zapisz wygenerowane hasło do panelu PlexConfigControl. Kreator pokaże je tylko teraz.	Save the generated PlexConfigControl panel password. The wizard displays it only this once.
+Jeśli aplikacja nie została utworzona, otwórz skrót ponownie i wybierz Wznów instalację.	If the app has not been created, reopen the launcher and choose Resume installation.
+Aktualizuj PlexConfigControl	Update PlexConfigControl
+Zainstaluj PlexConfigControl	Install PlexConfigControl
+Sprawdź wymagania	Check requirements
+Wznów instalację	Resume installation
+Wybierz działanie [1]:	Choose an action [1]:
+Wybierz numer z menu.	Choose a number from the menu.
+Prywatny katalog ustawień [1]:	Private settings directory [1]:
+Numer lub ścieżka prywatnego katalogu:	Number or path to the private directory:
+Nie znaleziono zapisanej instalacji. Podaj jej prywatny katalog.	No saved installation was found. Enter its private directory.
+Brakuje zapisanych ustawień lub pełnego konta technicznego.	The saved settings or complete service account are missing.
+Zapisane ustawienia instalacji są nieprawidłowe.	The saved installation settings are invalid.
+Zapisane ustawienia różnią się od obecnej konfiguracji TrueNAS.	The saved settings differ from the current TrueNAS configuration.
+Wpisz tak, aby wznowić instalację z tych ustawień:	Type yes to resume installation with these settings:
+Wykryto przerwaną aktualizację. Wybierz Aktualizuj, aby uruchomić odzyskiwanie.	An interrupted update was found. Choose Update to start recovery.
+Wymagania aktualizacji spełnione. Budowa nowych obrazów zostanie sprawdzona podczas aktualizacji.	Update requirements passed. The new images will be built and checked during the update.
+Adres TrueNAS z połączenia SSH:	TrueNAS address from the SSH connection:
+Naciśnij Enter, aby zakończyć, lub wpisz 1, aby przejść do aktualizacji:	Press Enter to exit or type 1 to continue to the update:
+Naciśnij Enter, aby zakończyć, lub wpisz 1, aby przejść do instalacji:	Press Enter to exit or type 1 to continue to installation:
+Można przejść do świeżej instalacji. Zastąpienie poprzedniego przygotowania wymaga potwierdzenia.	You can continue to a fresh installation. Replacing the previous setup requires confirmation.
+PlexConfigControl  /  Wybór działania	PlexConfigControl  /  Choose an action
+Sprawdzenie aktualizacji	Update requirements
+Aktualizacja PlexConfigControl	Update PlexConfigControl
+1 / 3  Serwer i miejsce na kopie	1 / 3  Server and backup location
+2 / 3  Sprawdzenie ustawień	2 / 3  Review settings
+3 / 3  Instalacja PlexConfigControl	3 / 3  Install PlexConfigControl
+Instalacja zakończona	Installation complete
+HASŁO DO PANELU PLEXCONFIGCONTROL	PLEXCONFIGCONTROL PANEL PASSWORD
+Zapisz hasło teraz. Usuń je z logu przed udostępnieniem.	Save the password now. Remove it from the log before sharing.
+USTAW HASŁO DO PANELU	CHOOSE YOUR PANEL PASSWORD
+Jeśli aplikacja nie pojawiła się w TrueNAS Apps, uruchom instalator ponownie.	If the app has not appeared in TrueNAS Apps, run the installer again.
+The managed private iXVolume could not be verified	The managed private iXVolume could not be verified

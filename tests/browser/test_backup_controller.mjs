@@ -70,3 +70,27 @@ test('custom and default archive prefixes remain selectable alongside legacy nam
   for(const row of rows)view.controller.select(row.name,true);
   assert.equal(view.controller.selection().length,3);view.controller.dispose();
 });
+
+test('refresh accepts renamed archives alongside dated backups',async()=>{
+  const dated=archive();
+  const renamed={...archive(),name:'zzzzz.tar.gz'};
+  const unicode={...archive(),name:'Kopia Plex przed zmianą.tar.gz'};
+  const view=setup({rows:[dated]});await flush();
+  view.source.rows=[dated,renamed,unicode];
+  await view.controller.refresh();
+  const state=view.states.at(-1);
+  assert.equal(state.available,true);
+  assert.equal(state.error,'');
+  assert.deepEqual(state.entries,[dated,renamed,unicode]);
+  assert.equal(state.plan.archive_count,3);
+  view.controller.select(renamed.name,true);
+  assert.deepEqual(view.controller.selection(),[renamed]);
+  view.controller.dispose();
+});
+
+test('archive refresh still rejects filenames containing a path separator',async()=>{
+  const view=setup({rows:[{...archive(),name:'../zzzzz.tar.gz'}]});await flush();
+  assert.equal(view.states.at(-1).available,false);
+  assert.deepEqual(view.states.at(-1).entries,[]);
+  view.controller.dispose();
+});

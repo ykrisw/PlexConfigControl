@@ -4,7 +4,8 @@ ARG PCC_PANEL_IMAGE=plexconfigcontrol:local
 FROM ${PCC_PANEL_IMAGE} AS worker-base
 
 USER root
-RUN apt-get update \
+RUN sed -i 's|http://deb.debian.org/|https://deb.debian.org/|g' /etc/apt/sources.list.d/debian.sources \
+    && apt-get -o Acquire::Retries=2 update --error-on=any \
     && apt-get install -y --no-install-recommends rsync util-linux \
     && rm -rf /var/lib/apt/lists/*
 RUN printf '%s\n' '#!/bin/sh' 'runtime="${PCC_PLEX_RUNTIME:-/opt/pcc-plex}"' \
