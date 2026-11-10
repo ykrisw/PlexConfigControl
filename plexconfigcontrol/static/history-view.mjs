@@ -11,7 +11,9 @@ export function mountHistoryView(root, client, {language = 'en', timezone = 'Eur
       <section class="pcc-card"><span data-failed-label></span><b data-failed>0</b></section>
     </div>
     <div class="pcc-history-filters" role="group" aria-label="History filters">
-      <button type="button" data-filter="ALL"></button><button type="button" data-filter="BACKUP"></button><button type="button" data-filter="RESTORE"></button>
+      <button type="button" data-filter="ALL"><span data-filter-label></span> <span data-filter-count></span></button>
+      <button type="button" data-filter="BACKUP"><span data-filter-label></span> <span data-filter-count></span></button>
+      <button type="button" data-filter="RESTORE"><span data-filter-label></span> <span data-filter-count></span></button>
     </div>
     <section class="pcc-card pcc-events">
       <div class="pcc-heading"><h2 data-heading></h2><div class="pcc-history-actions">
@@ -60,7 +62,8 @@ export function mountHistoryView(root, client, {language = 'en', timezone = 'Eur
     const counts = {ALL:value.counts.all,BACKUP:value.counts.backup,RESTORE:value.counts.restore};
     const names = {ALL:tx('All','Wszystkie'),BACKUP:tx('Backup','Kopie'),RESTORE:tx('Restore','Przywracanie')};
     for (const button of root.querySelectorAll('[data-filter]')) {
-      button.textContent = `${names[button.dataset.filter]} (${counts[button.dataset.filter]})`;
+      button.querySelector('[data-filter-label]').textContent = names[button.dataset.filter];
+      button.querySelector('[data-filter-count]').textContent = `(${counts[button.dataset.filter]})`;
       button.setAttribute('aria-pressed', String(button.dataset.filter === value.filter));
       button.disabled = value.busy || dialog.open;
     }

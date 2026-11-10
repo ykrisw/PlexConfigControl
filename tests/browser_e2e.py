@@ -373,6 +373,25 @@ def main():
                     assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),f'{title} overflows at {width}px'
                     assert page.locator('.pcc-nav').evaluate("e=>[...e.querySelectorAll('button')].every(b=>{const s=b.querySelector('span').getBoundingClientRect(),r=b.getBoundingClientRect();return s.left>=r.left-1&&s.right<=r.right+1;})"),f'Tab labels overlap at {width}px'
                     assert page.locator('.pcc-nav').evaluate("e=>{const y=[...e.querySelectorAll('button svg')].map(s=>s.getBoundingClientRect().top);return Math.max(...y)-Math.min(...y)<2;}"),f'Navigation icons are uneven at {width}px'
+                    if title == 'Historia':
+                        assert page.locator('[data-panel=history]').evaluate("""panel => {
+                            const rects = selector => [...panel.querySelectorAll(selector)]
+                                .map(el => el.getBoundingClientRect());
+                            const centered = (outer, inner) =>
+                                Math.abs(outer.x + outer.width / 2 - inner.x - inner.width / 2) < 1;
+                            const aligned = boxes => Math.max(...boxes.map(box => box.y))
+                                - Math.min(...boxes.map(box => box.y)) < 1;
+                            const cards = rects('.pcc-history-stats > .pcc-card');
+                            const titles = rects('.pcc-history-stats > .pcc-card > span');
+                            const totals = rects('.pcc-history-stats > .pcc-card > b');
+                            const filters = rects('.pcc-history-filters button');
+                            const labels = rects('[data-filter-label]');
+                            const counts = rects('[data-filter-count]');
+                            return [titles, totals, labels, counts].every(aligned) &&
+                                cards.every((card, i) => centered(card, titles[i]) && centered(card, totals[i]) &&
+                                    centered(card, filters[i]) && centered(filters[i], labels[i]) &&
+                                    centered(filters[i], counts[i]) && counts[i].top >= labels[i].bottom);
+                        }"""), f'History labels or counts are uneven at {width}px'
                 page.screenshot(path=str(output/f'mobile-{width}.png'),full_page=True)
             page.set_viewport_size({'width':1440,'height':1080})
             page.get_by_role('tab',name='Pulpit',exact=True).click()
