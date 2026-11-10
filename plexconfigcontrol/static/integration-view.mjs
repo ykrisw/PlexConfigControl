@@ -40,7 +40,12 @@ export function mountIntegrationView(root,client,{language='en'}={}){
     for(const [label,value]of rows){
       const term=document.createElement('dt'),definition=document.createElement('dd');term.textContent=label;definition.textContent=value;list.append(term,definition);
     }
-    find('[data-integration-checked]').textContent=data?tx('Checked (UTC): ','Sprawdzono (UTC): ')+new Date(data.checked_at).toISOString():'';
+    const checked=find('[data-integration-checked]');
+    checked.textContent='';
+    if(data){
+      const [date,time]=new Date(data.checked_at).toISOString().split('T');
+      checked.textContent=`UTC: ${date} ${tx('Time','Czas')}: ${time.slice(0,8)}`;
+    }
     const error=find('[data-integration-error]');error.hidden=!state.error;
     error.textContent=tx('Checks could not be confirmed. Previous confirmations were cleared. Try again.','Nie udało się potwierdzić wyników. Poprzednie potwierdzenia zostały usunięte. Spróbuj ponownie.');
   }
