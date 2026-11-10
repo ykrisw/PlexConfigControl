@@ -5,6 +5,8 @@ import json
 import os
 import ssl
 import subprocess
+import sys
+import tarfile
 import tempfile
 import time
 import uuid
@@ -17,18 +19,36 @@ def docker(*args,**kwargs):
     return subprocess.check_output(['docker',*args],text=True,**kwargs).strip()
 
 
-def main():
+def main(catalog=False):
     name='pcc-smoke-'+uuid.uuid4().hex[:12]
     volume=name+'-state'
     password='ci-test-only-password'
-    environment=dict(os.environ,PCC_BOOTSTRAP_VERIFIER=password_verifier(password))
-    docker('volume','create',volume)
+    catalog_args=[]
+    work=tempfile.TemporaryDirectory()
+    if catalog:
+        import bcrypt
+        from plexconfigcontrol.archives import REQUIRED
+        verifier=bcrypt.hashpw(password.encode(),bcrypt.gensalt(rounds=12)).decode()
+        archives=Path(work.name)/'archives';archives.mkdir(mode=0o755)
+        archive=archives/'PlexConfig_2026.11.10_12.00.00.tar.gz'
+        with tarfile.open(archive,'w:gz') as stream:
+            for path in REQUIRED:
+                member=tarfile.TarInfo(path);member.size=4
+                stream.addfile(member,io.BytesIO(b'test'))
+        archive.chmod(0o644)
+        original_archive=archive.read_bytes()
+        catalog_args=['--mount',f'type=bind,source={archives},target=/archives,readonly',
+                      '-e','PCC_ARCHIVE_DIRECTORY=/archives','-e','PCC_CATALOG_LANGUAGE=pl']
+    else:
+        verifier=password_verifier(password)
+    environment=dict(os.environ,PCC_BOOTSTRAP_VERIFIER=verifier)
     try:
+        docker('volume','create',volume)
         docker('run','-d','--name',name,'--read-only','--cap-drop=ALL',
                '--security-opt=no-new-privileges:true','--tmpfs','/tmp:rw,noexec,nosuid,size=64m',
                '-p','127.0.0.1::8443','-v',volume+':/var/lib/plexconfigcontrol',
                '-e','PCC_PUBLIC_HOST=127.0.0.1','-e','PCC_BOOTSTRAP_VERIFIER',
-               'plexconfigcontrol:test',env=environment)
+               *catalog_args,'plexconfigcontrol:test',env=environment)
         port=int(json.loads(docker('inspect',name))[0]['NetworkSettings']['Ports']['8443/tcp'][0]['HostPort'])
         with tempfile.TemporaryDirectory() as temporary:
             cert=Path(temporary)/'panel.crt'
@@ -64,6 +84,15 @@ def main():
             status,headers,data=request('/api/login','POST',{'password':password})
             assert status==200
             session=headers['Set-Cookie'].split(';')[0];csrf=json.loads(data)['csrf']
+            if catalog:
+                assert session.startswith('pcc_catalog_session=')
+                assert b'<html lang="pl">' in request('/')[2]
+                assert json.loads(request('/api/settings',session=session)[2])['language']=='pl'
+                for _ in range(2):
+                    code,_,result=request('/api/restore/validate','POST',{'archive':archive.name},session,csrf)
+                    assert code==200 and json.loads(result)['phase']=='SUCCESS'
+                assert archive.read_bytes()==original_archive
+                assert list(archives.iterdir())==[archive]
             capabilities=json.loads(request('/api/capabilities',session=session)[2])
             assert all(capabilities[key] is False for key in ('backup_create','backup_overwrite','restore_execute','snapshot_management','archive_delete'))
             assert json.loads(request('/api/status',session=session)[2])['state']=='UNKNOWN'
@@ -99,6 +128,7 @@ def main():
     finally:
         subprocess.run(['docker','rm','-f',name],check=False,stdout=subprocess.DEVNULL)
         subprocess.run(['docker','volume','rm',volume],check=False,stdout=subprocess.DEVNULL)
+        work.cleanup()
 
 
-if __name__=='__main__': raise SystemExit(main())
+if __name__=='__main__': raise SystemExit(main(catalog=sys.argv[1:]==['--catalog']))
