@@ -68,7 +68,6 @@ html{color-scheme:light dark;background:light-dark(#b5b9be,#151d28)}body{margin:
 .pcc-shell .pcc-backup .pcc-archive-row strong{display:block;font-size:13px;overflow-wrap:anywhere}
 .pcc-shell .pcc-backup .pcc-archive-row small{display:block;font-size:13px}
 .pcc-shell .pcc-backup [data-confirm-files]{padding-left:20px;max-height:240px;overflow-y:auto;overflow-wrap:anywhere}
-.pcc-shell .pcc-backup [data-count]{border-radius:20px;background:var(--pcc-selected);padding:3px 10px;font-size:12px}
 @media(max-width:600px){.pcc-shell .pcc-backup .pcc-heading{flex-wrap:wrap}.pcc-shell .pcc-backup .pcc-archive-row{gap:9px;padding:8px}}
 .pcc-shell .pcc-language{display:flex;align-items:center;justify-content:space-between;gap:14px}
 .pcc-shell .pcc-language select,.pcc-shell .pcc-theme-buttons button{font:600 14px Arial,sans-serif;background:var(--pcc-bg);color:var(--pcc-ink);border:1px solid var(--pcc-line);border-radius:8px;padding:10px 14px;min-height:40px}

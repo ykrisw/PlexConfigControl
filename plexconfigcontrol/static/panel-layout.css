@@ -16,7 +16,6 @@
 .pcc-shell .pcc-page>.pcc-card,.pcc-shell .pcc-page>.pcc-plex{margin:0;flex-shrink:0;background:var(--pcc-card);border-radius:15px;padding:18px}
 .pcc-shell .pcc-page>.pcc-plex{display:flex;justify-content:space-between;align-items:center;min-height:45px;padding:10px 18px}
 .pcc-shell .pcc-page>.pcc-fill{flex:1;min-height:0}
-/* The archive card grows in Backup; Important keeps its natural height. */
 .pcc-shell .pcc-page[data-panel=dashboard]>.pcc-account,
 .pcc-shell .pcc-page[data-panel=backup]>.pcc-archives,
 .pcc-shell .pcc-page[data-panel=restore]>.pcc-archive-card,

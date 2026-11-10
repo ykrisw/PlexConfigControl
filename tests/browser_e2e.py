@@ -99,6 +99,7 @@ def main():
             page.get_by_role('tab',name='Backup',exact=True).click()
             backup=page.locator('[data-panel=backup]')
             expect(backup.locator('.pcc-archive-row')).to_have_count(13)
+            expect(backup.locator('.pcc-important')).to_have_count(0)
             expect(backup.locator('[data-create]')).to_be_disabled()
             backup.locator('input[type=checkbox]').first.check()
             expect(backup.locator('.pcc-selected')).to_have_count(1)
@@ -113,7 +114,6 @@ def main():
             shutil.copyfile(external,imported)
             backup.locator('[data-refresh]').click()
             expect(backup.locator('.pcc-archive-row')).to_have_count(14)
-            expect(backup.locator('[data-count]')).to_have_text('14 backups')
             imported_checkbox=backup.get_by_role('checkbox',name='Select: '+imported_name,exact=True)
             imported_checkbox.check()
             expect(imported_checkbox).to_be_checked()
@@ -362,6 +362,9 @@ def main():
                     if height>=1080:
                         assert abs(shell['height']-height)<2, f'{title} overflows at {width}×{height}'
                     visible_height=listing.evaluate('list => list.clientHeight')
+                    if selector == '[data-archives]':
+                        assert panel.evaluate("""page => Math.abs(page.getBoundingClientRect().bottom -
+                            page.querySelector('.pcc-archives').getBoundingClientRect().bottom) < 2""")
                     assert visible_height >= 128 and visible_height > previous_height, (
                         f'{title} list does not gain space at {width}×{height}')
                     previous_height=visible_height

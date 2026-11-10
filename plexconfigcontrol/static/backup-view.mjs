@@ -30,7 +30,6 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
     </section>
     <section class="pcc-card pcc-archives"><div class="pcc-heading"><h2 data-existing></h2><button type="button" data-delete disabled></button></div>
       <p data-access-note hidden></p><p class="pcc-notice" data-notice role="status" aria-live="polite" hidden></p><p data-empty role="status"></p><div class="pcc-scroll-list" data-archives></div></section>
-    <section class="pcc-card pcc-important"><div class="pcc-heading"><h2 data-important></h2><span data-count></span></div><p data-important-text></p></section>
     <dialog class="pcc-notification-dialog pcc-password-dialog" aria-label="Confirm archive deletion"><h3 data-confirm-heading></h3><p data-confirm-text></p>
       <ul data-confirm-files></ul><div class="pcc-dialog-actions"><button type="button" data-cancel></button><button type="button" data-confirm></button></div></dialog>
     <dialog data-backup-dialog class="pcc-notification-dialog pcc-password-dialog"><h3 data-backup-heading></h3><p data-backup-question></p><p><strong data-backup-archive></strong></p><p data-confirm-prefix hidden></p>
@@ -44,8 +43,7 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
     '[data-prefix-label]':tx('Archive name','Nazwa archiwum'),
     '[data-prefix-help]':tx('The current date and the .tar.gz extension will be added automatically.','Aktualna data z rozszerzeniem .tar.gz zostaną dodane automatycznie.'),
     '[data-create]':tx('Create Backup','Utwórz kopię zapasową'),'[data-existing]':tx('Existing Backups','Istniejące kopie zapasowe'),
-    '[data-delete]':tx('Delete Selected Archives','Usuń zaznaczone archiwa'),'[data-important]':tx('Important','Ważne'),
-    '[data-important-text]':tx('Existing backups will not be deleted automatically. Each completed backup is verified before it becomes available.','Istniejące kopie nie są usuwane automatycznie. Każda nowa kopia jest weryfikowana, zanim stanie się dostępna.'),
+    '[data-delete]':tx('Delete Selected Archives','Usuń zaznaczone archiwa'),
     '[data-confirm-heading]':tx('Delete Selected Archives','Usuń zaznaczone archiwa'),
     '[data-confirm-text]':tx('Permanently delete these archive files? Permanent logs and other archives will remain untouched.','Trwale usunąć te pliki archiwów? Trwałe logi i pozostałe archiwa pozostaną nietknięte.'),
     '[data-cancel]':tx('Cancel','Anuluj'),'[data-confirm]':tx('Delete','Usuń'),
@@ -131,7 +129,6 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
     find('[data-access-note]').textContent=value.deletionEnabled?
       tx('Finish the current operation or recovery before deleting archives.','Przed usuwaniem archiwów zakończ bieżącą operację lub odzyskiwanie.'):
       tx('Archive deletion is disabled in this installation.','Usuwanie archiwów jest wyłączone w tej instalacji.');
-    find('[data-count]').textContent=value.available?`${value.entries.length} ${tx('backups','kopii')}`:`— ${tx('backups','kopii')}`;
     const messages={DELETED:tx('Selected archives deleted. Permanent log files were preserved.','Usunięto zaznaczone archiwa. Trwałe pliki logów zostały zachowane.'),
       DELETE_UNCONFIRMED:tx('Deletion could not be fully confirmed. Review the refreshed list before trying again.','Nie udało się w pełni potwierdzić usunięcia. Przed kolejną próbą sprawdź odświeżoną listę.')};
     find('[data-notice]').textContent=value.error||messages[value.notice]||'';find('[data-notice]').hidden=!find('[data-notice]').textContent;
