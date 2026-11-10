@@ -20,8 +20,8 @@ values. Password changes in the panel are stored in its iXVolume.
 ## Before submitting
 
 - Publish the panel image from the root Dockerfile, then set the published
-  image reference and digest in `ix_values.yaml`. The current reference
-  is reserved for the candidate and must be checked before installation.
+  image reference and digest in `ix_values.yaml`. The current candidate
+  points to the publicly available, tested Linux amd64 image.
 - Render the English and Polish fixture values with the TrueNAS Apps library
   and test a clean installation from the TrueNAS form. Verify language
   switching, login, opening the HTTPS portal, archive validation and state
