@@ -32,6 +32,40 @@ The smoke test runs imports and native cryptography/image operations on the
 build host with global/user site packages disabled. This does not establish
 real-device ABI compatibility; it still needs a QNAP run.
 
+## Private GNU tar
+
+The development NAS's GNU tar lacks `--acls` and `--xattrs`. Do not fall back to
+archiving without that metadata, or replace the NAS's `/bin/tar`.
+
+On a Linux x86_64 build host with Python 3.12+, a C toolchain, make, curl,
+readelf and sha256sum:
+
+```sh
+sh deploy/qnap/build_tar.sh /tmp/pcc-qnap-tar-payload
+```
+
+This builds GNU tar 1.35 with private static ACL/attribute libraries and the
+system libc. The output is rejected if it needs a glibc symbol newer than 2.39,
+an unexpected shared library, or lacks required archive options. Source downloads
+are pinned by SHA-256. Output includes corresponding source tarballs, build
+instructions, license files and a hash manifest. GNU tar remains a separate
+GPL-licensed program; PlexConfigControl retains its existing license.
+
+The QNAP worker must explicitly supply its private `bin/pcc-tar` path to both
+archive creation and staging extraction. The existing TrueNAS default is unchanged.
+Build checks still need a real-device metadata round trip before use with Plex.
+
+Exercise the built binary on the build host:
+
+```sh
+PCC_TEST_TAR_EXECUTABLE=/tmp/pcc-qnap-tar-payload/bin/pcc-tar \
+    PYTHONPATH=tests:. python3 -m unittest tests.test_qnap_archive
+```
+
+The archive tests check file contents, mode bits and user xattrs after extraction.
+The POSIX ACL round trip is skipped when the build host's filesystem or user
+namespace cannot set ACLs; a skip must not be reported as device verification.
+
 ## Still required before an installable QPKG
 
 - QNAP-supported snapshot creation, read access and scoped removal.

@@ -11,7 +11,8 @@ class StagingError(RuntimeError):
     pass
 
 @contextmanager
-def stage_archive(archive_path,state_directory,expected_sha256,*,runner=subprocess.run,progress_callback=None):
+def stage_archive(archive_path,state_directory,expected_sha256,*,runner=subprocess.run,progress_callback=None,
+                  tar_executable='tar'):
     """Copy archive privately, validate identity, then extract with GNU tar.
 
     Links, special files, duplicate paths and traversal are rejected by the
@@ -53,7 +54,7 @@ def stage_archive(archive_path,state_directory,expected_sha256,*,runner=subproce
         if result.sha256!=expected_sha256:
             raise StagingError('Archive changed since selection was validated')
         destination=workspace/'extracted'; destination.mkdir(mode=0o700)
-        extracted=runner(['tar','--acls','--xattrs','--numeric-owner','--same-owner',
+        extracted=runner([os.fspath(tar_executable),'--acls','--xattrs','--numeric-owner','--same-owner',
                           '--same-permissions','-xzpf',str(private),'-C',str(destination)],
                          stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
         if extracted.returncode:
