@@ -1,8 +1,12 @@
 import http.client
+import hashlib
+import ssl
+import tempfile
+from pathlib import Path
 import unittest
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlsplit
 
-from plexconfigcontrol.qnap_api import QnapApiError, QnapLocalReadOnlyApi
+from plexconfigcontrol.qnap_api import QnapApiError, QnapLocalReadOnlyApi, local_certificate_context
 
 
 LOGIN = b'<QDocRoot><authPassed>1</authPassed><authSid>test-session-only</authSid></QDocRoot>'
@@ -10,7 +14,7 @@ EMPTY = b'<QDocRoot><authPassed>1</authPassed><result>0</result><SnapshotList/><
 
 
 class QnapApiTests(unittest.TestCase):
-    def client(self, replies):
+    def client(self, replies, **tls_options):
         self.calls = []
         self.closed = []
         calls, closed = self.calls, self.closed
@@ -19,6 +23,11 @@ class QnapApiTests(unittest.TestCase):
                 self.reply = replies.pop(0)
                 self.status = self.reply[0]
                 calls.append(('connect', host, port, options))
+                self.sock = self
+            def connect(self):
+                calls.append(('tls-connected',))
+            def getpeercert(self, **options):
+                return b'test-certificate'
             def set_debuglevel(self, level):
                 calls.append(('debug', level))
             def request(self, method, path, **options):
@@ -29,16 +38,22 @@ class QnapApiTests(unittest.TestCase):
                 return self.reply[1][:limit]
             def close(self):
                 closed.append(True)
-        return QnapLocalReadOnlyApi(8080, connection_factory=Connection)
+        return QnapLocalReadOnlyApi(443, connection_factory=Connection, **tls_options)
 
-    def test_credentials_and_session_use_post_bodies_and_only_loopback(self):
+    def test_password_is_post_only_and_snapshot_query_uses_native_get_over_loopback(self):
         client = self.client([(200, LOGIN), (200, EMPTY)])
         client.login('test-account', 'test-password')
         self.assertEqual(client.snapshots(7), [])
         requests = [call for call in self.calls if call[0] == 'request']
-        self.assertEqual([call[1:3] for call in requests], [
-            ('POST', '/cgi-bin/authLogin.cgi'), ('POST', '/cgi-bin/disk/snapshot.cgi')])
-        self.assertEqual(parse_qs(requests[1][3]['body'].decode())['sid'], ['test-session-only'])
+        self.assertEqual(requests[0][1:3], ('POST', '/cgi-bin/authLogin.cgi'))
+        self.assertEqual(parse_qs(requests[0][3]['body'].decode())['user'], ['test-account'])
+        self.assertEqual(requests[1][1], 'GET')
+        target = urlsplit(requests[1][2])
+        self.assertEqual(target.path, '/cgi-bin/disk/snapshot.cgi')
+        self.assertEqual(parse_qs(target.query)['sid'], ['test-session-only'])
+        self.assertEqual(parse_qs(target.query)['volumeID'], ['7'])
+        self.assertNotIn('pwd', parse_qs(target.query))
+        self.assertIsNone(requests[1][3]['body'])
         self.assertTrue(all(call[1] == '127.0.0.1' for call in self.calls if call[0] == 'connect'))
         self.assertEqual(len(self.closed), 2)
 
@@ -108,3 +123,53 @@ class QnapApiTests(unittest.TestCase):
         for volume in (True, 0, -1, '7'):
             with self.assertRaises(ValueError):
                 client.snapshots(volume)
+
+    def test_unverified_tls_or_hostname_without_pin_is_rejected(self):
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        with self.assertRaises(ValueError):
+            self.client([], tls_context=context)
+        context.verify_mode = ssl.CERT_NONE
+        with self.assertRaises(ValueError):
+            self.client([], tls_context=context, certificate_sha256='a'*64)
+
+    def test_certificate_mismatch_blocks_credentials_before_http_request(self):
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        client = self.client([(200, LOGIN)], tls_context=context, certificate_sha256='a'*64)
+        with self.assertRaisesRegex(QnapApiError, '^QNAP_LOCAL_CERTIFICATE_MISMATCH$'):
+            client.login('test-account', 'test-password')
+        self.assertFalse(any(call[0] == 'request' for call in self.calls))
+        self.assertEqual(len(self.closed), 1)
+
+    def test_exact_local_certificate_pin_allows_request(self):
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        client = self.client([(200, LOGIN)], tls_context=context,
+            certificate_sha256=hashlib.sha256(b'test-certificate').hexdigest())
+        client.login('test-account', 'test-password')
+        self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+        self.assertGreaterEqual(context.minimum_version, ssl.TLSVersion.TLSv1_2)
+
+    def test_local_trust_loader_uses_public_certificate_from_combined_bundle(self):
+        from plexconfigcontrol.tls import ensure_tls
+        with tempfile.TemporaryDirectory() as directory:
+            cert, key = ensure_tls(Path(directory), 'localhost')
+            pem = cert.read_text()
+            context, fingerprint = local_certificate_context(key.read_text()+pem)
+            self.assertEqual(fingerprint, hashlib.sha256(ssl.PEM_cert_to_DER_cert(pem)).hexdigest())
+            self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+            self.assertFalse(context.check_hostname)
+            self.assertGreaterEqual(context.cert_store_stats()['x509'], 1)
+            with self.assertRaises(ValueError):
+                local_certificate_context(key.read_text())
+
+    def test_read_only_transport_rejects_mutations_and_get_login_fields(self):
+        client = self.client([])
+        for method, path, fields in (
+                ('GET', '/cgi-bin/authLogin.cgi', {'user':'test', 'pwd':'test'}),
+                ('POST', '/cgi-bin/disk/snapshot.cgi', {'func':'extra_get'}),
+                ('GET', '/cgi-bin/disk/snapshot.cgi', {'func':'del_snapshots', 'snapshotID':'9001'})):
+            with self.subTest(method=method, path=path), self.assertRaisesRegex(QnapApiError, '^QNAP_ENDPOINT_NOT_ALLOWED$'):
+                client._xml(method, path, fields)
+        self.assertEqual(self.calls, [])

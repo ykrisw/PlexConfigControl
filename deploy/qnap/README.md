@@ -68,17 +68,28 @@ namespace cannot set ACLs; a skip must not be reported as device verification.
 
 ## Experimental read-only management API
 
-`plexconfigcontrol/qnap_api.py` contains a fixed-loopback HTTP probe, in-memory
-login and bounded snapshot inventory reads. It uses POST form bodies for
-credentials/session tokens and never follows redirects or uses an HTTP proxy.
+`plexconfigcontrol/qnap_api.py` contains a fixed-loopback HTTPS probe, in-memory
+login and bounded snapshot inventory reads. Login credentials use a POST form
+body; snapshot inventory uses the native GET query with an in-memory session
+parameter over verified loopback HTTPS. No application logging of request
+targets/session values is permitted. It never follows redirects or uses an HTTP proxy.
 It cannot create/delete snapshots or perform a rollback. Unknown response
 schemas, expired sessions and full inventory pages fail closed.
+TLS verification is required. A certificate read from trusted local NAS
+configuration can anchor the trust chain and pin the exact leaf certificate
+for loopback, without relying on an IP SAN. Pin verification happens before
+any HTTP request, so a mismatch cannot receive login credentials. Certificate
+expiry/chain verification stays enabled; redirects are never used as trust.
 
 The authentication/snapshot field names are informed by the QNAP-authored
 OpenStack driver at https://github.com/openstack/manila/blob/master/manila/share/drivers/qnap/api.py .
 That driver targets ES NAS; it does **not** establish compatibility with QuTS
 hero. The implementation currently passes mocked protocol tests only. Do not
 enable any storage mutations based on these fixtures or infer public API support.
+Device diagnostics confirmed login but not inventory: sending inventory fields
+in a POST returned a generic response without `SnapshotList`. An authenticated
+QCLI inventory attempt also failed on its runtime files. GET inventory still
+needs a device test; a missing list must never be interpreted as an empty list.
 
 ## Still required before an installable QPKG
 

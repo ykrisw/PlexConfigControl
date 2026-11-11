@@ -1,12 +1,17 @@
-"""Experimental, read-only QNAP management session over fixed loopback HTTP.
+"""Experimental, read-only QNAP management session over fixed loopback HTTPS.
 
 No storage mutations are implemented here. CGI compatibility on QuTS hero is
-not established by the fixture tests. Credentials and sessions stay in memory
-and in POST bodies, never URLs, process arguments or diagnostic output.
+not established by the fixture tests. Passwords are sent only in POST bodies.
+The snapshot CGI uses a session parameter in its GET query over verified local
+HTTPS. Request targets and session values must never be logged or returned in
+diagnostic exceptions. This client does not persist credentials or sessions.
 """
 import base64
+import hashlib
+import hmac
 import http.client
 import re
+import ssl
 from urllib.parse import urlencode
 from xml.etree import ElementTree
 
@@ -15,23 +20,77 @@ class QnapApiError(RuntimeError):
     pass
 
 
+def local_certificate_context(trusted_pem):
+    """Build trust from an administrator-controlled local NAS certificate.
+
+    Caller must read this from trusted local configuration, never from the
+    network or a browser upload. Only public certificate blocks are loaded;
+    a co-located server private key is neither used nor returned. The exact
+    leaf pin replaces DNS-name matching for the fixed 127.0.0.1 connection.
+    Certificate-chain/signature/expiry verification remains enabled.
+    """
+    certificates = re.findall(r'-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----',
+                              trusted_pem, re.DOTALL)
+    if not certificates:
+        raise ValueError('Trusted local NAS certificate is required')
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_REQUIRED
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.verify_flags |= ssl.VERIFY_X509_PARTIAL_CHAIN
+    context.load_verify_locations(cadata='\n'.join(certificates))
+    fingerprint = hashlib.sha256(ssl.PEM_cert_to_DER_cert(certificates[0])).hexdigest()
+    return context, fingerprint
+
+
 class QnapLocalReadOnlyApi:
-    def __init__(self, port, *, connection_factory=http.client.HTTPConnection):
+    def __init__(self, port, *, tls_context=None, certificate_sha256=None,
+                 connection_factory=http.client.HTTPSConnection):
         if type(port) is not int or not 1 <= port <= 65535:
             raise ValueError('Invalid QNAP local management port')
+        context = tls_context if tls_context is not None else ssl.create_default_context()
+        context.minimum_version = max(context.minimum_version, ssl.TLSVersion.TLSv1_2)
+        if (context.verify_mode != ssl.CERT_REQUIRED
+                or (not context.check_hostname and certificate_sha256 is None)
+                or (certificate_sha256 is not None
+                    and not re.fullmatch(r'[0-9a-f]{64}', certificate_sha256))):
+            raise ValueError('Verified QNAP HTTPS identity is required')
         self.port = port
+        self._tls_context = context
+        self._certificate_sha256 = certificate_sha256
         self._connection_factory = connection_factory
         self._session = None
 
     def _xml(self, method, path, fields=None):
         if path not in ('/cgi-bin/authLogin.cgi', '/cgi-bin/disk/snapshot.cgi'):
             raise QnapApiError('QNAP_ENDPOINT_NOT_ALLOWED')
-        body = urlencode(fields).encode('ascii') if fields is not None else None
+        if path == '/cgi-bin/authLogin.cgi':
+            if method not in ('GET', 'POST') or (method == 'GET' and fields is not None):
+                raise QnapApiError('QNAP_ENDPOINT_NOT_ALLOWED')
+        elif (method != 'GET' or not isinstance(fields, dict)
+              or fields.get('func') != 'extra_get'
+              or set(fields) != {'func', 'volumeID', 'snapshot_list', 'snap_start', 'snap_count', 'sid'}):
+            raise QnapApiError('QNAP_ENDPOINT_NOT_ALLOWED')
+        target = path
+        body = None
+        if fields is not None:
+            encoded = urlencode(fields)
+            if method == 'GET':
+                target += '?'+encoded
+            else:
+                body = encoded.encode('ascii')
         connection = None
         try:
-            connection = self._connection_factory('127.0.0.1', self.port, timeout=15)
+            connection = self._connection_factory('127.0.0.1', self.port, timeout=15,
+                                                  context=self._tls_context)
             connection.set_debuglevel(0)
-            connection.request(method, path, body=body, headers={
+            connection.connect()
+            if self._certificate_sha256 is not None:
+                certificate = connection.sock.getpeercert(binary_form=True)
+                if not certificate or not hmac.compare_digest(
+                        hashlib.sha256(certificate).hexdigest(), self._certificate_sha256):
+                    raise QnapApiError('QNAP_LOCAL_CERTIFICATE_MISMATCH')
+            connection.request(method, target, body=body, headers={
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Accept': 'application/xml, text/xml',
             })
@@ -81,7 +140,7 @@ class QnapLocalReadOnlyApi:
             raise ValueError('Invalid QNAP volume ID')
         if self._session is None:
             raise QnapApiError('QNAP_LOGIN_REQUIRED')
-        root = self._xml('POST', '/cgi-bin/disk/snapshot.cgi', {
+        root = self._xml('GET', '/cgi-bin/disk/snapshot.cgi', {
             'func': 'extra_get', 'volumeID': str(volume_id), 'snapshot_list': '1',
             'snap_start': '0', 'snap_count': '100', 'sid': self._session,
         })
