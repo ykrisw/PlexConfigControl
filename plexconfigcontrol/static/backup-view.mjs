@@ -13,7 +13,7 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
       <label class="pcc-backup-name"><span data-prefix-label></span>
         <input data-backup-prefix type="text" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_\\-]{0,63}" aria-describedby="pcc-backup-prefix-help" autocomplete="off" spellcheck="false"></label>
       <p id="pcc-backup-prefix-help" data-prefix-help></p><button type="button" class="pcc-primary" data-create disabled></button>
-      <p data-execution-note></p>
+      <p data-backup-unavailable hidden></p>
     </section>
     <section class="pcc-card pcc-operation-workspace" hidden>
       <h2 data-operation-heading></h2>
@@ -83,7 +83,8 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
     status.textContent=pl?({RUNNING:'DZIAŁA',STOPPED:'ZATRZYMANY',UNKNOWN:'NIEZNANY'})[value.plex]:value.plex;
     find('[data-refresh]').disabled=value.loading||value.busy||dialog.open||backupDialog.open;
     find('[data-create]').disabled=!value.canCreate||dialog.open||backupDialog.open;
-    find('[data-execution-note]').textContent=value.creationEnabled?tx('The archive is read only from a temporary snapshot.','Archiwum jest odczytywane wyłącznie z tymczasowego snapshotu.'):
+    find('[data-backup-unavailable]').hidden=value.creationEnabled;
+    find('[data-backup-unavailable]').textContent=value.creationEnabled?'':
       tx('Backup creation is disabled in this installation.','Tworzenie kopii jest wyłączone w tej instalacji.');
     const draftMatches=backupConfirmation&&value.entries.length===1&&archiveIdentity(backupConfirmation)===archiveIdentity(value.entries[0]);
     find('[data-backup-another]').disabled=!value.canCreate||!draftMatches;

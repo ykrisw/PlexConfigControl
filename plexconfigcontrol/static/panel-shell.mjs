@@ -37,6 +37,7 @@ export function mountPanelShell(root, {onNavigate = () => {}, theme = 'System'} 
   header.append(nav); root.append(header, main);
   function select(key) {
     if (!sections.has(key)) throw new Error('Unknown panel');
+    root.dataset.panel = key;
     for (const [name, section] of sections) {
       section.hidden = name !== key;
       buttons.get(name).setAttribute('aria-selected', String(name === key));

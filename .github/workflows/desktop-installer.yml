@@ -1,7 +1,7 @@
 name: Native desktop installer
 on:
   push:
-    branches: ['work/full-click']
+    branches: ['work/full-click', main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -27,7 +27,9 @@ jobs:
       - name: Verify Backup and Restore on desktop and mobile layouts
         env:
           PCC_TEST_BROWSER: ${{ matrix.browser }}
-        run: python tests/execution_ui_e2e.py
+        run: |
+          python tests/execution_ui_e2e.py
+          python tests/mobile_archives_e2e.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -107,3 +109,26 @@ jobs:
           path: release/*
           compression-level: 0
           retention-days: 30
+  publish:
+    if: github.ref == 'refs/heads/main'
+    needs: package
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: PlexConfigControl-Desktop-PL-EN
+          path: release
+      - name: Publish the current installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          printf '%s\n' 'One installer ZIP for Windows x64, macOS Apple Silicon and Linux x64. Choose English or Polish in the graphical wizard. Both guides are included.' '' 'Updated mobile Backup layout, equal-height archive controls and matching Backup/Restore page scrolling. Existing installations can be updated with this installer.' > notes.md
+          if gh release view v1.0.10 >/dev/null 2>&1; then
+            gh release upload v1.0.10 release/* --clobber
+            gh release edit v1.0.10 --title 'PlexConfigControl 1.0.10 — Installer PL / EN' --notes-file notes.md --latest
+          else
+            gh release create v1.0.10 release/* --target "$GITHUB_SHA" --title 'PlexConfigControl 1.0.10 — Installer PL / EN' --notes-file notes.md --latest
+          fi

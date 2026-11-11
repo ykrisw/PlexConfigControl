@@ -4,10 +4,9 @@ PlexConfigControl is an app for backing up and restoring your Plex Media Server 
 
 ## Download the installer
 
-- [Polish installer ZIP and guide](https://raw.githubusercontent.com/ykrisw/PlexConfigControl/main/release/PlexConfigControl_Instalator_Windows_macOS_Linux.zip)
-- [English installer ZIP and guide](https://raw.githubusercontent.com/ykrisw/PlexConfigControl/main/release/PlexConfigControl_Installer_Windows_macOS_Linux_EN.zip)
+[**Download the installer ZIP — English / Polski**](https://github.com/ykrisw/PlexConfigControl/releases/latest/download/PlexConfigControl_Installer_Windows_macOS_Linux_PL_EN.zip)
 
-Both ZIPs contain the same app and installer launchers for Windows, macOS, and Linux. The package you choose determines the language of the installation wizard and guide. The app itself runs on TrueNAS.
+One ZIP contains graphical installers for Windows x64, macOS Apple Silicon (M1 or later), and Linux x64. Extract it and open the installer for your computer. Choose **English** or **Polski** in the first window. Both installation guides are included. The app itself runs on TrueNAS. The same installer can update an existing installation.
 
 ## How it works
 

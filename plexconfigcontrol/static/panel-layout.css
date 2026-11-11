@@ -55,3 +55,14 @@
 
 /* Own the page surface explicitly, including transparent areas between cards. */
 .pcc-shell .pcc-main,.pcc-shell .pcc-page{background:var(--pcc-bg)}
+
+/* The same mobile page-scroll range reveals the archive area in both tabs. */
+@media(max-width:600px){
+ .pcc-shell:is([data-panel=backup],[data-panel=restore]) .pcc-main{
+  flex:0 0 auto;
+  min-height:calc(100vh + 34px);
+  min-height:calc(100dvh + 34px);
+ }
+ .pcc-shell .pcc-page[data-panel=backup]>.pcc-archives,
+ .pcc-shell .pcc-page[data-panel=restore]>.pcc-archive-card{min-height:0}
+}
