@@ -67,10 +67,13 @@ class QnapLocalReadOnlyApi:
         if path == '/cgi-bin/authLogin.cgi':
             if method not in ('GET', 'POST') or (method == 'GET' and fields is not None):
                 raise QnapApiError('QNAP_ENDPOINT_NOT_ALLOWED')
-        elif (method != 'GET' or not isinstance(fields, dict)
-              or fields.get('func') != 'extra_get'
-              or set(fields) != {'func', 'volumeID', 'snapshot_list', 'snap_start', 'snap_count', 'sid'}):
-            raise QnapApiError('QNAP_ENDPOINT_NOT_ALLOWED')
+        else:
+            list_fields = {'func', 'volumeID', 'snapshot_list', 'start', 'end', 'sid'}
+            count_fields = {'func', 'volumeID', 'snapshot_count', 'by_vol', 'sid'}
+            if (method != 'GET' or not isinstance(fields, dict)
+                    or fields.get('func') != 'extra_get'
+                    or set(fields) not in (list_fields, count_fields)):
+                raise QnapApiError('QNAP_ENDPOINT_NOT_ALLOWED')
         target = path
         body = None
         if fields is not None:
@@ -134,22 +137,43 @@ class QnapLocalReadOnlyApi:
             raise QnapApiError('QNAP_AUTHENTICATION_FAILED')
         self._session = sid
 
-    def snapshots(self, volume_id):
-        """Read one bounded inventory page; never mistake truncation for absence."""
+    def _read_inventory(self, volume_id, fields):
         if type(volume_id) is not int or not 1 <= volume_id <= 9999999999:
             raise ValueError('Invalid QNAP volume ID')
         if self._session is None:
             raise QnapApiError('QNAP_LOGIN_REQUIRED')
         root = self._xml('GET', '/cgi-bin/disk/snapshot.cgi', {
-            'func': 'extra_get', 'volumeID': str(volume_id), 'snapshot_list': '1',
-            'snap_start': '0', 'snap_count': '100', 'sid': self._session,
+            'func': 'extra_get', 'volumeID': str(volume_id),
+            **fields, 'sid': self._session,
         })
         if root.findtext('authPassed') == '0':
             self._session = None
             raise QnapApiError('QNAP_SESSION_EXPIRED')
-        result = root.findtext('result', '')
+        if root.findtext('authPassed') != '1' or root.findtext('result') != '0':
+            raise QnapApiError('QNAP_SNAPSHOT_SCHEMA_UNVERIFIED')
+        return root
+
+    def snapshot_count(self, volume_id):
+        """Read the native volume-scoped counter independently of list presence."""
+        root = self._read_inventory(volume_id, {'snapshot_count': '1', 'by_vol': '1'})
+        if root.findtext('volumeID') != str(volume_id):
+            raise QnapApiError('QNAP_SNAPSHOT_VOLUME_MISMATCH')
+        count = root.findtext('snapshot_count', '')
+        if not re.fullmatch(r'[0-9]{1,6}', count):
+            raise QnapApiError('QNAP_SNAPSHOT_SCHEMA_UNVERIFIED')
+        return int(count)
+
+    def snapshots(self, volume_id):
+        """Read one bounded page; missing XML needs an independently verified zero.
+
+        Native QuTS hero may omit SnapshotList for a zero/failed enumeration.
+        The success code alone is not proof that no snapshots exist.
+        """
+        root = self._read_inventory(volume_id, {'snapshot_list': '1', 'start': '0', 'end': '99'})
         listing = root.find('SnapshotList')
-        if not re.fullmatch(r'[0-9]+', result) or listing is None:
+        if listing is None:
+            if self.snapshot_count(volume_id) == 0:
+                return []
             raise QnapApiError('QNAP_SNAPSHOT_SCHEMA_UNVERIFIED')
         nodes = listing.findall('row')
         if len(nodes) >= 100:

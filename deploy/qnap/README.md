@@ -86,10 +86,31 @@ OpenStack driver at https://github.com/openstack/manila/blob/master/manila/share
 That driver targets ES NAS; it does **not** establish compatibility with QuTS
 hero. The implementation currently passes mocked protocol tests only. Do not
 enable any storage mutations based on these fixtures or infer public API support.
-Device diagnostics confirmed login but not inventory: sending inventory fields
-in a POST returned a generic response without `SnapshotList`. An authenticated
-QCLI inventory attempt also failed on its runtime files. GET inventory still
-needs a device test; a missing list must never be interpreted as an empty list.
+Device diagnostics confirmed login but returned no `SnapshotList` for the
+inventory request. Offline interface analysis established that the native ZFS
+handler can omit that node on zero/error enumeration and uses `start`/`end`
+pagination. The separate counter uses `snapshot_count=1&by_vol=1`. A missing
+list is now accepted as empty only after a separate successful zero counter
+response that echoes the discovered volume. See `design/qnap/API-PROFILE.md`.
+These read-only results alone must not authorize future snapshot removal.
+
+## Single-file device read probe
+
+`PCC_QNAP_API_Probe.py` is a developer compatibility test, **not an installer**.
+It uses only the Python standard library, discovers Plex and its native volume,
+verifies local HTTPS identity, prompts for NAS credentials in the terminal and
+compares the API counter with the returned inventory. It does not use QCLI,
+persist credentials, create/remove snapshots or modify Plex.
+
+Regenerate it after discovery/API changes:
+
+```sh
+python3 deploy/qnap/build_probe.py
+python3 -m unittest tests.test_qnap_probe tests.test_qnap_api
+```
+
+The corresponding QNAP-owned binaries supplied for private offline analysis
+must not be committed, bundled into this probe, or shipped with the application.
 
 ## Still required before an installable QPKG
 

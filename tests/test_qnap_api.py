@@ -52,6 +52,9 @@ class QnapApiTests(unittest.TestCase):
         self.assertEqual(target.path, '/cgi-bin/disk/snapshot.cgi')
         self.assertEqual(parse_qs(target.query)['sid'], ['test-session-only'])
         self.assertEqual(parse_qs(target.query)['volumeID'], ['7'])
+        self.assertEqual(parse_qs(target.query)['start'], ['0'])
+        self.assertEqual(parse_qs(target.query)['end'], ['99'])
+        self.assertNotIn('snap_start', parse_qs(target.query))
         self.assertNotIn('pwd', parse_qs(target.query))
         self.assertIsNone(requests[1][3]['body'])
         self.assertTrue(all(call[1] == '127.0.0.1' for call in self.calls if call[0] == 'connect'))
@@ -102,7 +105,7 @@ class QnapApiTests(unittest.TestCase):
     def test_foreign_volume_and_duplicate_rows_are_rejected(self):
         row = b'<row><snapshot_id>9001</snapshot_id><snapshot_name>test-snapshot</snapshot_name><volume_id>8</volume_id></row>'
         for rows in (row, row.replace(b'>8<', b'>7<')*2):
-            data = b'<x><result>0</result><SnapshotList>'+rows+b'</SnapshotList></x>'
+            data = b'<x><authPassed>1</authPassed><result>0</result><SnapshotList>'+rows+b'</SnapshotList></x>'
             client = self.client([(200, LOGIN), (200, data)])
             client.login('test-account', 'test-password')
             with self.assertRaises(QnapApiError):
@@ -110,7 +113,7 @@ class QnapApiTests(unittest.TestCase):
 
     def test_full_page_is_not_assumed_complete(self):
         row = b'<row><snapshot_id>9001</snapshot_id><snapshot_name>test</snapshot_name></row>'
-        client = self.client([(200, LOGIN), (200, b'<x><result>0</result><SnapshotList>'+row*100+b'</SnapshotList></x>')])
+        client = self.client([(200, LOGIN), (200, b'<x><authPassed>1</authPassed><result>0</result><SnapshotList>'+row*100+b'</SnapshotList></x>')])
         client.login('test-account', 'test-password')
         with self.assertRaisesRegex(QnapApiError, 'PAGE_LIMIT'):
             client.snapshots(7)
@@ -173,3 +176,29 @@ class QnapApiTests(unittest.TestCase):
             with self.subTest(method=method, path=path), self.assertRaisesRegex(QnapApiError, '^QNAP_ENDPOINT_NOT_ALLOWED$'):
                 client._xml(method, path, fields)
         self.assertEqual(self.calls, [])
+
+    def test_native_counter_uses_by_vol_and_checks_echoed_volume(self):
+        data = b'<QDocRoot><authPassed>1</authPassed><result>0</result><volumeID>7</volumeID><snapshot_count>3</snapshot_count></QDocRoot>'
+        client = self.client([(200, LOGIN), (200, data)])
+        client.login('test-account', 'test-password')
+        self.assertEqual(client.snapshot_count(7), 3)
+        query = parse_qs(urlsplit([c for c in self.calls if c[0] == 'request'][-1][2]).query)
+        self.assertEqual(query['by_vol'], ['1'])
+        self.assertEqual(query['snapshot_count'], ['1'])
+        client = self.client([(200, LOGIN), (200, data)])
+        client.login('test-account', 'test-password')
+        with self.assertRaisesRegex(QnapApiError, 'VOLUME_MISMATCH'):
+            client.snapshot_count(8)
+
+    def test_missing_list_is_empty_only_with_separately_verified_zero_count(self):
+        missing = b'<QDocRoot><authPassed>1</authPassed><result>0</result></QDocRoot>'
+        for count in (b'0', b'1', b'-1', b'invalid'):
+            counter = b'<QDocRoot><authPassed>1</authPassed><result>0</result><volumeID>7</volumeID><snapshot_count>'+count+b'</snapshot_count></QDocRoot>'
+            client = self.client([(200, LOGIN), (200, missing), (200, counter)])
+            client.login('test-account', 'test-password')
+            with self.subTest(count=count):
+                if count == b'0':
+                    self.assertEqual(client.snapshots(7), [])
+                else:
+                    with self.assertRaises(QnapApiError):
+                        client.snapshots(7)
