@@ -19,6 +19,7 @@ class QnapPlexInstallation:
     dataset: str
     dataset_mount: str
     relative_path: str
+    volume_id: int
 
     @property
     def dedicated_dataset_root(self):
@@ -109,5 +110,10 @@ def discover_qnap_plex(*, runner=subprocess.run, resolve=None, is_directory=os.p
         raise QnapDiscoveryError('PLEX_DATA_OUTSIDE_PACKAGE')
     dataset, mount, relative = storage_for_path(data, read(
         ['/sbin/zfs', 'list', '-H', '-t', 'filesystem', '-o', 'name,mountpoint']))
+    # Native QNAP volume IDs are not ZFS dataset suffixes. Query the exact
+    # covering mount; never infer an ID from a pool/dataset/path name.
+    volume = read(['/sbin/snapshot_util', 'get_volume_id', mount])
+    if not re.fullmatch(r'[1-9][0-9]{0,9}', volume):
+        raise QnapDiscoveryError('INVALID_QNAP_VOLUME_ID')
     return QnapPlexInstallation(version, enabled == 'TRUE', actual_install,
-        data, dataset, mount, relative)
+        data, dataset, mount, relative, int(volume))
