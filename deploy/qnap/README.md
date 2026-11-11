@@ -66,6 +66,20 @@ The archive tests check file contents, mode bits and user xattrs after extractio
 The POSIX ACL round trip is skipped when the build host's filesystem or user
 namespace cannot set ACLs; a skip must not be reported as device verification.
 
+## Experimental read-only management API
+
+`plexconfigcontrol/qnap_api.py` contains a fixed-loopback HTTP probe, in-memory
+login and bounded snapshot inventory reads. It uses POST form bodies for
+credentials/session tokens and never follows redirects or uses an HTTP proxy.
+It cannot create/delete snapshots or perform a rollback. Unknown response
+schemas, expired sessions and full inventory pages fail closed.
+
+The authentication/snapshot field names are informed by the QNAP-authored
+OpenStack driver at https://github.com/openstack/manila/blob/master/manila/share/drivers/qnap/api.py .
+That driver targets ES NAS; it does **not** establish compatibility with QuTS
+hero. The implementation currently passes mocked protocol tests only. Do not
+enable any storage mutations based on these fixtures or infer public API support.
+
 ## Still required before an installable QPKG
 
 - QNAP-supported snapshot creation, read access and scoped removal.
