@@ -21,6 +21,13 @@ development takes place separately on `work/qnap-qpkg`.
 - Native `Plex SQLite` under the package root reports 3.53.3 and passes
   `PRAGMA integrity_check` on an in-memory database. No live database was opened.
 - Registered package service script is `plex.sh` under the package root.
+- A read-only process scan confirmed the main executable under the package root.
+- No `gunicorn`, `cryptography`, `PIL`, `websocket`, or `tzdata` imports are
+  available in the NAS Python. Bundle private dependencies in the QPKG rather
+  than installing them into the host Python.
+- Native command names include `qcli_volumesnapshot`, `qcli_sharedfolder`,
+  `snapshot_util`, and `zfs_storage_util`; their presence does not establish
+  command syntax or a supported snapshot lifecycle.
 - The reported ZFS listing contains the filesystem and `@:init:` snapshot,
   with no child filesystem reported. The existing snapshot is not app-owned
   and must remain untouched.
@@ -45,8 +52,8 @@ development takes place separately on `work/qnap-qpkg`.
 
 ## Next required observations
 
-1. Plex process executable location without dumping command arguments or environment.
-2. QNAP snapshot integration and runtime compatibility for package dependencies.
+1. QNAP snapshot CLI help, followed by scoped read-only storage inspection.
+2. Real-device compatibility for the bundled private Python dependencies.
 
 Read-only QNAP package/storage discovery is implemented in
 `plexconfigcontrol/qnap_discovery.py` and covered by fixture tests. It is not

@@ -1,0 +1,41 @@
+# QNAP development packaging
+
+Target currently verified by device diagnostics: QuTS hero 6.0.0, x86_64,
+Python 3.12.4, glibc 2.39. This directory is build tooling, **not a finished
+installer**. The released TrueNAS installer is unchanged.
+
+## Private, offline Python dependencies
+
+`requirements-cp312-x86_64.txt` pins the application dependencies and their
+transitive dependencies, with SHA-256 hashes for the selected binary wheels.
+Native wheels require glibc 2.28 or later. Other Python/CPU/firmware versions
+have not been validated.
+
+On the build host:
+
+```sh
+python3 deploy/qnap/build_dependencies.py --output /tmp/pcc-qnap-lib --smoke-test
+```
+
+An existing wheel directory can be supplied with `--wheelhouse PATH` for a
+fully offline build. Hash checks apply to both downloaded and supplied wheels.
+The output must not exist. Output includes dependency license metadata and a
+file/hash manifest. Generated console-script wrappers are removed because their
+shebangs refer to the build host; the QPKG will use its own Python entry point.
+
+The resulting directory belongs inside the application's own QPKG installation.
+The NAS must not download packages, run pip, or change its system Python packages.
+The package launcher must use isolated Python (`-I -S`) and explicitly add its
+private dependency directory to `sys.path` before importing application modules.
+
+The smoke test runs imports and native cryptography/image operations on the
+build host with global/user site packages disabled. This does not establish
+real-device ABI compatibility; it still needs a QNAP run.
+
+## Still required before an installable QPKG
+
+- QNAP-supported snapshot creation, read access and scoped removal.
+- File-subtree restoration that cannot roll back the shared dataset.
+- Unprivileged panel/privileged worker lifecycle and first-run web setup.
+- QDK package hooks and App Center start/stop/open integration.
+- Device backup, verification, restore and uninstall testing.
