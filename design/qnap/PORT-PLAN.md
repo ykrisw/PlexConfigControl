@@ -18,6 +18,9 @@ development takes place separately on `work/qnap-qpkg`.
 - Canonical data directory is the same package-local path reported above.
 - Python 3.12.4, glibc 2.39, OpenSSL 3.0.20, Python SQLite 3.26.0.
   Do not use stock Python SQLite to validate Plex's databases.
+- Native `Plex SQLite` under the package root reports 3.53.3 and passes
+  `PRAGMA integrity_check` on an in-memory database. No live database was opened.
+- Registered package service script is `plex.sh` under the package root.
 - The reported ZFS listing contains the filesystem and `@:init:` snapshot,
   with no child filesystem reported. The existing snapshot is not app-owned
   and must remain untouched.
@@ -42,13 +45,15 @@ development takes place separately on `work/qnap-qpkg`.
 
 ## Next required observations
 
-1. Plex's bundled SQLite executable and its in-memory version probe.
-2. Plex process executable location without dumping command arguments or environment.
-3. QNAP snapshot integration and runtime compatibility for package dependencies.
+1. Plex process executable location without dumping command arguments or environment.
+2. QNAP snapshot integration and runtime compatibility for package dependencies.
 
 Read-only QNAP package/storage discovery is implemented in
 `plexconfigcontrol/qnap_discovery.py` and covered by fixture tests. It is not
 wired to application execution and does not enable backup or restore yet.
+`qnap_runtime.py` adds a native in-memory SQLite probe and read-only process
+identity checks; it does not execute the package service script. Both modules
+are fixture-tested, with live runtime probing still to be exercised on the NAS.
 
 Initial NAS commands remain read-only. The first `.qpkg` must be clearly
 identified as a test build until real-device backup, verification and restore pass.
