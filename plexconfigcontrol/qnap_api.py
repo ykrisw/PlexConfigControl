@@ -74,6 +74,18 @@ class QnapLocalReadOnlyApi:
                     or fields.get('func') != 'extra_get'
                     or set(fields) not in (list_fields, count_fields)):
                 raise QnapApiError('QNAP_ENDPOINT_NOT_ALLOWED')
+        return self._exchange_xml(method, path, fields)
+
+    def _exchange_xml(self, method, path, fields=None):
+        """Private verified transport; operation policy belongs to its caller.
+
+        Public read methods always go through _xml's read-only operation guard.
+        The developer lifecycle probe supplies its own stricter ownership guard.
+        This transport is not a web/RPC endpoint.
+        """
+        if method not in ('GET', 'POST') or path not in (
+                '/cgi-bin/authLogin.cgi', '/cgi-bin/disk/snapshot.cgi'):
+            raise QnapApiError('QNAP_ENDPOINT_NOT_ALLOWED')
         target = path
         body = None
         if fields is not None:

@@ -119,3 +119,25 @@ must not be committed, bundled into this probe, or shipped with the application.
 - Unprivileged panel/privileged worker lifecycle and first-run web setup.
 - QDK package hooks and App Center start/stop/open integration.
 - Device backup, verification, restore and uninstall testing.
+
+### Explicit snapshot lifecycle diagnostic
+
+`build_snapshot_probe.py` generates `PCC_QNAP_Snapshot_Probe.py`. This is a
+developer diagnostic, not a QPKG installer. Without `--test-snapshot` it exits
+without discovery, login or mutation. With that explicit flag it uses the
+verified local HTTPS API to create one UUID-named `pcc-probe-*` snapshot of the
+Plex-containing volume, checks metadata of three Plex files through a native
+read-only snapshot preview, and requests deletion of only that newly owned ID.
+It never restores a volume, stops Plex, changes live Plex files, or deletes a
+pre-existing snapshot. The containing volume may include other applications.
+
+Deletion is queued by the vendor API: success requires absence from both API
+inventory and independent ZFS inventory. Lost create replies are recovered by
+the unique name; create/delete requests are never blindly repeated. Unknown
+identity, changed identity, inaccessible inventory, or incomplete cleanup causes
+a failing result. A requested 15-minute vendor expiry is only an interruption
+fallback, not proof of deletion. Ownership state is in memory; this tool is not
+yet the durable production backup coordinator. No session or password is saved.
+
+Local unit tests exercise the lifecycle and failure cases. Running this tool on
+a NAS is still required to verify the vendor interface and preview mount.
