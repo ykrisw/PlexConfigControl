@@ -13,7 +13,19 @@ from .archives import validate_archive
 class BackupArchiveError(RuntimeError):
     pass
 
-def create_archive(snapshot_directory, output, *, tar_runner=subprocess.run, verification_progress=None):
+def _archive_root(source_layout):
+    if source_layout == 'config':
+        return 'config'
+    if source_layout == 'plex-data':
+        # Native QNAP packages expose the Plex data directory itself, whereas
+        # the portable archive/staging format includes these ancestors.
+        return 'config/Library/Application Support/Plex Media Server'
+    raise BackupArchiveError('Unsupported snapshot source layout')
+
+
+def create_archive(snapshot_directory, output, *, tar_runner=subprocess.run, verification_progress=None,
+                   source_layout='config'):
+    archive_root = _archive_root(source_layout)
     snapshot=Path(snapshot_directory)
     output=Path(output)
     if not snapshot.is_dir():
@@ -23,7 +35,7 @@ def create_archive(snapshot_directory, output, *, tar_runner=subprocess.run, ver
         with os.fdopen(fd,'wb') as stream:
             result=tar_runner([
                 'tar','--acls','--xattrs','--numeric-owner','--format=pax',
-                '--transform=s,^\\.,config,','-czpf','-',
+                '--transform=s,^\\.,'+archive_root+',','-czpf','-',
                 '-C',str(snapshot),'.',
             ],stdout=stream,stderr=subprocess.PIPE)
             stream.flush(); os.fsync(stream.fileno())
@@ -33,7 +45,7 @@ def create_archive(snapshot_directory, output, *, tar_runner=subprocess.run, ver
             verification_progress(0, None)
         validation=validate_archive(output)
         compare_contents(snapshot,output,total_bytes=validation.bytes_read,
-                         progress_callback=verification_progress)
+                         progress_callback=verification_progress,source_layout=source_layout)
         return validation
     except BaseException:
         # Only the exclusively-created output belongs to this call. Coordinator
@@ -41,9 +53,11 @@ def create_archive(snapshot_directory, output, *, tar_runner=subprocess.run, ver
         output.unlink(missing_ok=True)
         raise
 
-def compare_contents(snapshot_directory, archive_path, *, total_bytes=None, progress_callback=None):
+def compare_contents(snapshot_directory, archive_path, *, total_bytes=None, progress_callback=None,
+                     source_layout='config'):
     """Compare complete regular file coverage and byte contents to snapshot."""
     snapshot=Path(snapshot_directory)
+    prefix = _archive_root(source_layout)+'/'
     expected=set()
     for directory,dirs,files in os.walk(snapshot,followlinks=False):
         for name in dirs:
@@ -61,9 +75,9 @@ def compare_contents(snapshot_directory, archive_path, *, total_bytes=None, prog
     with tarfile.open(archive_path,'r:gz') as archive:
         for member in archive:
             if not member.isreg(): continue
-            if not member.name.startswith('config/'):
+            if not member.name.startswith(prefix):
                 raise BackupArchiveError('Unexpected archive root')
-            relative=member.name[len('config/'):]
+            relative=member.name[len(prefix):]
             if relative not in expected or relative in observed:
                 raise BackupArchiveError('Archive coverage mismatch')
             observed.add(relative)
