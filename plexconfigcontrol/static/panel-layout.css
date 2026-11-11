@@ -60,8 +60,8 @@
 @media(max-width:600px){
  .pcc-shell:is([data-active-panel=backup],[data-active-panel=restore]) .pcc-main{
   flex:0 0 auto;
-  min-height:calc(100vh + 34px);
-  min-height:calc(100dvh + 34px);
+  min-height:max(660px,calc(100vh + 34px));
+  min-height:max(660px,calc(100dvh + 34px));
  }
  .pcc-shell .pcc-page[data-panel=backup]>.pcc-archives,
  .pcc-shell .pcc-page[data-panel=restore]>.pcc-archive-card{min-height:0}

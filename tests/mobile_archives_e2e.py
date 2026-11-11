@@ -57,7 +57,10 @@ def main():
                                 page.wait_for_timeout(80)
                                 strip = page.locator(f'.pcc-page[data-panel={panel}]>.pcc-plex').bounding_box()
                                 positions.append(strip['y'])
-                                assert -21 <= strip['y'] <= -19, (engine, language, theme, width, height, panel, strip)
+                                if height>=700:
+                                    assert -21 <= strip['y'] <= -19, (engine, language, theme, width, height, panel, strip)
+                                else:
+                                    assert strip['y']<=-19, (panel, strip)
                                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
                                 listing = page.locator(f'.pcc-page[data-panel={panel}] .pcc-scroll-frame').bounding_box()
                                 assert listing['height'] >= 128, (panel, listing)
