@@ -56,9 +56,9 @@
 /* Own the page surface explicitly, including transparent areas between cards. */
 .pcc-shell .pcc-main,.pcc-shell .pcc-page{background:var(--pcc-bg)}
 
-/* The same mobile page-scroll range reveals the archive area in both tabs. */
+/* The same mobile page-scroll range reveals archive and history lists. */
 @media(max-width:600px){
- .pcc-shell:is([data-active-panel=backup],[data-active-panel=restore]) .pcc-main{
+ .pcc-shell:is([data-active-panel=backup],[data-active-panel=restore],[data-active-panel=history]) .pcc-main{
   flex:0 0 auto;
   min-height:max(660px,calc(100vh + 34px));
   min-height:max(660px,calc(100dvh + 34px));

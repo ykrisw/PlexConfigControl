@@ -17,6 +17,10 @@ class MobileFixture(FixtureAPI):
             route.fulfill(json={'language': self.language, 'theme': self.theme.title(), 'timezone': 'Europe/London'})
         elif path == '/api/account/photo/status':
             route.fulfill(json={'exists': False, 'revision': None})
+        elif path == '/api/history':
+            route.fulfill(json=[{'id': index, 'kind': 'BACKUP', 'status': 'SUCCESS',
+                'created': '2026-11-11T00:00:00Z', 'archive': self.rows[0]['name']}
+                for index in range(1, 41)])
         else:
             super().route(route)
 
@@ -67,10 +71,22 @@ def main():
                                 if width==390 and height==844:
                                     page.screenshot(path=str(output/f'{panel}-{language}-{theme}.png'))
                             assert abs(positions[0]-positions[1]) < 1, positions
+                            page.get_by_role('tab', name='Historia' if language=='pl' else 'History', exact=True).click()
+                            expect(page.locator('[data-events] .pcc-event-row')).to_have_count(40)
+                            page.evaluate('window.scrollTo(0, document.documentElement.scrollHeight)')
+                            page.wait_for_timeout(80)
+                            stats = page.locator('.pcc-history-stats').bounding_box()
+                            assert abs(stats['y']-positions[0]) < 1, (engine, language, theme, width, height, stats, positions)
+                            listing = page.locator('.pcc-history .pcc-scroll-frame').bounding_box()
+                            assert listing['height']>=128
+                            assert page.locator('[data-events]').evaluate('(list)=>list.scrollHeight>list.clientHeight')
+                            assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+                            if width==390 and height==844:
+                                page.screenshot(path=str(output/f'history-{language}-{theme}.png'))
                             assert not errors, errors
                         finally:
                             context.close()
-            print('Full mobile shell: equal 44px controls, removed note, matched Backup/Restore scroll and usable lists: PASS')
+            print('Full mobile shell: matched Backup/Restore/History scrolling and usable lists: PASS')
         finally:
             browser.close()
 

@@ -125,8 +125,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          printf '%s\n' 'One installer ZIP for Windows x64, macOS Apple Silicon and Linux x64. Choose English or Polish in the graphical wizard. Both guides are included.' '' 'Updated mobile Backup layout, equal-height archive controls and matching Backup/Restore page scrolling. Existing installations can be updated with this installer.' > notes.md
+          printf '%s\n' 'One installer ZIP for Windows x64, macOS Apple Silicon and Linux x64. Choose English or Polish in the graphical wizard. Both guides are included.' '' 'Matching mobile page scrolling for Backup, Restore and History, with more visible list space. Existing installations can be updated with this installer.' > notes.md
           if gh release view v1.0.10 >/dev/null 2>&1; then
+            gh api "repos/$GH_REPO/git/refs/tags/v1.0.10" --method PATCH -f sha="$GITHUB_SHA" -F force=true
             gh release upload v1.0.10 release/* --clobber
             gh release edit v1.0.10 --title 'PlexConfigControl 1.0.10 — Installer PL / EN' --notes-file notes.md --latest
           else
