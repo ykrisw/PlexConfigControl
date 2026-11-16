@@ -1,6 +1,6 @@
 # PlexConfigControl 1.0.5
 
-PlexConfigControl is an app for backing up and restoring your Plex Media Server configuration on TrueNAS SCALE. Backups are stored in a folder you choose on the NAS. If you share that folder via SMB, you can move archives between the NAS, your computer, and other locations.
+PlexConfigControl is an app for backing up and restoring your Plex Media Server configuration on TrueNAS SCALE and supported QNAP QuTS hero systems. Backups are stored in a folder you choose on the NAS. If you share that folder via SMB, you can move archives between the NAS, your computer, and other locations.
 
 ## TrueNAS SCALE — installer 1.0.5
 
@@ -10,7 +10,10 @@ One ZIP contains graphical installers for Windows x64, macOS Apple Silicon (M1 o
 
 ## QNAP / QuTS hero — installer 1.0.5
 
-The QNAP installer is a separate `PCC_1.0.5_x86_64.qpkg` package for x86-64 QuTS hero. Install it manually in QNAP App Center. It includes its own Python and GNU tar, QNAP sign-in with TOTP, snapshot Backup, and journaled Restore with manual Plex stop and retained-configuration review. It is not the TrueNAS desktop installer. The QNAP package is distributed separately from the TrueNAS desktop ZIP.
+[**Download for QNAP QuTS hero 1.0.5 — x86_64 (.qpkg)**](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.0.5/PCC_1.0.5_x86_64.qpkg)
+
+
+The QNAP installer is a separate `PCC_1.0.5_x86_64.qpkg` package for x86-64 QuTS hero. Install it manually in QNAP App Center. It includes its own Python and GNU tar, QNAP sign-in with TOTP, snapshot Backup, and journaled Restore with manual Plex stop and retained-configuration review. It is not the TrueNAS desktop installer. The QNAP package is distributed separately from the TrueNAS desktop ZIP. Check against `SHA256SUMS_QNAP` in the release. ARM and plain QTS are unsupported by this build. See [QNAP installation, compatibility and reproducible build notes](deploy/qnap/README.md).
 
 ## How it works
 
