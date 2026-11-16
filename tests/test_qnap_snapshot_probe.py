@@ -131,7 +131,7 @@ class SnapshotProbeTests(unittest.TestCase):
         self.assertIn("--test-snapshot", result.stdout)
         self.assertNotIn("Użytkownik", result.stdout)
 
-    def test_preview_is_opened_before_mount_identity_is_read(self):
+    def _inspect_preview(self, readonly):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             data = root/'plex'
@@ -148,24 +148,36 @@ class SnapshotProbeTests(unittest.TestCase):
                 return descriptor
             def mountinfo(path):
                 self.assertTrue(opened, 'Preview must be opened to trigger lazy mount first')
-                return '2 1 0:2 / '+str(root)+' ro,relatime - zfs pool/data@fresh ro'
+                return '2 1 0:2 / '+str(root)+' rw,relatime - zfs pool/data@fresh ro,xattr,richacl'
             events = []
             with patch('pathlib.Path.resolve', return_value=root), \
                     patch('os.open', side_effect=opening), \
-                    patch('os.statvfs', return_value=SimpleNamespace(f_flag=os.ST_RDONLY)), \
+                    patch('os.statvfs', return_value=SimpleNamespace(f_flag=os.ST_RDONLY if readonly else 0)), \
                     patch('pathlib.Path.read_text', side_effect=mountinfo, autospec=True):
-                source = inspect_snapshot_data(SimpleNamespace(dataset='pool/data', relative_path='plex'),
-                    '20', {'pool/data@existing'},
-                    runner=lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout='/mnt/snapshot/test-probe'),
-                    report=lambda stage, value: events.append((stage, value)))
-            self.assertEqual(source, 'pool/data@fresh')
+                def inspect():
+                    return inspect_snapshot_data(SimpleNamespace(dataset='pool/data', relative_path='plex'),
+                        '20', {'pool/data@existing'},
+                        runner=lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout='/mnt/snapshot/test-probe'),
+                        report=lambda stage, value: events.append((stage, value)))
+                if readonly:
+                    self.assertEqual(inspect(), 'pool/data@fresh')
+                else:
+                    with self.assertRaisesRegex(SnapshotProbeError, 'PROBE_SNAPSHOT_FILESYSTEM_WRITABLE'):
+                        inspect()
+                    self.assertEqual(len(opened), 1, 'No Plex directory or file may be opened on writable VFS')
             self.assertEqual(events[0][0], 'SNAPSHOT_MOUNT_INFO')
             self.assertNotIn('private-test-content', events[0][1])
+
+    def test_qnap_superblock_readonly_layout_passes_after_preview_access(self):
+        self._inspect_preview(True)
+
+    def test_qnap_reported_readonly_still_requires_readonly_vfs_before_reading_plex(self):
+        self._inspect_preview(False)
 
     def test_mount_must_be_exact_readonly_snapshot(self):
         valid = '2 1 0:2 / /preview ro,relatime - zfs pool/data@fresh ro'
         self.assertEqual(snapshot_mount_source('/preview/Plex', valid, 'pool/data'), 'pool/data@fresh')
-        for invalid in (valid.replace('ro,relatime', 'rw,relatime'),
+        for invalid in (valid.replace(' ro', ' rw'),
                         valid.replace('@fresh', ''), valid.replace('pool/data@', 'pool/other@'),
                         valid+'\n'+valid):
             with self.assertRaises(SnapshotProbeError):

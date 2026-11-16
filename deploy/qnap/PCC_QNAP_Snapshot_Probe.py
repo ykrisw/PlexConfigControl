@@ -442,7 +442,12 @@ def snapshot_mount_source(path, mountinfo, dataset):
     """Identify the deepest covering ZFS snapshot mount, never a live mount."""
     details = snapshot_mount_details(path, mountinfo)
     source = details['source']
-    if (details['filesystem'] != 'zfs' or 'ro' not in details['options'].split(',')
+    # QuTS hero reports per-mount rw with a read-only ZFS superblock. Either
+    # mountinfo layer can establish ro here; the held directory descriptor's
+    # ST_RDONLY flag is additionally mandatory before accessing Plex files.
+    reported_readonly = ('ro' in details['options'].split(',')
+                         or 'ro' in details['super_options'].split(','))
+    if (details['filesystem'] != 'zfs' or not reported_readonly
             or not source.startswith(dataset+'@') or not source[len(dataset)+1:]):
         raise SnapshotProbeError('PROBE_MOUNT_NOT_SCOPED_READONLY_SNAPSHOT')
     return source

@@ -77,3 +77,14 @@ mountinfo, allowing lazy automount to occur. It reports metadata for only the
 deepest covering mount and the VFS read-only flag. Opening Plex files remains
 blocked until both snapshot provenance and read-only checks pass. This change
 still needs a device run; no alternative mount layout is accepted speculatively.
+
+## Observed read-only preview layout
+
+A real-device preview reports ZFS with a snapshot-qualified source, per-mount
+`rw,relatime`, superblock `ro,xattr,richacl`, and VFS `ST_RDONLY` set. The earlier
+check rejected this valid read-only layout because it looked only for `ro` in
+per-mount options. The checker now accepts `ro` at either mountinfo layer, while
+still requiring `ST_RDONLY` on the held directory descriptor, exact discovered
+dataset snapshot provenance and a source absent from the pre-test baseline.
+Tests cover the observed layout and reject a writable descriptor even when
+mountinfo claims read-only; no Plex subtree is opened in the latter case.
