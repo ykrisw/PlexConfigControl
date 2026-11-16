@@ -60,6 +60,7 @@ class QnapLocalReadOnlyApi:
         self._certificate_sha256 = certificate_sha256
         self._connection_factory = connection_factory
         self._session = None
+        self.last_login_diagnostics = None
 
     def _xml(self, method, path, fields=None):
         if path not in ('/cgi-bin/authLogin.cgi', '/cgi-bin/disk/snapshot.cgi'):
@@ -137,6 +138,7 @@ class QnapLocalReadOnlyApi:
 
     def login(self, username, password):
         self._session = None
+        self.last_login_diagnostics = None
         if (not isinstance(username, str) or not username or len(username) > 256
                 or not isinstance(password, str) or not password or len(password) > 4096):
             raise QnapApiError('QNAP_CREDENTIALS_REQUIRED')
@@ -145,6 +147,19 @@ class QnapLocalReadOnlyApi:
             'serviceKey': '1',
         })
         sid = root.findtext('authSid', '')
+        # Only schema names and explicitly allowed numeric status codes leave
+        # the XML response. Never retain tokens, usernames or arbitrary text.
+        self.last_login_diagnostics = {
+            'fields': sorted({node.tag for node in root
+                              if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{0,63}', node.tag)})[:50],
+            'session_present': bool(sid),
+            'session_format_valid': bool(re.fullmatch(r'[A-Za-z0-9_-]{8,128}', sid)),
+        }
+        for name in ('authPassed', 'errorValue', 'result', 'need_2sv', 'need_otp',
+                     'need_2stepAuth', 'need_2step_auth', 'authType'):
+            value = root.findtext(name, '').strip()
+            if re.fullmatch(r'-?[0-9]{1,10}', value):
+                self.last_login_diagnostics[name] = value
         if root.findtext('authPassed') != '1' or not re.fullmatch(r'[A-Za-z0-9_-]{8,128}', sid):
             raise QnapApiError('QNAP_AUTHENTICATION_FAILED')
         self._session = sid

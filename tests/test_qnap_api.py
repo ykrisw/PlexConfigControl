@@ -86,6 +86,19 @@ class QnapApiTests(unittest.TestCase):
         with self.assertRaisesRegex(QnapApiError, '^QNAP_LOCAL_API_UNAVAILABLE$'):
             QnapLocalReadOnlyApi(8080, connection_factory=unavailable).probe()
 
+    def test_login_diagnostics_only_expose_allowed_numeric_codes_and_schema(self):
+        xml = (b'<QDocRoot><authPassed>0</authPassed><errorValue>-5</errorValue>'
+               b'<authSid>private-session-value</authSid><qtoken>private-token</qtoken>'
+               b'<result>private-text</result><username>private-account</username></QDocRoot>')
+        client = self.client([(200, xml)])
+        with self.assertRaises(QnapApiError):
+            client.login('private-account', 'private-password')
+        details = client.last_login_diagnostics
+        self.assertEqual(details['errorValue'], '-5')
+        self.assertTrue(details['session_present'])
+        for secret in ('private-session-value', 'private-token', 'private-text', 'private-account', 'private-password'):
+            self.assertNotIn(secret, str(details))
+
     def test_missing_or_expired_session_blocks_inventory(self):
         client = self.client([(200, LOGIN), (200, b'<x><authPassed>0</authPassed></x>')])
         with self.assertRaisesRegex(QnapApiError, 'LOGIN_REQUIRED'):

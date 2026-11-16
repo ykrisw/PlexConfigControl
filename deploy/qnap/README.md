@@ -150,3 +150,9 @@ login. Passwords travel only through an anonymous pipe into Python memory,
 never through argv, environment or a disk file.
 Local pseudo-terminal tests cover hidden UTF-8 input, empty input rejection and
 exact terminal-state restoration, including when stdin is closed.
+
+`PCC_QNAP_Snapshot_Probe.py --test-login` performs one login attempt only and
+never instantiates the snapshot coordinator. On failure it prints only XML
+field names, session presence/format booleans and allowlisted numeric status
+codes. It does not print response bodies, token values or credentials. These
+codes aid diagnosis but do not by themselves prove a password was incorrect.

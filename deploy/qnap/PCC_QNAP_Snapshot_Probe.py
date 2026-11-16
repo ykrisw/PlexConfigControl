@@ -185,6 +185,7 @@ class QnapLocalReadOnlyApi:
         self._certificate_sha256 = certificate_sha256
         self._connection_factory = connection_factory
         self._session = None
+        self.last_login_diagnostics = None
 
     def _xml(self, method, path, fields=None):
         if path not in ('/cgi-bin/authLogin.cgi', '/cgi-bin/disk/snapshot.cgi'):
@@ -262,6 +263,7 @@ class QnapLocalReadOnlyApi:
 
     def login(self, username, password):
         self._session = None
+        self.last_login_diagnostics = None
         if (not isinstance(username, str) or not username or len(username) > 256
                 or not isinstance(password, str) or not password or len(password) > 4096):
             raise QnapApiError('QNAP_CREDENTIALS_REQUIRED')
@@ -270,6 +272,19 @@ class QnapLocalReadOnlyApi:
             'serviceKey': '1',
         })
         sid = root.findtext('authSid', '')
+        # Only schema names and explicitly allowed numeric status codes leave
+        # the XML response. Never retain tokens, usernames or arbitrary text.
+        self.last_login_diagnostics = {
+            'fields': sorted({node.tag for node in root
+                              if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{0,63}', node.tag)})[:50],
+            'session_present': bool(sid),
+            'session_format_valid': bool(re.fullmatch(r'[A-Za-z0-9_-]{8,128}', sid)),
+        }
+        for name in ('authPassed', 'errorValue', 'result', 'need_2sv', 'need_otp',
+                     'need_2stepAuth', 'need_2step_auth', 'authType'):
+            value = root.findtext(name, '').strip()
+            if re.fullmatch(r'-?[0-9]{1,10}', value):
+                self.last_login_diagnostics[name] = value
         if root.findtext('authPassed') != '1' or not re.fullmatch(r'[A-Za-z0-9_-]{8,128}', sid):
             raise QnapApiError('QNAP_AUTHENTICATION_FAILED')
         self._session = sid
@@ -665,12 +680,17 @@ def snapshot_probe_main():
     import sys
     from pathlib import Path
 
-    if sys.argv[1:] != ['--test-snapshot']:
-        print('Test jednej tymczasowej migawki QNAP. Uruchom z --test-snapshot.')
+    login_only = sys.argv[1:] == ['--test-login']
+    if not login_only and sys.argv[1:] != ['--test-snapshot']:
+        print('Test QNAP. Uruchom z --test-login lub --test-snapshot.')
         return 2
-    print('PlexConfigControl — test migawki QNAP', flush=True)
-    print('Utworzy jedną migawkę wolumenu Plexa, sprawdzi odczyt danych i usunie tę migawkę.')
-    print('Nie zatrzymuje Plexa i nie przywraca danych. Nie usuwa istniejących migawek.', flush=True)
+    if login_only:
+        print('PlexConfigControl — test samego logowania QNAP', flush=True)
+        print('Nie tworzy ani nie usuwa migawek. Nie zmienia danych Plexa.', flush=True)
+    else:
+        print('PlexConfigControl — test migawki QNAP', flush=True)
+        print('Utworzy jedną migawkę wolumenu Plexa, sprawdzi odczyt danych i usunie tę migawkę.')
+        print('Nie zatrzymuje Plexa i nie przywraca danych. Nie usuwa istniejących migawek.', flush=True)
     api = None
     try:
         installation = discover_qnap_plex()
@@ -688,6 +708,8 @@ def snapshot_probe_main():
         finally:
             del password
         print('Logowanie: OK', flush=True)
+        if login_only:
+            return 0
         labels = {
             'CREATING': 'Tworzenie migawki testowej',
             'CREATED': 'Utworzono migawkę — ID',
@@ -711,6 +733,14 @@ def snapshot_probe_main():
         return 1
     except (QnapApiError, QnapDiscoveryError, SnapshotProbeError, QnapTerminalError) as error:
         print('Wynik testu:', str(error), flush=True)
+        if login_only and api is not None and api.last_login_diagnostics:
+            details = api.last_login_diagnostics
+            print('Pola odpowiedzi:', ', '.join(details['fields']))
+            print('Sesja w odpowiedzi:', 'TAK' if details['session_present'] else 'NIE')
+            print('Format sesji rozpoznany:', 'TAK' if details['session_format_valid'] else 'NIE')
+            for key, value in details.items():
+                if key not in ('fields', 'session_present', 'session_format_valid'):
+                    print('Kod '+key+': '+value)
         return 1
     except (Exception, KeyboardInterrupt) as error:
         print('Wynik testu:', type(error).__name__, flush=True)
