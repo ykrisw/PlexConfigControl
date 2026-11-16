@@ -1,0 +1,62 @@
+name: QNAP 1.0.5 installer
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/qnap-installer.yml
+      - deploy/qnap/prepare_release.py
+      - deploy/qnap/qpkg/**
+permissions:
+  contents: read
+concurrency:
+  group: qnap-installer-1.0.5
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare verified QNAP source and shared UI
+        run: |
+          python deploy/qnap/prepare_release.py .qnap-build/source
+          cp deploy/qnap/qpkg/qpkg.cfg deploy/qnap/qpkg/package_routines .qnap-build/source/deploy/qnap/qpkg/
+          bash -n .qnap-build/source/deploy/qnap/qpkg/package_routines
+          bash -n .qnap-build/source/deploy/qnap/qpkg/PCC.sh
+      - name: Fetch pinned runtime and QDK
+        run: |
+          python - <<'PY'
+          import pathlib, json, urllib.request, hashlib, subprocess
+          root = pathlib.Path(".qnap-build")
+          info = json.loads((root/"source/source-provenance.json").read_text())
+          assert info["qdk_commit"] == "b7b5f4c86ebe95b10a62d64725515e7cdcf4bb35"
+          runtime = root/"python.tar.gz"
+          urllib.request.urlretrieve(info["python"]["url"], runtime)
+          assert hashlib.sha256(runtime.read_bytes()).hexdigest() == info["python"]["sha256"]
+          subprocess.run(["git","clone","https://github.com/qnap-dev/QDK.git",str(root/"qdk")],check=True)
+          subprocess.run(["git","-C",str(root/"qdk"),"checkout","--detach",info["qdk_commit"]],check=True)
+          PY
+      - name: Build locked private dependencies
+        run: python deploy/qnap/build_dependencies.py --output .qnap-build/lib --smoke-test
+      - name: Build and verify native QPKG
+        run: |
+          python .qnap-build/source/deploy/qnap/build_qpkg_preview.py --python-archive .qnap-build/python.tar.gz --dependencies .qnap-build/lib --qdk .qnap-build/qdk --private-tar .qnap-build/source/qnap-private-tar --output .qnap-build/output
+          mkdir -p qnap-release
+          cp .qnap-build/output/release/PCC_1.0.5_x86_64.qpkg qnap-release/
+          cp .qnap-build/output/release/build-result.json qnap-release/
+          cd qnap-release
+          sha256sum PCC_1.0.5_x86_64.qpkg > SHA256SUMS_QNAP
+      - name: Retain source and built installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: PCC-QNAP-1.0.5-x86_64
+          path: qnap-release/
+          retention-days: 90
+          if-no-files-found: error
