@@ -57,8 +57,8 @@ def prepare(destination):
         subprocess.run(["node", "--check", str(file)], check=True)
     for file in (destination / "plexconfigcontrol/__init__.py", static / "settings-view.mjs"):
         text = file.read_text()
-        import re
-        text = re.sub(r"(?<![0-9])0\.3\.0(?![0-9])", "1.0.5", text)
+        for old in ("0.3.0", "0.1.0.dev0", "1.0.10"):
+            text = text.replace(old, "1.0.5")
         file.write_text(text)
     (destination / "qnap-private-tar/bin/pcc-tar").chmod(0o755)
     (destination / "deploy/qnap/qpkg/PCC.sh").chmod(0o755)
