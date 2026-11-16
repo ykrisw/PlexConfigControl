@@ -88,3 +88,11 @@ still requiring `ST_RDONLY` on the held directory descriptor, exact discovered
 dataset snapshot provenance and a source absent from the pre-test baseline.
 Tests cover the observed layout and reject a writable descriptor even when
 mountinfo claims read-only; no Plex subtree is opened in the latter case.
+
+## Successful target-device lifecycle
+
+The corrected checker completed the whole diagnostic on h6.0.3.3670: authenticated
+password plus TOTP, one fresh native snapshot, required Plex files accessible
+through its read-only preview, and absence confirmed by both API and ZFS after
+deleting the owned snapshot. This is evidence for that lifecycle only, not a
+full archive, metadata restoration, or QPKG-installation test.

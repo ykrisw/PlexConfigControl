@@ -10,10 +10,16 @@ def build():
     relative_import = 'from .qnap_api import QnapApiError\n'
     assert snapshot.count(relative_import) == 1
     snapshot = snapshot.replace(relative_import, '')
+    reader_import = ("from .qnap_snapshot_reader import (\n"
+                     "    QnapSnapshotReadError as SnapshotProbeError,\n"
+                     "    inspect_snapshot_data, snapshot_mount_details, snapshot_mount_source,\n)\n")
+    assert snapshot.count(reader_import) == 1
+    snapshot = snapshot.replace(reader_import, '')
     content = '\n\n'.join([
         '#!/usr/bin/env python3\n# PlexConfigControl — developer snapshot diagnostic. MIT license.\n',
         (ROOT/'plexconfigcontrol/qnap_discovery.py').read_text(),
         (ROOT/'plexconfigcontrol/qnap_api.py').read_text(),
+        (ROOT/'plexconfigcontrol/qnap_snapshot_reader.py').read_text(),
         snapshot,
         (ROOT/'deploy/qnap/terminal_password.py').read_text(),
         (ROOT/'deploy/qnap/snapshot_probe_main.py').read_text(),

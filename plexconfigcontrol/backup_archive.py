@@ -24,7 +24,9 @@ def _archive_root(source_layout):
 
 
 def create_archive(snapshot_directory, output, *, tar_runner=subprocess.run, verification_progress=None,
-                   source_layout='config', tar_executable='tar'):
+                   source_layout='config', tar_executable='tar', all_xattrs=False):
+    if type(all_xattrs) is not bool:
+        raise BackupArchiveError('Explicit extended-attribute policy required')
     archive_root = _archive_root(source_layout)
     snapshot=Path(snapshot_directory)
     output=Path(output)
@@ -35,6 +37,7 @@ def create_archive(snapshot_directory, output, *, tar_runner=subprocess.run, ver
         with os.fdopen(fd,'wb') as stream:
             result=tar_runner([
                 os.fspath(tar_executable),'--acls','--xattrs','--numeric-owner','--format=pax',
+                *(['--xattrs-include=*'] if all_xattrs else []),
                 '--transform=s,^\\.,'+archive_root+',','-czpf','-',
                 '-C',str(snapshot),'.',
             ],stdout=stream,stderr=subprocess.PIPE)

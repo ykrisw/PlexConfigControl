@@ -1,8 +1,9 @@
 # QNAP development packaging
 
-Target currently verified by device diagnostics: QuTS hero 6.0.0, x86_64,
-Python 3.12.4, glibc 2.39. This directory is build tooling, **not a finished
-installer**. The released TrueNAS installer is unchanged.
+Device snapshot lifecycle is verified on QuTS hero h6.0.3.3670, x86_64.
+Initial runtime measurements were Python 3.12.4 and glibc 2.39. Private runtime
+binaries still require device testing. This directory is build tooling, **not a
+finished installer**. The released TrueNAS installer is unchanged.
 
 ## Private, offline Python dependencies
 
@@ -84,8 +85,8 @@ expiry/chain verification stays enabled; redirects are never used as trust.
 The authentication/snapshot field names are informed by the QNAP-authored
 OpenStack driver at https://github.com/openstack/manila/blob/master/manila/share/drivers/qnap/api.py .
 That driver targets ES NAS; it does **not** establish compatibility with QuTS
-hero. The implementation currently passes mocked protocol tests only. Do not
-enable any storage mutations based on these fixtures or infer public API support.
+hero. Login with TOTP and volume-scoped inventory are now device-tested. This does
+not establish public API support or authorize mutations from arbitrary IDs.
 Device diagnostics confirmed login but returned no `SnapshotList` for the
 inventory request. Offline interface analysis established that the native ZFS
 handler can omit that node on zero/error enumeration and uses `start`/`end`
@@ -114,7 +115,8 @@ must not be committed, bundled into this probe, or shipped with the application.
 
 ## Still required before an installable QPKG
 
-- QNAP-supported snapshot creation, read access and scoped removal.
+- Durable snapshot ownership/recovery and operation-wide locking around the
+  device-verified snapshot lifecycle; the diagnostic alone is not that coordinator.
 - File-subtree restoration that cannot roll back the shared dataset.
 - Unprivileged panel/privileged worker lifecycle and first-run web setup.
 - QDK package hooks and App Center start/stop/open integration.
@@ -168,4 +170,33 @@ without a callback reports `QNAP_SECOND_FACTOR_REQUIRED` explicitly.
 
 Protocol reference: QNAP's public authentication API document, section 2.3.2:
 https://download.qnap.com/dev/API_QNAP_QTS_Authentication.pdf
-This interface still requires a real-device login test on the target firmware.
+Password plus TOTP authentication is now verified on the target device.
+
+
+## Snapshot archive capture component
+
+The complete diagnostic now passes on the target NAS: password/TOTP login,
+creation, scoped read-only Plex-file access, and deletion independently confirmed
+by API and ZFS. No full Plex archive or restoration has yet been device-tested.
+
+`qnap_snapshot_reader.open_snapshot_data` holds no-follow directory descriptors
+for the verified preview and registered Plex subtree until its context exits.
+It requires the same filesystem and read-only VFS at the Plex subtree as at the
+snapshot root. `qnap_archive_capture.capture_snapshot_archive` passes that held
+directory fd to its private GNU tar process, creates a portable archive in a
+worker-private workspace, validates its complete stream, hashes it, and compares
+all regular-file coverage and contents against the still-open snapshot.
+
+Capture neither publishes an archive nor removes a snapshot. Those steps need
+the durable coordinator and confirmed cleanup first. QNAP capture explicitly
+includes all extended attributes when writing the archive. Restoring QuTS hero
+rich ACLs still needs a separate metadata policy and real-device round trip;
+local user-xattr/mode tests do not establish that support. The default TrueNAS
+archive creation and staging behavior are unchanged.
+
+Run the capture component tests using the private binary:
+
+```sh
+PCC_TEST_TAR_EXECUTABLE=/path/to/private/bin/pcc-tar \
+    PYTHONPATH=tests:. python3 -m unittest tests.test_qnap_archive_capture
+```

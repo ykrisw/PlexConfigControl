@@ -372,44 +372,32 @@ class QnapLocalReadOnlyApi:
         self._session = None
 
 
-"""Developer-only test of one freshly owned QNAP snapshot; never a restore.
+"""Scoped read-only QNAP snapshot reader. Never creates/deletes/restores snapshots.
 
-Not a production coordinator: ownership intent is in memory, with a requested
-15-minute vendor expiry as interruption fallback. A packaged worker will need
-durable intent in its private state. No supplied QNAP executable is bundled.
+The coordinator must supply a proven freshly owned native ID and baseline.
+Only native preview mounting and read-only descriptor access occur here.
 """
 import os
 import re
 import stat
 import subprocess
-import time
-import uuid
+from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 
-
-class SnapshotProbeError(RuntimeError):
+class QnapSnapshotReadError(RuntimeError):
     pass
 
 
-def storage_snapshots(installation, runner=subprocess.run):
-    dataset = installation.dataset
-    if (not re.fullmatch(r'[A-Za-z0-9_.:/-]+', dataset)
-            or any(part in ('', '.', '..') for part in dataset.split('/'))):
-        raise SnapshotProbeError('PROBE_INVALID_DATASET')
-    result = runner(['/sbin/zfs', 'list', '-H', '-t', 'snapshot', '-o', 'name', '-r', dataset],
-                    capture_output=True, text=True, timeout=15, check=False)
-    if result.returncode != 0:
-        raise SnapshotProbeError('PROBE_STORAGE_QUERY_FAILED')
-    found = set()
-    for line in result.stdout.splitlines():
-        if line.startswith(dataset+'@'):
-            if not line[len(dataset)+1:] or any(ord(c) < 32 for c in line):
-                raise SnapshotProbeError('PROBE_STORAGE_QUERY_INVALID')
-            found.add(line)
-        elif line and not line.startswith(dataset+'/'):
-            raise SnapshotProbeError('PROBE_STORAGE_QUERY_OUTSIDE_SCOPE')
-    return found
+# Preserve the diagnostic's existing exception/code contract.
+SnapshotProbeError = QnapSnapshotReadError
+
+
+@dataclass(frozen=True)
+class QnapSnapshotSource:
+    descriptor: int
+    storage_identity: str
 
 
 def snapshot_mount_details(path, mountinfo):
@@ -453,8 +441,11 @@ def snapshot_mount_source(path, mountinfo, dataset):
     return source
 
 
-def inspect_snapshot_data(installation, snapshot_id, baseline, runner=subprocess.run, report=None):
+@contextmanager
+def open_snapshot_data(installation, snapshot_id, baseline, runner=subprocess.run, report=None):
     """Mount the owned snapshot and inspect only file metadata through held fds."""
+    if not isinstance(snapshot_id, str) or not re.fullmatch(r'[1-9][0-9]{0,19}', snapshot_id):
+        raise SnapshotProbeError('PROBE_INVALID_SNAPSHOT_ID')
     result = runner(['/sbin/snapshot_util', 'mount_snapshot', snapshot_id],
                     capture_output=True, text=True, timeout=30, check=False)
     preview = result.stdout.strip()
@@ -486,6 +477,8 @@ def inspect_snapshot_data(installation, snapshot_id, baseline, runner=subprocess
         for part in relative.parts:
             fd = os.open(part, flags, dir_fd=fd)
             handles.append(fd)
+        if os.fstat(fd).st_dev != os.fstat(handles[0]).st_dev or not os.statvfs(fd).f_flag & os.ST_RDONLY:
+            raise SnapshotProbeError('PROBE_PLEX_SUBTREE_FILESYSTEM_CHANGED')
         for parts in (
                 ('Preferences.xml',),
                 ('Plug-in Support', 'Databases', 'com.plexapp.plugins.library.db'),
@@ -500,10 +493,49 @@ def inspect_snapshot_data(installation, snapshot_id, baseline, runner=subprocess
             if not stat.S_ISREG(info.st_mode) or info.st_size == 0:
                 raise SnapshotProbeError('PROBE_PLEX_SNAPSHOT_FILE_INVALID')
         # No Preferences contents or database contents are read or printed.
-        return source
+        yield QnapSnapshotSource(fd, source)
     finally:
         for fd in reversed(handles):
             os.close(fd)
+
+
+def inspect_snapshot_data(installation, snapshot_id, baseline, runner=subprocess.run, report=None):
+    with open_snapshot_data(installation, snapshot_id, baseline, runner=runner, report=report) as source:
+        return source.storage_identity
+
+
+"""Developer-only test of one freshly owned QNAP snapshot; never a restore.
+
+Not a production coordinator: ownership intent is in memory, with a requested
+15-minute vendor expiry as interruption fallback. A packaged worker will need
+durable intent in its private state. No supplied QNAP executable is bundled.
+"""
+import re
+import subprocess
+import time
+import uuid
+
+
+
+
+def storage_snapshots(installation, runner=subprocess.run):
+    dataset = installation.dataset
+    if (not re.fullmatch(r'[A-Za-z0-9_.:/-]+', dataset)
+            or any(part in ('', '.', '..') for part in dataset.split('/'))):
+        raise SnapshotProbeError('PROBE_INVALID_DATASET')
+    result = runner(['/sbin/zfs', 'list', '-H', '-t', 'snapshot', '-o', 'name', '-r', dataset],
+                    capture_output=True, text=True, timeout=15, check=False)
+    if result.returncode != 0:
+        raise SnapshotProbeError('PROBE_STORAGE_QUERY_FAILED')
+    found = set()
+    for line in result.stdout.splitlines():
+        if line.startswith(dataset+'@'):
+            if not line[len(dataset)+1:] or any(ord(c) < 32 for c in line):
+                raise SnapshotProbeError('PROBE_STORAGE_QUERY_INVALID')
+            found.add(line)
+        elif line and not line.startswith(dataset+'/'):
+            raise SnapshotProbeError('PROBE_STORAGE_QUERY_OUTSIDE_SCOPE')
+    return found
 
 
 class OwnedSnapshotProbe:
