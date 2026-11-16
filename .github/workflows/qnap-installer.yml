@@ -11,7 +11,7 @@ permissions:
   contents: read
 concurrency:
   group: qnap-installer-1.0.5
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -60,3 +60,36 @@ jobs:
           path: qnap-release/
           retention-days: 90
           if-no-files-found: error
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: PCC-QNAP-1.0.5-x86_64
+          path: qnap-release
+      - name: Publish QNAP installer to the existing 1.0.5 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view v1.0.5 --json body --jq .body > release-notes.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          notes = Path("release-notes.txt")
+          body = notes.read_text()
+          heading = "## QNAP QuTS hero — x86_64"
+          if heading in body:
+              body = body.split(heading)[0].rstrip()
+          body += "\n\n" + heading + "\n\n"
+          body += "PlexConfigControl 1.0.5 — native QNAP installer, separate from the TrueNAS SCALE installer above.\n\n"
+          body += "[Download PCC_1.0.5_x86_64.qpkg](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.0.5/PCC_1.0.5_x86_64.qpkg)\n\n"
+          body += "For QuTS hero with ZFS snapshot APIs on x86_64; ARM and plain QTS are not supported by this build. Package-private Python and GNU tar are included. Uses the NAS host address and selected HTTPS port; no fixed user IP.\n\n"
+          body += "Includes compact Backup/Restore cards, relocated Refresh, preserved sign-in fields, touch landscape scrolling and QNAP account-button spacing. Restore waits for manual Plex stop. A successful build does not replace a device-level restore test.\n\n"
+          body += "Checksum: SHA256SUMS_QNAP. This QPKG is not digitally signed by QNAP.\n"
+          notes.write_text(body)
+          PY
+          gh release upload v1.0.5 qnap-release/PCC_1.0.5_x86_64.qpkg qnap-release/SHA256SUMS_QNAP --clobber
+          gh release edit v1.0.5 --title "PlexConfigControl 1.0.5 — TrueNAS SCALE / QNAP QuTS hero" --notes-file release-notes.txt
