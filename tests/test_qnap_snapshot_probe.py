@@ -36,6 +36,10 @@ class FakeApi:
             info = ET.SubElement(root, 'SnapshotInfo')
             ET.SubElement(info, 'snapshot_id').text = '10' if self.mode == 'bad-id' else '20'
             ET.SubElement(info, 'snapshot_name').text = fields['snapshot_name']
+            if self.mode == 'native-create-id':
+                root.find('result').text = '20'
+            if self.mode == 'foreign-result-id':
+                root.find('result').text = '99'
         else:
             if fields['snapshotID'] != '20':
                 raise AssertionError('Attempt to delete an existing snapshot')
@@ -69,6 +73,16 @@ class SnapshotProbeTests(unittest.TestCase):
         self.assertTrue(result['cleanup_confirmed'])
         self.assertIsNotNone(result['error'])
         self.assertEqual(len(api.changes), 2)
+
+    def test_native_create_result_is_new_identity_not_zero(self):
+        api, probe, result = self.run_case('native-create-id')
+        self.assertIsNone(result['error'])
+        self.assertTrue(result['readable'] and result['cleanup_confirmed'])
+
+    def test_foreign_positive_result_is_rejected_and_owned_snapshot_cleaned(self):
+        api, probe, result = self.run_case('foreign-result-id')
+        self.assertEqual(result['error'], 'PROBE_MUTATION_RESPONSE_UNVERIFIED')
+        self.assertTrue(result['cleanup_confirmed'])
 
     def test_missing_create_identity_never_claims_cleanup(self):
         api, probe, result = self.run_case('lost-no-creation')

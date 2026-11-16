@@ -479,14 +479,16 @@ class OwnedSnapshotProbe:
             raise SnapshotProbeError('PROBE_SNAPSHOT_IDENTITY_CHANGED')
         return row
 
-    def _wait(self, condition):
-        deadline = self.clock()+60
-        for _ in range(30):
+    def _wait(self, condition, *, seconds=60, stage=None):
+        deadline = self.clock()+seconds
+        for attempt in range(seconds):
             value = condition()
             if value:
                 return value
             if self.clock() >= deadline:
                 break
+            if stage and attempt % 15 == 0:
+                self.report(stage, self.identifier or self.name)
             self.pause(1)
         raise SnapshotProbeError('PROBE_CONFIRMATION_TIMEOUT')
 
@@ -509,7 +511,20 @@ class OwnedSnapshotProbe:
         else:
             raise SnapshotProbeError('PROBE_MUTATION_NOT_ALLOWED')
         root = self.api._exchange_xml('GET', '/cgi-bin/disk/snapshot.cgi', fields)
-        if root.findtext('authPassed') != '1' or root.findtext('result') != '0':
+        result = root.findtext('result', '').strip()
+        allowed_results = {'0'}
+        if function == 'create_snapshot':
+            # The native create handler returns the newly created numeric ID,
+            # unlike inventory/delete handlers that return zero. Accept it
+            # only when it matches the echoed identity, then confirm inventory.
+            info = root.find('SnapshotInfo')
+            if info is not None:
+                identifier = info.findtext('snapshot_id', '').strip()
+                if (re.fullmatch(r'[1-9][0-9]{0,19}', identifier)
+                        and info.findtext('snapshot_name') == self.name
+                        and identifier not in self.baseline_ids):
+                    allowed_results.add(identifier)
+        if root.findtext('authPassed') != '1' or result not in allowed_results:
             raise SnapshotProbeError('PROBE_MUTATION_RESPONSE_UNVERIFIED')
         return root
 
@@ -534,7 +549,7 @@ class OwnedSnapshotProbe:
             storage = self.read_storage()
             return (self.storage_identifier not in storage if self.storage_identifier is not None
                     else not storage-self.baseline_storage)
-        self._wait(absent)
+        self._wait(absent, seconds=180, stage='WAITING_FOR_DELETION')
         self.report('CLEANUP_CONFIRMED', self.identifier or self.name)
 
     def run(self):
@@ -618,6 +633,7 @@ def snapshot_probe_main():
             'CREATED': 'Utworzono migawkę — ID',
             'READ_ONLY_PLEX_DATA_CONFIRMED': 'Odczyt plików Plexa z migawki tylko do odczytu: OK — ID',
             'CLEANUP_CONFIRMED': 'Usunięcie migawki potwierdzone przez API i ZFS — ID',
+            'WAITING_FOR_DELETION': 'Oczekiwanie na zakończenie usuwania w QNAP — ID',
         }
         probe = OwnedSnapshotProbe(api, installation,
             report=lambda stage, value: print(labels[stage]+': '+str(value), flush=True))

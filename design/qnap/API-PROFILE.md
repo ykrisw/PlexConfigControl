@@ -48,5 +48,19 @@ Plex path and native volume lookup. Real-device testing is still required.
 - Never expose arbitrary IDs or mutation functions to the web panel. Persist
   operation intent, bind every owned snapshot to the discovered volume/dataset,
   and verify ID/name provenance before any removal.
-- There is no executable mutation adapter yet. Do not use a full-volume revert
-  to recover Plex's directory on a shared QNAP volume.
+- The developer lifecycle diagnostic exercises only a fresh, nonce-owned
+  snapshot. Production backup coordination is still pending. Never use a
+  full-volume revert to recover Plex's directory on a shared QNAP volume.
+
+## Create result and asynchronous cleanup
+
+The inspected native create handler can return the newly allocated positive
+snapshot ID; treating every nonzero result as failure is incorrect for this
+operation. The diagnostic accepts a positive result only when it equals the
+echoed ID and name, and then independently confirms that identity in inventory.
+Delete remains asynchronous: the diagnostic polls for up to 180 seconds with
+progress updates and requires API and ZFS absence. A later manual observation
+of absence does not establish whether deletion or vendor expiry removed it.
+
+QuTS hero h6.0.3.3670 build 20261106 is a new device-test target. Compatibility
+with that build is not yet confirmed; do not infer it from earlier results.
