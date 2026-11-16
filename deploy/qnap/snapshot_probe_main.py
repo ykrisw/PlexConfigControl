@@ -46,6 +46,7 @@ def snapshot_probe_main():
             'READ_ONLY_PLEX_DATA_CONFIRMED': 'Odczyt plików Plexa z migawki tylko do odczytu: OK — ID',
             'CLEANUP_CONFIRMED': 'Usunięcie migawki potwierdzone przez API i ZFS — ID',
             'WAITING_FOR_DELETION': 'Oczekiwanie na zakończenie usuwania w QNAP — ID',
+            'SNAPSHOT_MOUNT_INFO': 'Diagnostyka montowania podglądu migawki',
         }
         probe = OwnedSnapshotProbe(api, installation,
             report=lambda stage, value: print(labels[stage]+': '+str(value), flush=True))

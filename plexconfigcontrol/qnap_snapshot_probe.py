@@ -39,8 +39,8 @@ def storage_snapshots(installation, runner=subprocess.run):
     return found
 
 
-def snapshot_mount_source(path, mountinfo, dataset):
-    """Identify the deepest covering ZFS snapshot mount, never a live mount."""
+def snapshot_mount_details(path, mountinfo):
+    """Return only the deepest covering mount's metadata, not all NAS mounts."""
     path = PurePosixPath(path)
     candidates = []
     def decode(value):
@@ -60,14 +60,22 @@ def snapshot_mount_source(path, mountinfo, dataset):
     if len(matches) != 1:
         raise SnapshotProbeError('PROBE_MOUNT_AMBIGUOUS')
     _, fields, filesystem = matches[0]
-    source = decode(filesystem[1])
-    if (filesystem[0] != 'zfs' or 'ro' not in fields[5].split(',')
+    return {'filesystem': filesystem[0], 'source': decode(filesystem[1]),
+            'root': decode(fields[3]), 'mount': decode(fields[4]),
+            'options': fields[5], 'super_options': filesystem[2]}
+
+
+def snapshot_mount_source(path, mountinfo, dataset):
+    """Identify the deepest covering ZFS snapshot mount, never a live mount."""
+    details = snapshot_mount_details(path, mountinfo)
+    source = details['source']
+    if (details['filesystem'] != 'zfs' or 'ro' not in details['options'].split(',')
             or not source.startswith(dataset+'@') or not source[len(dataset)+1:]):
         raise SnapshotProbeError('PROBE_MOUNT_NOT_SCOPED_READONLY_SNAPSHOT')
     return source
 
 
-def inspect_snapshot_data(installation, snapshot_id, baseline, runner=subprocess.run):
+def inspect_snapshot_data(installation, snapshot_id, baseline, runner=subprocess.run, report=None):
     """Mount the owned snapshot and inspect only file metadata through held fds."""
     result = runner(['/sbin/snapshot_util', 'mount_snapshot', snapshot_id],
                     capture_output=True, text=True, timeout=30, check=False)
@@ -75,9 +83,6 @@ def inspect_snapshot_data(installation, snapshot_id, baseline, runner=subprocess
     if result.returncode != 0 or not preview.startswith(('/share/', '/mnt/snapshot/')) or '\n' in preview:
         raise SnapshotProbeError('PROBE_SNAPSHOT_MOUNT_FAILED')
     root = Path(preview).resolve(strict=True)
-    source = snapshot_mount_source(str(root), Path('/proc/self/mountinfo').read_text(), installation.dataset)
-    if source in baseline:
-        raise SnapshotProbeError('PROBE_MOUNT_POINTS_TO_PREEXISTING_SNAPSHOT')
     relative = PurePosixPath(installation.relative_path)
     if relative.is_absolute() or any(part in ('.', '..') for part in relative.parts) or not relative.parts:
         raise SnapshotProbeError('PROBE_INVALID_PLEX_SUBTREE')
@@ -86,7 +91,19 @@ def inspect_snapshot_data(installation, snapshot_id, baseline, runner=subprocess
     try:
         fd = os.open(root, flags)
         handles.append(fd)
-        if not os.statvfs(fd).f_flag & os.ST_RDONLY:
+        # Opening the preview directory can trigger a lazy snapshot mount.
+        # Inspect mountinfo after that access, before opening any Plex files.
+        readonly = bool(os.statvfs(fd).f_flag & os.ST_RDONLY)
+        mountinfo = Path('/proc/self/mountinfo').read_text()
+        if report is not None:
+            import json
+            details = snapshot_mount_details(str(root), mountinfo)
+            details.update(preview=preview, resolved_preview=str(root), vfs_readonly=readonly)
+            report('SNAPSHOT_MOUNT_INFO', json.dumps(details, ensure_ascii=True, sort_keys=True))
+        source = snapshot_mount_source(str(root), mountinfo, installation.dataset)
+        if source in baseline:
+            raise SnapshotProbeError('PROBE_MOUNT_POINTS_TO_PREEXISTING_SNAPSHOT')
+        if not readonly:
             raise SnapshotProbeError('PROBE_SNAPSHOT_FILESYSTEM_WRITABLE')
         for part in relative.parts:
             fd = os.open(part, flags, dir_fd=fd)
@@ -116,7 +133,8 @@ class OwnedSnapshotProbe:
                  pause=time.sleep, clock=time.monotonic, report=None):
         self.api, self.installation = api, installation
         self.read_storage = read_storage or (lambda: storage_snapshots(installation))
-        self.inspect_data = inspect_data or (lambda identifier, baseline: inspect_snapshot_data(installation, identifier, baseline))
+        self.inspect_data = inspect_data or (lambda identifier, baseline: inspect_snapshot_data(
+            installation, identifier, baseline, report=self.report))
         self.pause, self.clock = pause, clock
         self.report = report or (lambda stage, value: None)
         self.name = 'pcc-probe-'+uuid.uuid4().hex

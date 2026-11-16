@@ -1,4 +1,7 @@
 import unittest
+import os
+import tempfile
+from unittest.mock import patch
 import subprocess
 import sys
 from pathlib import Path
@@ -6,7 +9,7 @@ from types import SimpleNamespace
 from xml.etree import ElementTree as ET
 
 from plexconfigcontrol.qnap_api import QnapApiError
-from plexconfigcontrol.qnap_snapshot_probe import OwnedSnapshotProbe, SnapshotProbeError, snapshot_mount_source
+from plexconfigcontrol.qnap_snapshot_probe import OwnedSnapshotProbe, SnapshotProbeError, snapshot_mount_source, inspect_snapshot_data
 
 
 class FakeApi:
@@ -127,6 +130,37 @@ class SnapshotProbeTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("--test-snapshot", result.stdout)
         self.assertNotIn("Użytkownik", result.stdout)
+
+    def test_preview_is_opened_before_mount_identity_is_read(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            data = root/'plex'
+            databases = data/'Plug-in Support'/'Databases'
+            databases.mkdir(parents=True)
+            (data/'Preferences.xml').write_bytes(b'private-test-content')
+            for name in ('com.plexapp.plugins.library.db', 'com.plexapp.plugins.library.blobs.db'):
+                (databases/name).write_bytes(b'test-db')
+            opened = []
+            real_open = os.open
+            def opening(path, flags, **kwargs):
+                descriptor = real_open(path, flags, **kwargs)
+                opened.append(str(path))
+                return descriptor
+            def mountinfo(path):
+                self.assertTrue(opened, 'Preview must be opened to trigger lazy mount first')
+                return '2 1 0:2 / '+str(root)+' ro,relatime - zfs pool/data@fresh ro'
+            events = []
+            with patch('pathlib.Path.resolve', return_value=root), \
+                    patch('os.open', side_effect=opening), \
+                    patch('os.statvfs', return_value=SimpleNamespace(f_flag=os.ST_RDONLY)), \
+                    patch('pathlib.Path.read_text', side_effect=mountinfo, autospec=True):
+                source = inspect_snapshot_data(SimpleNamespace(dataset='pool/data', relative_path='plex'),
+                    '20', {'pool/data@existing'},
+                    runner=lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout='/mnt/snapshot/test-probe'),
+                    report=lambda stage, value: events.append((stage, value)))
+            self.assertEqual(source, 'pool/data@fresh')
+            self.assertEqual(events[0][0], 'SNAPSHOT_MOUNT_INFO')
+            self.assertNotIn('private-test-content', events[0][1])
 
     def test_mount_must_be_exact_readonly_snapshot(self):
         valid = '2 1 0:2 / /preview ro,relatime - zfs pool/data@fresh ro'

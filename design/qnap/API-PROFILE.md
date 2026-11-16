@@ -64,3 +64,16 @@ of absence does not establish whether deletion or vendor expiry removed it.
 
 QuTS hero h6.0.3.3670 build 20261106 is a new device-test target. Compatibility
 with that build is not yet confirmed; do not infer it from earlier results.
+
+## Device result on h6.0.3
+
+Password plus TOTP authentication, creation of a fresh named snapshot, and
+subsequent deletion confirmed by both API and ZFS were exercised successfully
+on QuTS hero h6.0.3. The preview failed the strict scoped read-only mount check;
+that does not establish that the preview is writable or correctly bound.
+
+The diagnostic now opens the vendor-returned preview directory before checking
+mountinfo, allowing lazy automount to occur. It reports metadata for only the
+deepest covering mount and the VFS read-only flag. Opening Plex files remains
+blocked until both snapshot provenance and read-only checks pass. This change
+still needs a device run; no alternative mount layout is accepted speculatively.
