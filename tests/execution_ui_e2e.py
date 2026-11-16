@@ -214,6 +214,7 @@ def restore_case(browser, output, language, theme, width):
     page.route('**/*',fixture.route)
     try:
         page.goto(ORIGIN);page.locator('input[type=radio]').first.check()
+        expect(page.locator('.pcc-archive-card>.pcc-heading [data-restore-action=refresh]')).to_be_visible()
         if theme=='light':
             expect(page.locator('[data-restore-action=validate]')).to_have_css('background-color','rgb(255, 103, 21)')
         page.locator('[data-restore-action=validate]').click()
@@ -221,6 +222,7 @@ def restore_case(browser, output, language, theme, width):
         bar=page.locator('.pcc-stage-progress progress')
         expect(bar).to_be_hidden()
         execute=page.locator('[data-restore-execute]');expect(execute).to_be_disabled();assert not fixture.posts
+        expect(page.locator('[data-restore-progress-heading] [data-restore-action=refresh]')).to_be_visible()
         fixture.plex='STOPPED';page.locator('[data-restore-action=refresh]').click();expect(execute).to_be_enabled();execute.click()
         dialog=page.locator('[data-restore-dialog]');check_dialog(page,dialog,theme)
         typed=dialog.locator('[data-confirm-restore]');confirm=dialog.locator('[data-restore-dialog-confirm]')

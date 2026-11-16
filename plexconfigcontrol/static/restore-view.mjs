@@ -20,7 +20,7 @@ export function mountRestoreView(root, client, {language='en'}={}) {
       <button type="button" class="pcc-primary" data-restore-action="validate" disabled>${tx('Validate Archive','Zweryfikuj archiwum')}</button>
     </section>
     <section class="pcc-card pcc-operation-workspace" hidden>
-      <h2>${tx('Restore status','Stan przywracania')}</h2>
+      <div class="pcc-heading" data-restore-progress-heading><h2>${tx('Restore status','Stan przywracania')}</h2></div>
       <section data-recovery hidden></section>
       <div data-operation-result class="pcc-notice" role="status" aria-live="polite" hidden><span data-restore-summary></span><span data-restore-plex hidden></span></div>
       <div data-validation-progress hidden role="status" aria-live="polite"></div>
@@ -62,6 +62,8 @@ export function mountRestoreView(root, client, {language='en'}={}) {
   let confirmed=null,disposeControls;
   find('[data-submission-check]').textContent=tx('Check Status','Sprawdź stan');
   find('[data-submission-retry]').textContent=tx('Retry Same Request','Ponów to samo żądanie');
+  const refreshButton=find('[data-restore-action=refresh]'),refreshHome=find('.pcc-archive-card>.pcc-heading'),refreshProgress=find('[data-restore-progress-heading]');
+  find('[data-return-to-archives]').addEventListener('click',()=>{refreshHome.append(refreshButton);refreshButton.focus();},{signal:lifecycle.signal});
   let selected = null, loading = false, archiveAvailable=false, statusTimer, statusLoading=false, currentState;
 
   function renderResultPlex(){
@@ -109,6 +111,8 @@ export function mountRestoreView(root, client, {language='en'}={}) {
     const active=state.busy||state.submission?.blocked===true||view.waiting||activeExecution(snapshot,'RESTORE')||
       (operation?.kind==='RESTORE'&&view.active)||!find('[data-recovery]').hidden;
     const locked=showWorkspace({active,snapshot,result:resultText||view.notice||find('[data-submission-text]').textContent});
+    const refreshDock=find('.pcc-archive-card').hidden?refreshProgress:refreshHome;
+    if(refreshButton.parentElement!==refreshDock)refreshDock.append(refreshButton);
     progress.textContent=view.progressText||
       (locked&&!view.notice&&find('[data-recovery]').hidden&&find('[data-submission]').hidden
         ? tx('Waiting for restore status…','Oczekiwanie na stan przywracania…'):'');

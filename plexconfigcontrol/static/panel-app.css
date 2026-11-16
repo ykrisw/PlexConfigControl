@@ -201,3 +201,6 @@ html{color-scheme:light dark;background:light-dark(#b5b9be,#151d28)}body{margin:
  .pcc-shell .pcc-backup .pcc-archive-actions [data-refresh] {flex:1 1 0}
  .pcc-shell .pcc-backup .pcc-archive-actions [data-delete] {flex:2 1 0}
 }
+
+.pcc-shell .pcc-operation-workspace>[data-restore-progress-heading]{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.pcc-shell .pcc-operation-workspace>[data-restore-progress-heading] :is(h2,button){margin:0}
