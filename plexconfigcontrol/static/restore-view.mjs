@@ -15,9 +15,8 @@ export function mountRestoreView(root, client, {language='en'}={}) {
     <section class="pcc-plex" aria-label="${tx('Plex status','Stan Plex')}"><strong>${tx('Plex Server','Serwer Plex')}</strong>
       <span data-plex-state="UNKNOWN">${tx('UNKNOWN','NIEZNANY')}</span></section>
     <section class="pcc-card pcc-action-card">
-      <div class="pcc-heading"><h2>${tx('Archive Validation','Weryfikacja archiwum')}</h2>
-        <button type="button" data-restore-action="refresh">${tx('Refresh','Odśwież')}</button></div>
-      <p>${tx('Select an archive and start validation.','Wybierz archiwum i rozpocznij weryfikację.')}</p>
+      <div class="pcc-heading pcc-validation-heading"><h2>${tx('Archive Validation','Weryfikacja archiwum')}</h2>
+        <p>${tx('Select an archive and start validation.','Wybierz archiwum i rozpocznij weryfikację.')}</p></div>
       <button type="button" class="pcc-primary" data-restore-action="validate" disabled>${tx('Validate Archive','Zweryfikuj archiwum')}</button>
     </section>
     <section class="pcc-card pcc-operation-workspace" hidden>
@@ -36,7 +35,7 @@ export function mountRestoreView(root, client, {language='en'}={}) {
       <button type="button" data-restore-action="cancel" hidden>${tx('Cancel Restore Preparation','Anuluj przygotowanie przywracania')}</button>
       <button type="button" data-return-to-archives hidden>${tx('Return to archives','Wróć do listy kopii')}</button>
     </section>
-    <section class="pcc-card pcc-archive-card"><div class="pcc-heading"><h2>${tx('Select Backup Archive','Wybierz archiwum kopii zapasowej')}</h2></div>
+    <section class="pcc-card pcc-archive-card"><div class="pcc-heading"><h2>${tx('Select Backup Archive','Wybierz archiwum kopii zapasowej')}</h2><button type="button" data-restore-action="refresh">${tx('Refresh','Odśwież')}</button></div>
       <div data-archive-list role="group" aria-label="${tx('Backup archives','Archiwa kopii zapasowych')}"></div>
       <p data-archive-message role="status">${tx('Loading archives…','Wczytywanie archiwów…')}</p>
     </section>

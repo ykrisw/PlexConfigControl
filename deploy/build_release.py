@@ -76,7 +76,7 @@ def release(commit, output):
         )
         files[entry] = (entry_script.encode(), 0o755)
         files[guide] = (read(guide), 0o644)
-        files['BUILD-INFO.txt'] = (f'PlexConfigControl 1.0.10\nSource tree before packaging: {tree}\n'.encode(), 0o644)
+        files['BUILD-INFO.txt'] = (f'PlexConfigControl 1.0.5\nSource tree before packaging: {tree}\n'.encode(), 0o644)
         checksums = ''.join(f'{hashlib.sha256(content).hexdigest()}  {name}\n'
                             for name, (content, _) in sorted(files.items()))
         files['SHA256SUMS'] = (checksums.encode(), 0o644)

@@ -1,12 +1,16 @@
-# PlexConfigControl 1.0.10
+# PlexConfigControl 1.0.5
 
 PlexConfigControl is an app for backing up and restoring your Plex Media Server configuration on TrueNAS SCALE. Backups are stored in a folder you choose on the NAS. If you share that folder via SMB, you can move archives between the NAS, your computer, and other locations.
 
-## Download the installer
+## TrueNAS SCALE — installer 1.0.5
 
-[**Download the installer ZIP — English / Polski**](https://github.com/ykrisw/PlexConfigControl/releases/latest/download/PlexConfigControl_Installer_Windows_macOS_Linux_PL_EN.zip)
+[**Download for TrueNAS SCALE 1.0.5 — English / Polski**](https://github.com/ykrisw/PlexConfigControl/releases/latest/download/PlexConfigControl_Installer_Windows_macOS_Linux_PL_EN.zip)
 
 One ZIP contains graphical installers for Windows x64, macOS Apple Silicon (M1 or later), and Linux x64. Extract it and open the installer for your computer. Choose **English** or **Polski** in the first window. Both installation guides are included. The app itself runs on TrueNAS. The same installer can update an existing installation.
+
+## QNAP / QuTS hero — installer 1.0.5
+
+The QNAP installer is a separate `PCC_1.0.5_x86_64.qpkg` package for x86-64 QuTS hero. Install it manually in QNAP App Center. It includes its own Python and GNU tar, QNAP sign-in with TOTP, snapshot Backup, and journaled Restore with manual Plex stop and retained-configuration review. It is not the TrueNAS desktop installer. The QNAP package is distributed separately from the TrueNAS desktop ZIP.
 
 ## How it works
 
@@ -16,4 +20,4 @@ One ZIP contains graphical installers for Windows x64, macOS Apple Silicon (M1 o
 
 **License** · [MIT](LICENSE)
 
-PlexConfigControl 1.0.10
+PlexConfigControl 1.0.5

@@ -29,7 +29,7 @@ def package(artifacts, output):
                 archive.extractall(destination, filter='data')
         for name in ('INSTALL-EN.md', 'INSTRUKCJA-PL.md', 'LICENSE'):
             (bundle / name).write_bytes((ROOT / name).read_bytes())
-        (bundle / 'BUILD-INFO.txt').write_text('PlexConfigControl 1.0.10\nNative installers for Windows x64, Linux x64 and macOS Apple Silicon.\n')
+        (bundle / 'BUILD-INFO.txt').write_text('PlexConfigControl 1.0.5\nFor TrueNAS SCALE. Desktop launchers: Windows x64, Linux x64 and macOS Apple Silicon.\n')
         result = output / NAME
         with ZipFile(result, 'w', compression=ZIP_DEFLATED, compresslevel=6) as archive:
             for path in sorted(bundle.rglob('*')):

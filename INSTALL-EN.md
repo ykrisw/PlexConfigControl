@@ -1,4 +1,4 @@
-# PlexConfigControl 1.0.10 — installation
+# PlexConfigControl 1.0.5 — installation
 
 Extract the ZIP and open the installer for your computer.
 

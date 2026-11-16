@@ -10,9 +10,9 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
   root.innerHTML=`
     <section class="pcc-plex"><strong data-server></strong><span data-plex-state="UNKNOWN">UNKNOWN</span></section>
     <section class="pcc-card pcc-backup-action pcc-action-card">
-      <label class="pcc-backup-name"><span data-prefix-label></span>
+      <label class="pcc-backup-name"><span class="pcc-backup-label-line"><span data-prefix-label></span><span id="pcc-backup-prefix-help" data-prefix-help></span></span>
         <input data-backup-prefix type="text" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_\\-]{0,63}" aria-describedby="pcc-backup-prefix-help" autocomplete="off" spellcheck="false"></label>
-      <p id="pcc-backup-prefix-help" data-prefix-help></p><button type="button" class="pcc-primary" data-create disabled></button>
+      <button type="button" class="pcc-primary" data-create disabled></button>
       <p data-backup-unavailable hidden></p>
     </section>
     <section class="pcc-card pcc-operation-workspace" hidden>

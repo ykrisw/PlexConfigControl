@@ -182,10 +182,17 @@ html{color-scheme:light dark;background:light-dark(#b5b9be,#151d28)}body{margin:
 }
 .pcc-shell [data-prefix-help] {margin: 6px 0 14px}
 
-/* Compact Backup controls leave the remaining height for the archive list. */
-.pcc-shell .pcc-page>.pcc-card.pcc-backup-action {padding:8px 18px}
-.pcc-shell .pcc-page>.pcc-card.pcc-backup-action>[data-prefix-help] {margin:0 0 12px}
-.pcc-shell .pcc-page>.pcc-card.pcc-backup-action>[data-backup-unavailable] {margin:0}
+/* Matched compact action cards give the saved height to flexing archive lists. */
+.pcc-shell .pcc-page>.pcc-card.pcc-action-card{padding:8px 18px;min-height:128px;display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
+.pcc-shell .pcc-page>.pcc-card.pcc-action-card>.pcc-primary{min-height:48px;padding:8px 14px;margin:0;font:600 17px/25px Arial,sans-serif}
+.pcc-shell .pcc-backup-name{gap:4px;min-width:0}
+.pcc-shell .pcc-backup-label-line{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 12px;min-width:0;line-height:20px}
+.pcc-shell .pcc-backup-label-line [data-prefix-help]{margin:0;font:400 14px/20px Arial,sans-serif}
+.pcc-shell .pcc-backup-name input{height:32px;padding:4px 12px;font:400 14px/22px Arial,sans-serif}
+.pcc-shell .pcc-page>.pcc-card.pcc-backup-action>[data-backup-unavailable]{margin:0}
+.pcc-shell .pcc-page.pcc-restore>.pcc-card.pcc-action-card{grid-template-rows:1fr auto}
+.pcc-shell .pcc-page>.pcc-card.pcc-action-card>.pcc-validation-heading{min-height:0;margin:0;justify-content:flex-start;align-items:baseline;align-self:start;flex-wrap:wrap;gap:0 14px}
+.pcc-shell .pcc-validation-heading p{margin:0;font:400 14px/21px Arial,sans-serif}
 .pcc-shell .pcc-backup .pcc-archive-actions {display:flex;align-items:center;gap:8px;flex-shrink:0;min-width:0}
 @media(max-width:600px){
  .pcc-shell .pcc-backup .pcc-archives>.pcc-heading {align-items:flex-start}

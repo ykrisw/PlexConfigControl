@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "plexconfigcontrol"
-version = "1.0.10"
+version = "1.0.5"
 description = "Plex configuration backup and restore application for TrueNAS SCALE"
 requires-python = ">=3.11"
 dependencies = ["websocket-client>=1.9,<2"]

@@ -125,11 +125,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          printf '%s\n' 'One installer ZIP for Windows x64, macOS Apple Silicon and Linux x64. Choose English or Polish in the graphical wizard. Both guides are included.' '' 'Matching mobile page scrolling for Backup, Restore and History, with more visible list space. Existing installations can be updated with this installer.' > notes.md
-          if gh release view v1.0.10 >/dev/null 2>&1; then
-            gh api "repos/$GH_REPO/git/refs/tags/v1.0.10" --method PATCH -f sha="$GITHUB_SHA" -F force=true
-            gh release upload v1.0.10 release/* --clobber
-            gh release edit v1.0.10 --title 'PlexConfigControl 1.0.10 — Installer PL / EN' --notes-file notes.md --latest
+          cat > notes.md <<'RELEASE_NOTES'
+          PlexConfigControl 1.0.5 — installer for TrueNAS SCALE.
+
+          One ZIP contains graphical launchers for Windows x64, macOS Apple Silicon and Linux x64. The application is installed on TrueNAS SCALE. Choose English or Polish in the wizard. Existing TrueNAS installations can be updated with the same installer.
+
+          This release makes Backup and Restore action cards shorter, moves explanatory text beside headings, moves Restore Refresh into the archive-list heading, expands the space for archive lists, and equalizes Dashboard account-button spacing. Light and dark themes are retained.
+
+          QNAP / QuTS hero uses a separate PCC_1.0.5_x86_64.qpkg installer; do not install this desktop ZIP on QNAP.
+          RELEASE_NOTES
+          if gh release view v1.0.5 >/dev/null 2>&1; then
+            gh api "repos/$GH_REPO/git/refs/tags/v1.0.5" --method PATCH -f sha="$GITHUB_SHA" -F force=true
+            gh release upload v1.0.5 release/* --clobber
+            gh release edit v1.0.5 --title 'PlexConfigControl 1.0.5 — TrueNAS SCALE — PL / EN' --notes-file notes.md --latest
           else
-            gh release create v1.0.10 release/* --target "$GITHUB_SHA" --title 'PlexConfigControl 1.0.10 — Installer PL / EN' --notes-file notes.md --latest
+            gh release create v1.0.5 release/* --target "$GITHUB_SHA" --title 'PlexConfigControl 1.0.5 — TrueNAS SCALE — PL / EN' --notes-file notes.md --latest
           fi
