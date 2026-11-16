@@ -25,7 +25,7 @@ jobs:
                   assert not stat.S_ISLNK(i.external_attr >> 16)
                   assert path.parts[0] in {"plexconfigcontrol","deploy","qnap-private-tar","LICENSE","source-provenance.json"}
                   print("SOURCE", i.filename, i.file_size)
-              for name in ["deploy/qnap/build_qpkg_preview.py","deploy/qnap/qpkg/PCC.sh","source-provenance.json"]:
+              for name in ["deploy/qnap/qpkg/launcher.py","plexconfigcontrol/static/qnap-tools.mjs","plexconfigcontrol/static/qnap-tools.css","source-provenance.json"]:
                   print("\nBEGIN",name)
                   print(z.read(name).decode())
                   print("END",name)
