@@ -59,6 +59,16 @@ class TerminalPasswordTests(unittest.TestCase):
         self.assertNotEqual(code, 0)
         self.assertIn('Nie wpisano hasła'.encode(), stderr)
 
+    def test_unsupported_shell_never_opens_terminal_or_requests_password(self):
+        import runpy
+        from unittest.mock import patch
+        namespace = runpy.run_path(str(HELPER))
+        unsupported = subprocess.CompletedProcess([], 2, b'', b'unsupported option')
+        with patch('subprocess.run', return_value=unsupported), patch('builtins.open') as opened:
+            with self.assertRaisesRegex(namespace['QnapTerminalError'], 'Powłoka nie obsługuje'):
+                namespace['secure_terminal_password']('Password: ')
+            opened.assert_not_called()
+
     def test_regular_file_is_rejected_without_reading_password(self):
         import runpy
         namespace = runpy.run_path(str(HELPER))
