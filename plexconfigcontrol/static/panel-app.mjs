@@ -68,6 +68,13 @@ export function mountPanelApp(root) {
   function reset() { epoch++; cleanup(); cleanup = () => {}; root.replaceChildren(); }
   function showLogin(message = '') {
     if (stopped) return;
+    // Repeated session notifications must not replace an in-progress sign-in.
+    const existing=root.querySelector('.pcc-login');
+    if(existing){
+      const field=existing.elements.password;
+      if(message&&!field.value)existing.querySelector('[role=alert]').textContent=message;
+      return;
+    }
     reset(); const generation = epoch;
     root.className = 'pcc-shell'; root.dataset.theme = 'system';
     root.innerHTML = '<header class="pcc-header"><div class="pcc-brand">PlexConfigControl</div></header><form class="pcc-login"><h2>Sign In</h2><label>Password<input name="password" type="password" autocomplete="current-password" required maxlength="4096"></label><p role="alert" class="pcc-notice"></p><button type="submit">Sign In</button></form>';
@@ -77,13 +84,14 @@ export function mountPanelApp(root) {
     const submit = async event => {
       event.preventDefault(); if (busy) return;
       busy = true; const button = form.querySelector('button'); button.disabled = true;
-      const input = form.elements.password; const password = input.value; input.value = '';
+      const input = form.elements.password; const password = input.value;
+      input.readOnly=true;
       try {
         await client.login(password);
-        if (epoch === generation && !stopped) await showPanels();
+        if (epoch === generation && !stopped) { input.value=''; await showPanels(); }
       } catch (error) {
         if (epoch === generation && !stopped) notice.textContent = error.message;
-      } finally { busy = false; button.disabled = false; }
+      } finally { busy = false; button.disabled = false; input.readOnly=false; }
     };
     form.addEventListener('submit', submit);
     cleanup = () => { form.removeEventListener('submit', submit); form.reset(); };

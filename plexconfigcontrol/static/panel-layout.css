@@ -66,3 +66,16 @@
  .pcc-shell .pcc-page[data-panel=backup]>.pcc-archives,
  .pcc-shell .pcc-page[data-panel=restore]>.pcc-archive-card{min-height:0}
 }
+
+/* Landscape touch screens need page scrolling even above the 600px breakpoint. */
+@media (orientation:landscape) and (max-height:600px), (orientation:landscape) and (any-pointer:coarse){
+ .pcc-shell[data-active-panel] .pcc-main{
+  flex:0 0 auto;
+  min-height:max(660px,calc(100vh + 34px));
+  min-height:max(660px,calc(100dvh + 34px));
+ }
+ .pcc-shell .pcc-page[data-panel=backup]>.pcc-archives,
+ .pcc-shell .pcc-page[data-panel=restore]>.pcc-archive-card{min-height:0}
+ .pcc-shell .pcc-brand{padding:10px 16px 6px;font-size:20px}
+ .pcc-shell .pcc-nav button{min-height:48px;gap:3px}
+}
