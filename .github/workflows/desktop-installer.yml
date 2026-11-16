@@ -135,10 +135,20 @@ jobs:
 
           QNAP / QuTS hero uses a separate PCC_1.0.5_x86_64.qpkg installer; do not install this desktop ZIP on QNAP.
           RELEASE_NOTES
+          gh release view v1.0.5 --json body > existing-notes.json || printf '{}' > existing-notes.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          previous = json.loads(Path("existing-notes.json").read_text()).get("body", "")
+          marker = "## QNAP QuTS hero — x86_64"
+          if marker in previous:
+              notes = Path("notes.md")
+              notes.write_text(notes.read_text() + "\n" + marker + previous.split(marker, 1)[1])
+          PY
           if gh release view v1.0.5 >/dev/null 2>&1; then
             gh api "repos/$GH_REPO/git/refs/tags/v1.0.5" --method PATCH -f sha="$GITHUB_SHA" -F force=true
             gh release upload v1.0.5 release/* --clobber
-            gh release edit v1.0.5 --title 'PlexConfigControl 1.0.5 — TrueNAS SCALE — PL / EN' --notes-file notes.md --latest
+            gh release edit v1.0.5 --title 'PlexConfigControl 1.0.5 — TrueNAS SCALE / QNAP QuTS hero' --notes-file notes.md --latest
           else
-            gh release create v1.0.5 release/* --target "$GITHUB_SHA" --title 'PlexConfigControl 1.0.5 — TrueNAS SCALE — PL / EN' --notes-file notes.md --latest
+            gh release create v1.0.5 release/* --target "$GITHUB_SHA" --title 'PlexConfigControl 1.0.5 — TrueNAS SCALE / QNAP QuTS hero' --notes-file notes.md --latest
           fi
