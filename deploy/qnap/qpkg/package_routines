@@ -1,0 +1,31 @@
+# Package-local lifecycle only. No Plex stop, data migration or ACL changes.
+pkg_check_requirement(){
+    [ "$(uname -m)" = "x86_64" ] || err_log "PCC requires x86_64."
+    [ -x /sbin/zfs ] || err_log "PCC requires QuTS hero with ZFS."
+    [ -x /sbin/snapshot_util ] || err_log "QNAP snapshot utilities are required."
+    [ -x /usr/local/bin/python3 ] || err_log "System Python3 is required for QPKG extraction."
+}
+pkg_pre_install(){
+    PCC_OLD=$($CMD_GETCFG PCC Install_Path -f /etc/config/qpkg.conf)
+    if [ -n "$PCC_OLD" ]; then
+        case "$PCC_OLD" in /share/*/.qpkg/PCC) ;; *) err_log "Unexpected existing PCC location."; return 1;; esac
+        [ ! -L "$PCC_OLD" ] || { err_log "Unexpected package symlink."; return 1; }
+        if [ -f "$PCC_OLD/launcher.py" ] && [ -x "$PCC_OLD/python/bin/python3" ]; then
+            "$PCC_OLD/python/bin/python3" -I -S "$PCC_OLD/launcher.py" --can-maintain || { err_log "Complete the active operation or recovery before updating PCC."; return 1; }
+            "$PCC_OLD/python/bin/python3" -I -S "$PCC_OLD/launcher.py" --stop || { err_log "PCC could not be stopped safely."; return 1; }
+        fi
+    fi
+}
+pkg_post_install(){
+    case "$SYS_QPKG_DIR" in /share/*/.qpkg/PCC) ;; *) err_log "Unexpected PCC install location."; return 1;; esac
+    for PCC_ITEM in python lib app build-sources tar launcher.py PCC.sh setup.html LICENSE BUILD-SOURCES.json; do
+        chown -R 0:0 "$SYS_QPKG_DIR/$PCC_ITEM" || { err_log "PCC runtime ownership failed."; return 1; }
+    done
+    chmod 755 "$SYS_QPKG_DIR/tar/bin/pcc-tar" "$SYS_QPKG_DIR/PCC.sh"
+    "$SYS_QPKG_DIR/python/bin/python3" -I -S "$SYS_QPKG_DIR/launcher.py" --self-test || { err_log "PCC private runtime check failed."; return 1; }
+    "$SYS_QPKG_DIR/python/bin/python3" -I -S "$SYS_QPKG_DIR/launcher.py" --initialize || { err_log "PCC initialization failed."; return 1; }
+    $CMD_SETCFG PCC Pid_File "$SYS_QPKG_DIR/var/service.pid" -f /etc/config/qpkg.conf
+}
+PKG_PRE_REMOVE="{
+    \"\$SYS_QPKG_DIR/python/bin/python3\" -I -S \"\$SYS_QPKG_DIR/launcher.py\" --stop || err_log \"Complete active operations or recovery before removing PCC.\"
+}"
