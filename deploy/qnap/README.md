@@ -156,3 +156,16 @@ never instantiates the snapshot coordinator. On failure it prints only XML
 field names, session presence/format booleans and allowlisted numeric status
 codes. It does not print response bodies, token values or credentials. These
 codes aid diagnosis but do not by themselves prove a password was incorrect.
+
+Login now handles the documented `need_2sv=1` challenge with an optional hidden
+six-digit TOTP prompt. Both password and code are POSTed only over the same
+verified loopback HTTPS connection policy. The client explicitly requests MFA
+checking even on loopback (`force_to_check_2sv=1`), submits a single code, never
+retries it automatically, and never requests recovery email, remembers devices,
+or changes account security settings. A password failure with a negative error
+code does not trigger the second-factor callback. The ordinary read probe
+without a callback reports `QNAP_SECOND_FACTOR_REQUIRED` explicitly.
+
+Protocol reference: QNAP's public authentication API document, section 2.3.2:
+https://download.qnap.com/dev/API_QNAP_QTS_Authentication.pdf
+This interface still requires a real-device login test on the target firmware.

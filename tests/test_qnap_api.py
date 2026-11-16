@@ -99,6 +99,45 @@ class QnapApiTests(unittest.TestCase):
         for secret in ('private-session-value', 'private-token', 'private-text', 'private-account', 'private-password'):
             self.assertNotIn(secret, str(details))
 
+    def test_second_factor_challenge_posts_one_code_without_logging_or_get_secrets(self):
+        challenge = b'<QDocRoot><authPassed>0</authPassed><need_2sv>1</need_2sv></QDocRoot>'
+        client = self.client([(200, challenge), (200, LOGIN)])
+        prompts = []
+        client.login('test-account', 'test-password', security_code_provider=lambda: prompts.append(True) or '123456')
+        self.assertEqual(prompts, [True])
+        requests = [call for call in self.calls if call[0] == 'request']
+        self.assertEqual(len(requests), 2)
+        for request in requests:
+            self.assertEqual(request[1:3], ('POST', '/cgi-bin/authLogin.cgi'))
+            self.assertEqual(parse_qs(request[3]['body'].decode())['force_to_check_2sv'], ['1'])
+        self.assertNotIn('security_code', parse_qs(requests[0][3]['body'].decode()))
+        self.assertEqual(parse_qs(requests[1][3]['body'].decode())['security_code'], ['123456'])
+        self.assertNotIn('123456', str(client.last_login_diagnostics))
+
+    def test_second_factor_without_provider_is_explicitly_required(self):
+        challenge = b'<QDocRoot><authPassed>0</authPassed><need_2sv>1</need_2sv></QDocRoot>'
+        client = self.client([(200, challenge)])
+        with self.assertRaisesRegex(QnapApiError, '^QNAP_SECOND_FACTOR_REQUIRED$'):
+            client.login('test-account', 'test-password')
+        self.assertIsNone(client._session)
+
+    def test_wrong_password_does_not_trigger_otp_prompt(self):
+        failure = b'<QDocRoot><authPassed>0</authPassed><need_2sv>1</need_2sv><errorValue>-1</errorValue></QDocRoot>'
+        client = self.client([(200, failure)])
+        with self.assertRaisesRegex(QnapApiError, '^QNAP_AUTHENTICATION_FAILED$'):
+            client.login('test-account', 'test-password', security_code_provider=lambda: self.fail('Unexpected OTP prompt'))
+
+    def test_invalid_or_rejected_code_does_not_retry_or_create_session(self):
+        challenge = b'<QDocRoot><authPassed>0</authPassed><need_2sv>1</need_2sv></QDocRoot>'
+        for code in ('bad', '123456'):
+            client = self.client([(200, challenge), (200, challenge)])
+            with self.assertRaises(QnapApiError) as result:
+                client.login('test-account', 'test-password', security_code_provider=lambda: code)
+            self.assertNotIn(code, str(result.exception))
+            self.assertIsNone(client._session)
+            requests = [call for call in self.calls if call[0] == 'request']
+            self.assertEqual(len(requests), 2 if code == '123456' else 1)
+
     def test_missing_or_expired_session_blocks_inventory(self):
         client = self.client([(200, LOGIN), (200, b'<x><authPassed>0</authPassed></x>')])
         with self.assertRaisesRegex(QnapApiError, 'LOGIN_REQUIRED'):

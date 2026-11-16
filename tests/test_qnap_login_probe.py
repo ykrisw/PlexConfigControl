@@ -22,7 +22,7 @@ class LoginProbeTests(unittest.TestCase):
                 pass
             def probe(self):
                 return {'root': 'QDocRoot'}
-            def login(self, user, password):
+            def login(self, user, password, **kwargs):
                 calls.append('login')
                 if failed:
                     raise namespace['QnapApiError']('QNAP_AUTHENTICATION_FAILED')

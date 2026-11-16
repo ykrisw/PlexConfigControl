@@ -261,16 +261,40 @@ class QnapLocalReadOnlyApi:
         root = self._xml('GET', '/cgi-bin/authLogin.cgi')
         return {'root': root.tag, 'authentication_field': root.find('authPassed') is not None}
 
-    def login(self, username, password):
+    def login(self, username, password, *, security_code_provider=None):
         self._session = None
         self.last_login_diagnostics = None
         if (not isinstance(username, str) or not username or len(username) > 256
                 or not isinstance(password, str) or not password or len(password) > 4096):
             raise QnapApiError('QNAP_CREDENTIALS_REQUIRED')
-        root = self._xml('POST', '/cgi-bin/authLogin.cgi', {
+        fields = {
             'user': username, 'pwd': base64.b64encode(password.encode('utf-8')).decode('ascii'),
-            'serviceKey': '1',
-        })
+            'serviceKey': '1', 'force_to_check_2sv': '1',
+        }
+        root = self._xml('POST', '/cgi-bin/authLogin.cgi', fields)
+        self._record_login_diagnostics(root)
+        if (root.findtext('authPassed') == '0' and root.findtext('need_2sv') == '1'
+                and root.findtext('errorValue', '').strip() in ('', '0')):
+            if security_code_provider is None:
+                raise QnapApiError('QNAP_SECOND_FACTOR_REQUIRED')
+            code = security_code_provider()
+            if not isinstance(code, str) or not re.fullmatch(r'[0-9]{6}', code):
+                raise QnapApiError('QNAP_SECURITY_CODE_MUST_HAVE_SIX_DIGITS')
+            fields['security_code'] = code
+            try:
+                # One challenge response only. Never automatically retry codes,
+                # request recovery messages, remember devices or disable MFA.
+                root = self._xml('POST', '/cgi-bin/authLogin.cgi', fields)
+            finally:
+                fields.pop('security_code', None)
+                del code
+            self._record_login_diagnostics(root)
+        sid = root.findtext('authSid', '')
+        if root.findtext('authPassed') != '1' or not re.fullmatch(r'[A-Za-z0-9_-]{8,128}', sid):
+            raise QnapApiError('QNAP_AUTHENTICATION_FAILED')
+        self._session = sid
+
+    def _record_login_diagnostics(self, root):
         sid = root.findtext('authSid', '')
         # Only schema names and explicitly allowed numeric status codes leave
         # the XML response. Never retain tokens, usernames or arbitrary text.
@@ -285,9 +309,6 @@ class QnapLocalReadOnlyApi:
             value = root.findtext(name, '').strip()
             if re.fullmatch(r'-?[0-9]{1,10}', value):
                 self.last_login_diagnostics[name] = value
-        if root.findtext('authPassed') != '1' or not re.fullmatch(r'[A-Za-z0-9_-]{8,128}', sid):
-            raise QnapApiError('QNAP_AUTHENTICATION_FAILED')
-        self._session = sid
 
     def _read_inventory(self, volume_id, fields):
         if type(volume_id) is not int or not 1 <= volume_id <= 9999999999:
@@ -703,8 +724,11 @@ def snapshot_probe_main():
         default_user = os.environ.get('SUDO_USER') or getpass.getuser()
         username = input('Użytkownik QNAP ['+default_user+']: ').strip() or default_user
         password = secure_terminal_password('Hasło konta QNAP (znaki są ukryte): ')
+        def second_factor():
+            print('QNAP wymaga drugiego etapu. Otwórz aplikację uwierzytelniającą i odczytaj kod TOTP.', flush=True)
+            return secure_terminal_password('Aktualny 6-cyfrowy kod TOTP (bez spacji): ')
         try:
-            api.login(username, password)
+            api.login(username, password, security_code_provider=second_factor)
         finally:
             del password
         print('Logowanie: OK', flush=True)

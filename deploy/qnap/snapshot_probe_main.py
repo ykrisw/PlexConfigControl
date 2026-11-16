@@ -30,8 +30,11 @@ def snapshot_probe_main():
         default_user = os.environ.get('SUDO_USER') or getpass.getuser()
         username = input('Użytkownik QNAP ['+default_user+']: ').strip() or default_user
         password = secure_terminal_password('Hasło konta QNAP (znaki są ukryte): ')
+        def second_factor():
+            print('QNAP wymaga drugiego etapu. Otwórz aplikację uwierzytelniającą i odczytaj kod TOTP.', flush=True)
+            return secure_terminal_password('Aktualny 6-cyfrowy kod TOTP (bez spacji): ')
         try:
-            api.login(username, password)
+            api.login(username, password, security_code_provider=second_factor)
         finally:
             del password
         print('Logowanie: OK', flush=True)
