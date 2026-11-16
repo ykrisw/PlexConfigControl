@@ -15,6 +15,7 @@ def build():
         (ROOT/'plexconfigcontrol/qnap_discovery.py').read_text(),
         (ROOT/'plexconfigcontrol/qnap_api.py').read_text(),
         snapshot,
+        (ROOT/'deploy/qnap/terminal_password.py').read_text(),
         (ROOT/'deploy/qnap/snapshot_probe_main.py').read_text(),
     ])
     compile(content, str(OUTPUT), 'exec')

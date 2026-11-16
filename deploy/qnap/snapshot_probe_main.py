@@ -24,7 +24,7 @@ def snapshot_probe_main():
         print('HTTPS i certyfikat: OK')
         default_user = os.environ.get('SUDO_USER') or getpass.getuser()
         username = input('Użytkownik QNAP ['+default_user+']: ').strip() or default_user
-        password = getpass.getpass('Hasło konta QNAP: ')
+        password = secure_terminal_password('Hasło konta QNAP (znaki są ukryte): ')
         try:
             api.login(username, password)
         finally:
@@ -51,7 +51,7 @@ def snapshot_probe_main():
             print('Wynik całego testu: OK', flush=True)
             return 0
         return 1
-    except (QnapApiError, QnapDiscoveryError, SnapshotProbeError) as error:
+    except (QnapApiError, QnapDiscoveryError, SnapshotProbeError, QnapTerminalError) as error:
         print('Wynik testu:', str(error), flush=True)
         return 1
     except (Exception, KeyboardInterrupt) as error:

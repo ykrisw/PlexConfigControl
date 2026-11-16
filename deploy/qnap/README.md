@@ -141,3 +141,10 @@ yet the durable production backup coordinator. No session or password is saved.
 
 Local unit tests exercise the lifecycle and failure cases. Running this tool on
 a NAS is still required to verify the vendor interface and preview mount.
+
+The lifecycle probe reads passwords directly from `/dev/tty` with echo disabled
+using the NAS's `stty`. It does not require Python's optional `termios` module
+and never falls back to visible stdin input. Missing terminal/control support
+stops before login. Passwords are not supplied through argv, environment or disk.
+Local pseudo-terminal tests cover hidden UTF-8 input, empty input rejection and
+exact terminal-state restoration, including when stdin is closed.
