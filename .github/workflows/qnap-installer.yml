@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/qnap-installer.yml
       - deploy/qnap/prepare_release.py
+      - tests/qnap_login_notice_e2e.py
       - deploy/qnap/qpkg/**
       - plexconfigcontrol/static/panel-app.css
       - plexconfigcontrol/static/panel-layout.css
