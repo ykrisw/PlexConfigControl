@@ -193,6 +193,7 @@ html{color-scheme:light dark;background:light-dark(#b5b9be,#151d28)}body{margin:
 .pcc-shell .pcc-page.pcc-restore>.pcc-card.pcc-action-card{grid-template-rows:1fr auto}
 .pcc-shell .pcc-page>.pcc-card.pcc-action-card>.pcc-validation-heading{min-height:0;margin:0;justify-content:flex-start;align-items:baseline;align-self:start;flex-wrap:wrap;gap:0 14px}
 .pcc-shell .pcc-validation-heading p{margin:0;font:400 14px/21px Arial,sans-serif}
+.pcc-shell .pcc-page .pcc-card.pcc-action-card>.pcc-validation-heading h2{font:600 14px/21px Arial,sans-serif}
 .pcc-shell .pcc-backup .pcc-archive-actions {display:flex;align-items:center;gap:8px;flex-shrink:0;min-width:0}
 @media(max-width:600px){
  .pcc-shell .pcc-backup .pcc-archives>.pcc-heading {align-items:flex-start}

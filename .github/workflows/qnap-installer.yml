@@ -7,6 +7,8 @@ on:
       - .github/workflows/qnap-installer.yml
       - deploy/qnap/prepare_release.py
       - deploy/qnap/qpkg/**
+      - plexconfigcontrol/static/panel-app.css
+      - plexconfigcontrol/static/panel-layout.css
 permissions:
   contents: read
 concurrency:
