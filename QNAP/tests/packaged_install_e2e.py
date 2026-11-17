@@ -120,10 +120,36 @@ def audit(package,expected):
             print('Setup, panel login, native IPC, static assets, profile upload and durable event queue: PASS',flush=True)
             stop(process);process=start();ready(process)
             status,_,body=request('/api/session',cookie=cookie);assert status==200,(status,body[:200])
-            status,_,body=request('/api/account/photo/status',cookie=cookie);assert status==200 and json.loads(body)['exists'] is True
+            status,_,body=request('/api/account/photo/status',cookie=cookie);assert status==200 and json.loads(body)['present'] is True
             status,_,body=request('/api/login','POST',{'password':'wrong-fixture-password'})
             assert status==401,(status,body[:200])
-            print('Restart retains panel session and profile; rejected login logs through native IPC: PASS',flush=True)
+            photo_status=json.loads(request('/api/account/photo/status',cookie=cookie)[2])
+            status,_,body=request('/api/account/photo/remove','POST',{'confirmed':True,'revision':photo_status['revision']},cookie=cookie,csrf=csrf)
+            assert status==200 and json.loads(body)['present'] is False,(status,body[:200])
+            status,_,body=request('/api/settings','POST',{'theme':'Dark','language':'en','timezone':'UTC'},cookie=cookie,csrf='invalid-csrf')
+            assert status==403,(status,body[:200])
+            status,_,body=request('/api/settings','POST',{'theme':'Dark','language':'en','timezone':'UTC'},cookie=cookie,csrf=csrf)
+            assert status==200 and json.loads(body)['theme']=='Dark',(status,body[:200])
+            status,_,body=request('/api/account/password','POST',{'current_password':'qa-password-only','new_password':'qa-password-next','confirm_new_password':'qa-password-next'},cookie=cookie,csrf=csrf)
+            assert status==200 and json.loads(body).get('history_recorded',True),(status,body[:200])
+            assert request('/api/session',cookie=cookie)[0]==401
+            status,headers,body=request('/api/login','POST',{'password':'qa-password-next'})
+            assert status==200,(status,body[:200])
+            cookie=headers['Set-Cookie'].split(';')[0];csrf=json.loads(body)['csrf']
+            status,_,body=request('/api/history',cookie=cookie)
+            assert status==200
+            ids=[row['id'] for row in json.loads(body)]
+            assert ids
+            events_before=list((root/'var/owner/qnap-event-outbox').glob('*.json'))
+            status,_,body=request('/api/history/clear','POST',{'ids':ids,'confirmed':True},cookie=cookie,csrf=csrf)
+            assert status==200,(status,body[:200])
+            assert sorted((root/'var/owner/qnap-event-outbox').glob('*.json'))==sorted(events_before)
+            for event in events_before:
+                event_text=event.read_text()
+                assert 'qa-password-only' not in event_text and 'qa-password-next' not in event_text
+            status,_,body=request('/api/logout','POST',{},cookie=cookie,csrf=csrf)
+            assert status==200 and request('/api/session',cookie=cookie)[0]==401
+            print('Restart, profile removal, settings, CSRF, password change, history clear and explicit logout: PASS',flush=True)
         except BaseException:
             print(runtime_log.read_text(errors='replace')[-16000:],flush=True)
             raise
