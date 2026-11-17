@@ -6,7 +6,7 @@ PAIRS=[('PlexConfigControlQuTShero_1.6.qpkg','PlexConfigControl_QuTShero_x86-64v
 def gh(*args):return subprocess.check_output(['gh',*args],text=True)
 def main():
  repo=os.environ['GH_REPO']
- assets={a['name']:a for a in json.loads(gh('release','view','v1.6','--json','assets'))['assets']}
+ assets={a['name']:a for a in json.loads(gh('api',f'repos/{repo}/releases/tags/v1.6'))['assets']}
  with tempfile.TemporaryDirectory() as folder:
   out=Path(folder)
   for old,new,digest,_ in PAIRS:
@@ -22,7 +22,7 @@ def main():
   make(out/PAIRS[0][1],out/'qnap-repository-pl.xml','pl')
   gh('release','upload','v1.6',*(str(out/n) for n in ('SHA256SUMS','SHA256SUMS_QNAP','qnap-repository.xml','qnap-repository-pl.xml')),'--clobber')
   gh('release','edit','v1.6','--notes-file',str(Path(__file__).resolve().parents[1]/'release-notes-1.6.md'))
-  final={a['name']:a for a in json.loads(gh('release','view','v1.6','--json','assets'))['assets']}
+  final={a['name']:a for a in json.loads(gh('api',f'repos/{repo}/releases/tags/v1.6'))['assets']}
   for _,name,digest,_ in PAIRS:assert final[name]['digest']=='sha256:'+digest
   print('Both downloads renamed; original package hashes confirmed; descriptions, checksums and feeds updated.')
 if __name__=='__main__':main()
