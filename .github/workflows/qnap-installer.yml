@@ -52,6 +52,15 @@ jobs:
       - name: Build and verify native QPKG
         run: |
           python .qnap-build/source/deploy/qnap/build_qpkg_preview.py --python-archive .qnap-build/python.tar.gz --dependencies .qnap-build/lib --qdk .qnap-build/qdk --private-tar .qnap-build/source/qnap-private-tar --output .qnap-build/output
+          python - <<'PY'
+          import tarfile
+          with tarfile.open(".qnap-build/output/verified-qpkg/data.tar.gz") as archive:
+              names = archive.getnames()
+              for name in (".qpkg_icon.gif", ".qpkg_icon_80.gif", ".qpkg_icon_gray.gif",
+                           "app/plexconfigcontrol/static/archive-refresh.mjs"):
+                  assert "./" + name in names, name
+          print("QNAP App Center icons and shared archive refresh asset: OK")
+          PY
           mkdir -p qnap-release
           cp .qnap-build/output/release/PCC_1.0.5_x86_64.qpkg qnap-release/
           cp .qnap-build/output/release/build-result.json qnap-release/
@@ -91,7 +100,7 @@ jobs:
           body += "PlexConfigControl 1.0.5 — native QNAP installer, separate from the TrueNAS SCALE installer above.\n\n"
           body += "[Download PCC_1.0.5_x86_64.qpkg](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.0.5/PCC_1.0.5_x86_64.qpkg)\n\n"
           body += "For QuTS hero with ZFS snapshot APIs on x86_64; ARM and plain QTS are not supported by this build. Package-private Python and GNU tar are included. Uses the NAS host address and selected HTTPS port; no fixed user IP.\n\n"
-          body += "Includes compact Backup/Restore cards, relocated Refresh, preserved sign-in fields, touch landscape scrolling and QNAP account-button spacing. Restore waits for manual Plex stop. A successful build does not replace a device-level restore test.\n\n"
+          body += "Includes the 20% wider yellow shield and App Center icon, identical archive heading/helper typography, slower desktop-only indeterminate progress motion, synchronized Backup/Restore manual Refresh, compact cards, preserved sign-in fields, touch landscape scrolling and QNAP account-button spacing. Restore waits for manual Plex stop. A successful build does not replace a device-level restore test.\n\n"
           body += "Checksum: SHA256SUMS_QNAP. This QPKG is not digitally signed by QNAP.\n"
           notes.write_text(body)
           PY
