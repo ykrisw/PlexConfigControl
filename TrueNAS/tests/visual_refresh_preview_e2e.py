@@ -1,6 +1,7 @@
 """Preview the real shell and verify shared refresh, typography and desktop motion."""
 import json
 import os
+import re
 from pathlib import Path
 import execution_ui_e2e as execution
 import mobile_archives_e2e as mobile
@@ -42,6 +43,18 @@ with sync_playwright() as p:
             assert 'PlexConfig_New.tar.gz' in page.locator('[data-panel=restore] [data-archive-list]').text_content()
             page.get_by_role('tab', name=restore, exact=True).click()
             page.screenshot(path=str(output/f'restore-{language}-{theme}.png'), clip={'x':0,'y':0,'width':1740,'height':560})
+            # Names must be shown before validation and restore stage text, in every theme/language.
+            fixture.operation.update(kind='RESTORE',phase='VALIDATING',
+                validation_details={'archive':extra['name'],'status':'VALIDATING'})
+            fixture.progress={'operation':'RESTORE','stage':'CHECKING_GZIP','active':True,
+                              'finished':None,'done':0,'elapsed_seconds':140}
+            page.locator('[data-restore-action=refresh]').click()
+            progress_label=page.locator('[data-panel=restore] [data-validation-progress]')
+            expect(progress_label).to_have_text(re.compile('^'+re.escape(extra['name'])+' — '))
+            fixture.operation.update(phase='RUNNING',outcome={'code':'RESTORE_IN_PROGRESS','archive':extra['name']})
+            fixture.progress.update(stage='RESTORING')
+            page.locator('[data-restore-action=refresh]').click()
+            expect(progress_label).to_have_text(re.compile('^'+re.escape(extra['name'])+' — '))
             # Indeterminate animation is visual only; real measured values remain native.
             page.evaluate("""() => {const meter=document.querySelector('[data-panel=restore] .pcc-stage-progress');meter.hidden=false;meter.closest('.pcc-operation-workspace').hidden=false;}""")
             assert page.locator('[data-panel=restore] .pcc-stage-progress').evaluate("el=>getComputedStyle(el,'::after').animationDuration") == '3s'

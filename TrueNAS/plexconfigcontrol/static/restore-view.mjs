@@ -1,3 +1,4 @@
+import {restoreProgressName,archiveProgress} from './archive-labels.mjs';
 import {mountOperationWorkspace,activeExecution,mountStageProgress} from './operation-workspace.mjs';
 import {submissionText} from './submission-controller.mjs';
 import {restoreResult} from './operation-outcome.mjs';
@@ -114,9 +115,10 @@ export function mountRestoreView(root, client, {language='en'}={}) {
     const locked=showWorkspace({active,snapshot,result:resultText||view.notice||find('[data-submission-text]').textContent});
     const refreshDock=find('.pcc-archive-card').hidden?refreshProgress:refreshHome;
     if(refreshButton.parentElement!==refreshDock)refreshDock.append(refreshButton);
-    progress.textContent=view.progressText||
+    const progressText=view.progressText||
       (locked&&!view.notice&&find('[data-recovery]').hidden&&find('[data-submission]').hidden
         ? tx('Waiting for restore status…','Oczekiwanie na stan przywracania…'):'');
+    progress.textContent=archiveProgress(restoreProgressName(state),progressText);
     progress.hidden=!progress.textContent;
     showProgress(locked&&!view.waiting&&find('[data-recovery]').hidden,snapshot?.progress);
   };

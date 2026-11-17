@@ -1,3 +1,4 @@
+import {backupSubmission} from './archive-labels.mjs';
 import {mountOperationWorkspace,activeExecution,mountStageProgress} from './operation-workspace.mjs';
 import {submissionText} from './submission-controller.mjs';
 import {backupResult} from './operation-outcome.mjs';
@@ -91,7 +92,7 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
     find('[data-backup-another]').disabled=!value.canCreate||!draftMatches;
     find('[data-backup-overwrite]').disabled=!value.canCreate||!draftMatches||!value.overwriteEnabled;
     find('[data-backup-cancel]').disabled=value.submission.busy;
-    find('[data-submission-text]').textContent=submissionText(value.submission,language,'BACKUP');
+    find('[data-submission-text]').textContent=submissionText(backupSubmission(value),language,'BACKUP');
     find('[data-submission]').hidden=!find('[data-submission-text]').textContent||Boolean(result.textContent);
     const snapshot=value.operation;
     const active=value.submission.blocked||activeExecution(snapshot,'BACKUP')||

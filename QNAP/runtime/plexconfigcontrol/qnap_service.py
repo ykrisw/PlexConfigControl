@@ -269,7 +269,7 @@ class QnapBackupService:
                 operation['outcome']={'code':'RESTORE_COMPLETED' if phase=='SUCCESS' else 'RESTORE_IN_PROGRESS' if phase=='RUNNING' else 'RESTORE_INTERRUPTED' if phase=='RECOVERY_REQUIRED' else 'RESTORE_ROLLBACK_VERIFIED' if job['restore']['phase']=='ROLLED_BACK' else 'RESTORE_FAILED_UNCHANGED','archive':job['archive']}
             progress=None
             if job:
-                progress={'operation':job['kind'],'stage':job['stage'],'started':job['started'],'updated':float(job['updated_ns'])/1e9,
+                progress={'operation':job['kind'],'archive':job['archive'],'stage':job['stage'],'started':job['started'],'updated':float(job['updated_ns'])/1e9,
                           'finished':job.get('finished'),'done':job.get('done',0),'total':job.get('total'),
                           'elapsed_seconds':max(0,(job.get('finished') or self.clock())-job['started']),
                           'stage_percent':round(100*job.get('done',0)/job['total'],1) if job.get('total') else None,
