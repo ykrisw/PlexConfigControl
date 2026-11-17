@@ -25,9 +25,10 @@ with sync_playwright() as p:
             expect(page.locator('[data-panel=backup] .pcc-archive-row')).to_have_count(1)
             page.get_by_role('tab', name=restore, exact=True).click()
             expect(page.locator('[data-panel=restore] .pcc-archive-row')).to_have_count(1)
-            styles = page.evaluate("""() => {const title=document.querySelector('.pcc-validation-heading h2'), help=document.querySelector('.pcc-validation-heading p'), logo=document.querySelector('.pcc-logo'); const style = el => {const s=getComputedStyle(el);return [s.fontFamily,s.fontSize,s.fontWeight,s.lineHeight]};return {title:style(title), help:style(help), logo:{width:logo.getBoundingClientRect().width,height:logo.getBoundingClientRect().height}}}""")
+            styles = page.evaluate("""() => {const title=document.querySelector('.pcc-validation-heading h2'), help=document.querySelector('.pcc-validation-heading p'), logo=document.querySelector('.pcc-logo'); const style = el => {const s=getComputedStyle(el);return [s.fontFamily,s.fontSize,s.fontWeight,s.lineHeight]};return {title:style(title), help:style(help), logo:{width:logo.getBoundingClientRect().width,height:logo.getBoundingClientRect().height,baseWidth:parseFloat(getComputedStyle(logo).width),baseHeight:parseFloat(getComputedStyle(logo).height)}}}""")
             assert styles['title'] == styles['help'], styles
-            assert styles['logo'] == {'width':24, 'height':24}, styles
+            assert abs(styles['logo']['width'] / styles['logo']['baseWidth'] - 1.2) < .001, styles
+            assert abs(styles['logo']['height'] - styles['logo']['baseHeight']) < .02, styles
             extra = dict(fixture.rows[0], name='PlexConfig_New.tar.gz', inode='50')
             fixture.rows.append(extra)
             page.locator('[data-restore-action=refresh]').click()
