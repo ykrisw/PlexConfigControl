@@ -162,6 +162,10 @@ def audit(package,expected):
             qdk=(root/'build-sources/qinstall.sh').read_text()
             function=re.search(r'(?ms)^create_uninstall_script\(\)\{.*?^\}',qdk).group()
             for name in ('init','startup','shutdown','icons','bin'):(outer/name).mkdir()
+            service=outer/'init/PCC.sh';service.write_text('#!/bin/sh\nexit 0\n');service.chmod(0o755)
+            (outer/'startup/QS100PCC').symlink_to(service)
+            (outer/'shutdown/QK100PCC').symlink_to(service)
+            for name in ('PCC.gif','PCC_80.gif','PCC_gray.gif'):(outer/'icons'/name).write_bytes(b'fixture')
             which=outer/'bin/which';which.write_text('#!/bin/sh\nexit 1\n');which.chmod(0o755)
             import shlex
             values={'SYS_QPKG_DIR':str(root),'SYS_INIT_DIR':str(outer/'init'),
@@ -190,6 +194,7 @@ def audit(package,expected):
             subprocess.run(['sh',str(uninstall)],env=environment,check=True)
             process.wait(timeout=35)
             assert process.returncode==0 and not root.exists()
+            assert all(not list((outer/name).iterdir()) for name in ('init','startup','shutdown','icons'))
             assert all(path.read_text()==path.parent.name for path in untouched)
             with socket.socket() as released:
                 released.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
