@@ -2,7 +2,8 @@
 export function backupSubmission(value){
   const submission=value.submission||{}, snapshot=value.operation;
   const matching=snapshot?.execution?.kind==='BACKUP'&&
-    snapshot.execution.request_id===submission.request_id;
+    snapshot.execution.request_id===submission.request_id&&
+    snapshot.operation?.execution_request_id===submission.request_id;
   const archive=matching?snapshot.operation?.outcome?.archive:null;
   return {...submission,archive:typeof archive==='string'?archive:null};
 }
