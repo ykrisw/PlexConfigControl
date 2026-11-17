@@ -117,7 +117,7 @@ def audit(package,expected):
             status,headers,body=request('/api/login','POST',{'password':'qa-password-only'})
             assert status==200,(status,body[:200])
             cookie=headers['Set-Cookie'].split(';')[0];csrf=json.loads(body)['csrf']
-            for path in ('/api/session','/api/settings','/api/account/photo/status','/api/qnap/info','/api/history','/assets/panel-app.mjs','/assets/qnap-tools.mjs','/assets/restore-panel.mjs'):
+            for path in ('/api/session','/api/settings','/api/account/photo/status','/api/qnap/info','/api/history','/assets/panel-app.mjs','/assets/qnap-tools.mjs','/assets/restore-panel.mjs','/assets/archive-labels.mjs'):
                 status,_,body=request(path,cookie=cookie,csrf=csrf);assert status==200,(path,status,body[:200])
             status,_,body=request('/api/account/photo','POST',body=png(),cookie=cookie,csrf=csrf,content_type='application/octet-stream')
             assert status==200,(status,body[:200])

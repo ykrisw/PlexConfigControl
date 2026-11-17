@@ -83,7 +83,7 @@ def prepare(destination):
     code = web.read_text()
     anchor = "assets={'/assets/panel-client.mjs':'panel-client.mjs',"
     assert code.count(anchor)==1
-    web.write_text(code.replace(anchor, anchor+"\n                '/assets/archive-refresh.mjs':'archive-refresh.mjs',"))
+    web.write_text(code.replace(anchor, anchor+"\n                '/assets/archive-refresh.mjs':'archive-refresh.mjs',\n                '/assets/archive-labels.mjs':'archive-labels.mjs',"))
     # Retain QNAP's runtime integration and the approved QNAP-only button gaps.
     tools = static / "qnap-tools.mjs"
     text = tools.read_text()
