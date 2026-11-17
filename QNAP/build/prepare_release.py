@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BUNDLE_SHA256 = "6d71dd5161101fcc8dba84c9ec6181ffa50ac2ff9e66678c18653d48a233b0e9"
 FRONTEND = ("panel-app.mjs", "panel-app.css", "panel-layout.css",
             "backup-view.mjs", "restore-view.mjs", "backup-controller.mjs",
-            "archive-refresh.mjs", "pcc-logo.svg", "restore-panel.mjs")
+            "archive-refresh.mjs", "pcc-logo.svg", "restore-panel.mjs", "recovery-view.mjs")
 
 
 def fix_login_notice(destination):

@@ -40,14 +40,17 @@ class Events(unittest.TestCase):
             with self.assertRaises(ValueError):panel_event(Service(Path(folder)),{'password':'secret'})
 
 class Restore(unittest.TestCase):
-    def run_restore(self,fail_mount=False):
+    def run_restore(self,fail_mount=False,fail_verify=False):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);s=Service(root)
             live=root/'Plex';live.mkdir();(live/'data').write_text('original')
             work=root/'.pcc-restore-test';work.mkdir(mode=0o700)
             prepared=work/'prepared';prepared.mkdir();(prepared/'data').write_text('restored')
             s.current={'archive':'PlexConfig_new.tar.gz','kind':'RESTORE','restore':{'original':restore.identity(live),'prepared':restore.identity(prepared),'parent':restore.identity(root),'workspace_identity':restore.identity(work),'phase':'READY','prepared_digest':restore.tree_digest(prepared)}}
-            s._save=lambda:None;s._progress=lambda *a:None;s._snapshot_record=lambda *a,**k:None
+            s._save=lambda:None;s._snapshot_record=lambda *a,**k:None
+            def progress(stage,*args):
+                if fail_verify and stage=='VERIFYING_RESTORE':raise restore.QnapRestoreError('Injected verification failure')
+            s._progress=progress
             log=root/'operation.log';s._open_log=lambda:log.open('w');s.clock=lambda:0
             instance=restore.QnapRestore(s)
             installation=QnapPlexInstallation('1',False,str(root/'pkg'),str(live),'pool/data',str(root),'Plex',4)
@@ -68,6 +71,10 @@ class Restore(unittest.TestCase):
                 self.assertFalse(result[0][0]);self.assertIn('PROBE_SNAPSHOT_MOUNT_FAILED',result[0][1])
                 self.assertEqual((live/'data').read_text(),'original')
                 self.assertIn('APPLY_FAILURE',log.read_text());self.assertIn('SNAPSHOT_RESULT',log.read_text())
+            elif fail_verify:
+                self.assertFalse(result[0][0]);self.assertEqual((live/'data').read_text(),'original')
+                self.assertEqual((work/'rejected/data').read_text(),'restored')
+                self.assertEqual(s.current['restore']['phase'],'ROLLED_BACK')
             else:
                 self.assertTrue(result[0][0],result)
                 self.assertEqual((live/'data').read_text(),'restored')
@@ -86,6 +93,40 @@ class Restore(unittest.TestCase):
                     restore.rename_held(fd,'source',fd,'target')
                     self.assertTrue((root/'target').is_dir());self.assertFalse((root/'source').exists())
             finally:os.close(fd)
+    def test_zfs_rejecting_noreplace_keeps_occupied_targets(self):
+        from unittest.mock import Mock
+        def rejected(*args):ctypes.set_errno(22);return -1
+        libc=type('LegacyZfs',(),{})();libc.renameat2=Mock(side_effect=rejected)
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);(root/'source').mkdir();(root/'source/data').write_text('preserve')
+            (root/'existing').mkdir()
+            fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
+            try:
+                with patch.object(restore.ctypes,'CDLL',return_value=libc):
+                    with self.assertRaises(FileExistsError):restore.rename_held(fd,'source',fd,'existing')
+                    os.symlink('missing',root/'link')
+                    with self.assertRaises(FileExistsError):restore.rename_held(fd,'source',fd,'link')
+                    restore.rename_held(fd,'source',fd,'target')
+                    self.assertEqual((root/'target/data').read_text(),'preserve')
+            finally:os.close(fd)
+    def test_legacy_fallback_refuses_unprotected_parent_before_any_move(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);(root/'source').mkdir();os.chmod(root,0o777)
+            fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
+            try:
+                with self.assertRaises(restore.QnapRestoreError):restore.guarded_rename_held(fd,'source',fd,'target')
+                self.assertTrue((root/'source').is_dir());self.assertFalse((root/'target').exists())
+            finally:os.close(fd);os.chmod(root,0o700)
+    def test_legacy_zfs_verification_failure_restores_original(self):
+        from unittest.mock import Mock
+        def rejected(*args):ctypes.set_errno(22);return -1
+        libc=type('LegacyZfs',(),{})();libc.renameat2=Mock(side_effect=rejected)
+        with patch.object(restore.ctypes,'CDLL',return_value=libc):self.run_restore(fail_verify=True)
+    def test_full_restore_on_zfs_rejecting_noreplace(self):
+        from unittest.mock import Mock
+        def rejected(*args):ctypes.set_errno(22);return -1
+        libc=type('LegacyZfs',(),{})();libc.renameat2=Mock(side_effect=rejected)
+        with patch.object(restore.ctypes,'CDLL',return_value=libc):self.run_restore()
     def test_native_directory_swap_and_verification(self):self.run_restore()
     def test_mount_failure_is_explicit_and_preserves_live(self):self.run_restore(True)
 

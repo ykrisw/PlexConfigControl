@@ -45,6 +45,29 @@ def sync_directory(path):
     finally:os.close(fd)
 
 
+def guarded_rename_held(source_fd,source,target_fd,target):
+    """Legacy-ZFS rename under the coordinator's exclusive operation lease.
+
+    Plain rename is used only for absent destinations in root-owned parents
+    with no group/other write access. Existing entries, including empty
+    directories and symlinks, are never deliberately replaced. Without these
+    protections, fail before touching the live configuration; never chmod it.
+    """
+    for name in (source,target):
+        if not isinstance(name,str) or name in ('','.','..') or '/' in name:
+            raise QnapRestoreError('Invalid Restore directory entry')
+    for fd in (source_fd,target_fd):
+        info=os.fstat(fd)
+        if not stat.S_ISDIR(info.st_mode) or info.st_uid!=os.geteuid() or info.st_mode&0o022:
+            raise QnapRestoreError('Legacy ZFS rename requires protected parent directories')
+    try:os.stat(target,dir_fd=target_fd,follow_symlinks=False)
+    except FileNotFoundError:pass
+    else:raise FileExistsError(errno.EEXIST,'Restore destination already exists',target)
+    if not stat.S_ISDIR(os.stat(source,dir_fd=source_fd,follow_symlinks=False).st_mode):
+        raise QnapRestoreError('Restore source is not a regular directory')
+    os.rename(source,target,src_dir_fd=source_fd,dst_dir_fd=target_fd)
+
+
 def rename_held(source_fd,source,target_fd,target):
     libc=ctypes.CDLL(None,use_errno=True)
     try:function=libc.renameat2
@@ -62,7 +85,9 @@ def rename_held(source_fd,source,target_fd,target):
         result=syscall(ctypes.c_long(316),ctypes.c_int(source_fd),ctypes.c_char_p(os.fsencode(source)),
                        ctypes.c_int(target_fd),ctypes.c_char_p(os.fsencode(target)),ctypes.c_uint(1))
     if result:
-        code=ctypes.get_errno();raise OSError(code,os.strerror(code))
+        code=ctypes.get_errno()
+        if code not in (errno.EINVAL,errno.ENOSYS,errno.EOPNOTSUPP):raise OSError(code,os.strerror(code))
+        guarded_rename_held(source_fd,source,target_fd,target)
     os.fsync(source_fd);os.fsync(target_fd)
 
 

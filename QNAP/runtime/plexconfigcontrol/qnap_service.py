@@ -531,7 +531,7 @@ class QnapBackupService:
                 if row:state='PRESENT'
                 elif snapshot.get('storage') and snapshot['storage'] not in storage_snapshots(self.discover()):state='ABSENT'
             except Exception:pass
-        return {**{key:operation[key] for key in ('phase','kind','snapshot_id','outcome')},'snapshot_state':state,
+        return {'platform':'QNAP',**{key:operation[key] for key in ('phase','kind','snapshot_id','outcome')},'snapshot_state':state,
                 'publication':publication,'removal_supported':False,'removal_available':False,'publication_resolution_supported':False}
 
     def recover(self):

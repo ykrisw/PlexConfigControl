@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-const {RestoreController}=await import(new URL('file://'+process.env.PCC_QNAP_SOURCE+'/plexconfigcontrol/static/restore-panel.mjs')); 
+const {RestoreController}=await import(new URL('file://'+process.env.PCC_QNAP_SOURCE+'/plexconfigcontrol/static/restore-panel.mjs'));
 
 test('a stale resumable archive never overwrites an explicit newer selection',()=>{
  const c=new RestoreController({},()=>{});
