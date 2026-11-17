@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   backup-layout:
-    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'rename-only:')
+    if: github.event_name != 'push' || (!startsWith(github.event.head_commit.message, 'rename-only:') && !startsWith(github.event.head_commit.message, 'publish-only:'))
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     strategy:
@@ -40,7 +40,7 @@ jobs:
           path: dist/browser-screenshots/
           retention-days: 7
   build:
-    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'rename-only:')
+    if: github.event_name != 'push' || (!startsWith(github.event.head_commit.message, 'rename-only:') && !startsWith(github.event.head_commit.message, 'publish-only:'))
     strategy:
       fail-fast: false
       matrix:

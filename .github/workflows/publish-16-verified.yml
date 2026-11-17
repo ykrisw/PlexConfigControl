@@ -1,0 +1,43 @@
+name: Publish verified 1.6 installers
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/publish-16-verified.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: PCC-QNAP-1.6-x86_64
+          path: qnap-release
+          github-token: ${{ github.token }}
+          run-id: 44032168034
+      - uses: actions/download-artifact@v4
+        with:
+          name: PlexConfigControl-Desktop-PL-EN
+          path: release
+          github-token: ${{ github.token }}
+          run-id: 44032168053
+      - name: Verify downloaded installer checksums
+        run: |
+          cd qnap-release
+          sha256sum -c SHA256SUMS_QNAP
+          cd ../release
+          sha256sum -c SHA256SUMS
+      - name: Publish the already verified packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python3 deploy/publish_release.py qnap-release
+          python3 deploy/publish_release.py release

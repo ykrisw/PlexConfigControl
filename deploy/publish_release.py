@@ -33,7 +33,7 @@ def publish(directory):
     if not files:
         raise ValueError('No verified release files')
     gh('release', 'upload', TAG, *files, '--clobber')
-    release = json.loads(gh('api', f'repos/{repo}/releases/tags/{TAG}'))
+    release = json.loads(gh('release', 'view', TAG, '--json', 'assets'))
     if not NAMES.issubset({asset['name'] for asset in release['assets']}):
         print('Platform files uploaded; waiting for the other verified installer.')
         return
