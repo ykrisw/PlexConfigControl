@@ -31,6 +31,7 @@ jobs:
           python tests/execution_ui_e2e.py
           python tests/mobile_archives_e2e.py
           python tests/mobile_login_landscape_e2e.py
+          python tests/visual_refresh_preview_e2e.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -132,6 +133,8 @@ jobs:
           One ZIP contains graphical launchers for Windows x64, macOS Apple Silicon and Linux x64. The application is installed on TrueNAS SCALE. Choose English or Polish in the wizard. Existing TrueNAS installations can be updated with the same installer.
 
           This release makes Backup and Restore action cards shorter, moves explanatory text beside headings, moves Restore Refresh into the archive-list heading, expands the space for archive lists, and equalizes Dashboard account-button spacing. Light and dark themes are retained.
+
+          The current build also widens the shield horizontally by 20%, matches the archive heading and helper typography, slows indeterminate progress motion only on desktop, synchronizes manual Backup/Restore archive refresh and installs the yellow shield as the TrueNAS Apps icon.
 
           QNAP / QuTS hero uses a separate PCC_1.0.5_x86_64.qpkg installer; do not install this desktop ZIP on QNAP.
           RELEASE_NOTES
