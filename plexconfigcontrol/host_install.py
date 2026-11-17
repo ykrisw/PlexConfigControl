@@ -104,6 +104,13 @@ class LocalMiddleware:
     def start(self):
         return self._call('app.start', (APP,), job=True)
 
+    def brand_icon(self):
+        from .app_branding import install_icon
+        try:
+            install_icon(lambda: self._call('app.metadata.generate', (), job=True))
+        except Exception:
+            print('PlexConfigControl is running; its TrueNAS Apps icon could not be updated.')
+
 
 def _verify_private_file(path, *, owner=None):
     path = Path(path)
@@ -348,6 +355,8 @@ def install_app(api, settings, expected, *, confirmed=False, plex_reference=None
     if installed.get('state') == 'STOPPED':
         api.start()
     _ready(deployment)
+    if hasattr(api, 'brand_icon'):
+        api.brand_icon()
     return {'app': APP, 'host_ip': deployment.host_ip, 'port': deployment.host_port}
 
 def main(argv=None):

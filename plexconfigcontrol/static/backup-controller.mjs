@@ -20,8 +20,9 @@ export function createBackupController(client,render,{schedule=setTimeout,cancel
     ['IDLE','SUCCESS','FAILED'].includes(operation.operation?.phase)&&!operation.operation.snapshot_id&&operation.publication?.status==='NONE';}
   function emit(){if(!disposed)render({entries:entries.map(row=>({...row})),selected:[...selected],available,loading,busy,plex,error,notice,
     operation:operation?structuredClone(operation):null,submission:submission.view(),manualCheck,canCreate:Boolean(canCreate()),creationEnabled:capabilities.backup_create===true,overwriteEnabled:capabilities.backup_overwrite===true,canDelete:Boolean(canDelete()),deletionEnabled:capabilities.archive_delete===true,plan:plan?structuredClone(plan):null});}
-  function refresh(){
+  function refresh(fresh=false){
     if(disposed||busy)return Promise.resolve(false);
+    if(fresh&&refreshing)return refreshing.then(()=>refresh());
     return refreshing??=refreshState().finally(()=>{refreshing=null;});
   }
   async function refreshState(){

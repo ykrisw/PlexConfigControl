@@ -4,6 +4,7 @@ import {restoreResult} from './operation-outcome.mjs';
 import {mountRecoveryView} from './recovery-view.mjs';
 import {bindRestoreControls} from './restore-panel.mjs';
 import {restorePresentation,restoreError} from './restore-messages.mjs';
+import {subscribeArchiveRefresh,refreshArchiveViews} from './archive-refresh.mjs';
 
 // Mount inside the application's main content area, below the five-tab header.
 // Archive names, validation results and errors are always inserted as text.
@@ -136,8 +137,9 @@ export function mountRestoreView(root, client, {language='en'}={}) {
   find('[data-submission-check]').addEventListener('click',()=>void disposeControls.checkSubmission(),{signal:lifecycle.signal});
   find('[data-submission-retry]').addEventListener('click',()=>void disposeControls.retrySubmission(),{signal:lifecycle.signal});
 
+  let archiveReloadQueued=false;
   const loadArchives = async () => {
-    if (loading) return;
+    if (loading) { archiveReloadQueued=true; return; }
     loading = true;
     if(currentState)render(currentState);
     try {
@@ -165,7 +167,10 @@ export function mountRestoreView(root, client, {language='en'}={}) {
       if (currentState) render(currentState);
     } catch (error) {
       if (!lifecycle.signal.aborted) { archiveAvailable=false;message.hidden = false; message.textContent = restoreError(error.message,language); }
-    } finally { loading = false;if(!lifecycle.signal.aborted&&currentState)render(currentState); }
+    } finally {
+      loading = false;if(!lifecycle.signal.aborted&&currentState)render(currentState);
+      if(archiveReloadQueued&&!lifecycle.signal.aborted){archiveReloadQueued=false;void loadArchives();}
+    }
   };
   const updatePlex = async () => {
     if(statusLoading)return;
@@ -183,9 +188,10 @@ export function mountRestoreView(root, client, {language='en'}={}) {
   };
   const refreshArchives = event => {
     if (event.target.closest('[data-restore-action="refresh"]')) {
-      void loadArchives();void updatePlex();
+      void refreshArchiveViews(client);
     }
   };
+  subscribeArchiveRefresh(client,()=>Promise.all([loadArchives(),updatePlex()]),lifecycle.signal);
   root.addEventListener('click', refreshArchives, {signal: lifecycle.signal});
   void loadArchives(); void updatePlex();
   return () => {

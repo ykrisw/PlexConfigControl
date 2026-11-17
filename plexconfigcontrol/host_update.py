@@ -253,6 +253,8 @@ def _update(api, *, check_only=False):
             raise InstallError('Nie potwierdzono powrotu do poprzedniej wersji. Uruchom ponownie ten sam kreator.') from None
         raise InstallError('Aktualizacja nie powiodła się. Poprzednia wersja działa.') from None
     _clear_record(record)
+    if hasattr(api, 'brand_icon'):
+        api.brand_icon()
     print(f'PlexConfigControl zaktualizowany. Otwórz https://{endpoint.host_ip}:{endpoint.host_port}')
 
 

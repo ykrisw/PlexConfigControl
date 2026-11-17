@@ -1,0 +1,54 @@
+name: Visual and shared refresh preview
+on:
+  push:
+    branches: [work/visual-105-review]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install preview tools
+        run: |
+          python -m pip install 'playwright>=1.56,<2' CairoSVG==2.8.2 PyYAML websocket-client
+          python -m playwright install --with-deps '${{ matrix.browser }}'
+      - name: Prepare the actual QNAP frontend and App Center icons
+        run: python deploy/qnap/prepare_release.py .qnap-preview/source
+      - name: Verify TrueNAS changes and render previews
+        env:
+          PCC_TEST_BROWSER: ${{ matrix.browser }}
+          PCC_PLATFORM: truenas
+        run: |
+          python -m unittest discover -s tests -p test_app_branding.py
+          python -m unittest discover -s tests -p test_host_install.py
+          python -m unittest discover -s tests -p test_web.py
+          python tests/visual_refresh_preview_e2e.py
+      - name: Verify the QNAP frontend and render previews
+        env:
+          PCC_TEST_BROWSER: ${{ matrix.browser }}
+          PCC_PLATFORM: qnap
+          PCC_STATIC: .qnap-preview/source/plexconfigcontrol/static
+        run: python tests/visual_refresh_preview_e2e.py
+      - name: Collect icon previews
+        run: cp .qnap-preview/source/deploy/qnap/qpkg/icons/*.png dist/visual-preview/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-review-${{ matrix.browser }}
+          path: dist/visual-preview/
+          retention-days: 7

@@ -12,7 +12,8 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 BUNDLE_SHA256 = "6d71dd5161101fcc8dba84c9ec6181ffa50ac2ff9e66678c18653d48a233b0e9"
 FRONTEND = ("panel-app.mjs", "panel-app.css", "panel-layout.css",
-            "backup-view.mjs", "restore-view.mjs")
+            "backup-view.mjs", "restore-view.mjs", "backup-controller.mjs",
+            "archive-refresh.mjs", "pcc-logo.svg")
 
 def prepare(destination):
     destination = Path(destination).absolute()
@@ -38,6 +39,11 @@ def prepare(destination):
     static = destination / "plexconfigcontrol/static"
     for name in FRONTEND:
         shutil.copy2(ROOT / "plexconfigcontrol/static" / name, static / name)
+    web = destination / "plexconfigcontrol/web.py"
+    code = web.read_text()
+    anchor = "assets={'/assets/panel-client.mjs':'panel-client.mjs',"
+    assert code.count(anchor)==1
+    web.write_text(code.replace(anchor, anchor+"\n                '/assets/archive-refresh.mjs':'archive-refresh.mjs',"))
     # Retain QNAP's runtime integration and the approved QNAP-only button gaps.
     tools = static / "qnap-tools.mjs"
     text = tools.read_text()
@@ -62,6 +68,18 @@ def prepare(destination):
         file.write_text(text)
     (destination / "qnap-private-tar/bin/pcc-tar").chmod(0o755)
     (destination / "deploy/qnap/qpkg/PCC.sh").chmod(0o755)
+    # Let QDK install the official App Center icon slots, including disabled state.
+    import cairosvg
+    icons = destination / "deploy/qnap/qpkg/icons"
+    icons.mkdir()
+    for name, size in (("PCC.png",64),("PCC_gray.png",64),("PCC_80.png",80)):
+        cairosvg.svg2png(url=str(static / "pcc-logo.svg"),write_to=str(icons/name),
+                        output_width=size,output_height=size)
+    builder = destination / "deploy/qnap/build_qpkg_preview.py"
+    code = builder.read_text()
+    anchor = "    (project/'shared').mkdir()"
+    assert code.count(anchor)==1
+    builder.write_text(code.replace(anchor, anchor+"\n    copytree(ROOT/'deploy/qnap/qpkg/icons',project/'icons')"))
     print("QNAP sources, frontend guards and JavaScript syntax: OK")
     return destination
 

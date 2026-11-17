@@ -66,6 +66,7 @@ class Web:
         method=environ.get('REQUEST_METHOD','GET')
         path=environ.get('PATH_INFO','/')
         assets={'/assets/panel-client.mjs':'panel-client.mjs',
+                '/assets/archive-refresh.mjs':'archive-refresh.mjs',
                 '/assets/restore-panel.mjs':'restore-panel.mjs',
                 '/assets/restore-messages.mjs':'restore-messages.mjs',
                 '/assets/restore-view.mjs':'restore-view.mjs',

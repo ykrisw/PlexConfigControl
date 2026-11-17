@@ -3,6 +3,7 @@ import {submissionText} from './submission-controller.mjs';
 import {backupResult} from './operation-outcome.mjs';
 import {mountRecoveryView} from './recovery-view.mjs';
 import {createBackupController,archiveIdentity} from './backup-controller.mjs';
+import {subscribeArchiveRefresh,refreshArchiveViews} from './archive-refresh.mjs';
 
 export function mountBackupView(root,client,{language='en',timezone='Europe/London'}={}){
   const document=root.ownerDocument,pl=language==='pl',tx=(en,polish)=>pl?polish:en;
@@ -152,7 +153,8 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
   }
   const controller=createBackupController(client,render),options={signal:lifecycle.signal};
   root.addEventListener('change',event=>{const input=event.target.closest('[data-archive-name]');if(input)controller.select(input.dataset.archiveName,input.checked);},options);
-  find('[data-refresh]').addEventListener('click',()=>void controller.refresh(),options);
+  subscribeArchiveRefresh(client,()=>controller.refresh(true),lifecycle.signal);
+  find('[data-refresh]').addEventListener('click',()=>void refreshArchiveViews(client),options);
   find('[data-create]').addEventListener('click',()=>{
     if(!prefix.reportValidity())return;
     const choice=controller.prepareBackup();if(!choice)return;

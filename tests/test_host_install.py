@@ -147,7 +147,7 @@ class HostInstallTests(unittest.TestCase):
             prepare.assert_called_once_with(api, {}, reviewed, confirmed=True)
             ready.assert_called_once_with(deployment)
         self.assertEqual([call[0] for call in api.method_calls],
-                         ['allocate_state', 'convert', 'configure', 'start'])
+                         ['allocate_state', 'convert', 'configure', 'start', 'brand_icon'])
 
     def test_built_in_allocation_targets_only_the_application_state(self):
         runner = Mock(return_value=SimpleNamespace(stdout='{}'))
