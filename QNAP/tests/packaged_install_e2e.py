@@ -112,7 +112,7 @@ def audit(package,expected):
             cookie=headers['Set-Cookie'].split(';')[0];csrf=json.loads(body)['csrf']
             for path in ('/api/session','/api/settings','/api/account/photo/status','/api/qnap/info','/api/history','/assets/panel-app.mjs','/assets/qnap-tools.mjs','/assets/restore-panel.mjs'):
                 status,_,body=request(path,cookie=cookie,csrf=csrf);assert status==200,(path,status,body[:200])
-            status,_,body=request('/api/account/photo','POST',body=png(),cookie=cookie,csrf=csrf,content_type='image/png')
+            status,_,body=request('/api/account/photo','POST',body=png(),cookie=cookie,csrf=csrf,content_type='application/octet-stream')
             assert status==200,(status,body[:200])
             assert list((root/'var/owner/qnap-event-outbox').glob('*.json'))
             for path in (root/'var/panel').glob('*.sqlite3'):assert path.stat().st_uid==uid,path.name
