@@ -23,3 +23,5 @@ Ten katalog zawiera własne dane wejściowe budowania i nie wymaga plików z Tru
 ## Maintenance source
 
 Native runtime fixes are readable under [runtime](runtime/). The preparation script overlays them onto the verified baseline. The NAS session token is stored only in root-owned private application storage; no password or TOTP code is saved. A read-only keepalive retains the session until QNAP itself invalidates it. Profile/account events create permanent files in the selected `Logs` folder; events before folder selection are queued privately and exported when the folder is configured.
+
+Restore supports QNAP Library parents with mode 0777 without changing permissions or ACLs. On legacy ZFS the move is limited to the recorded Plex/private-workspace directory pairs, with source and destination identity checks and retained-original recovery. Keep Plex stopped and do not modify these directories during Restore.

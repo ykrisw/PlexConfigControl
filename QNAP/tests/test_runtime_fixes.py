@@ -40,7 +40,7 @@ class Events(unittest.TestCase):
             with self.assertRaises(ValueError):panel_event(Service(Path(folder)),{'password':'secret'})
 
 class Restore(unittest.TestCase):
-    def run_restore(self,fail_mount=False,fail_verify=False):
+    def run_restore(self,fail_mount=False,fail_verify=False,shared_parent=False):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);s=Service(root)
             live=root/'Plex';live.mkdir();(live/'data').write_text('original')
@@ -52,6 +52,9 @@ class Restore(unittest.TestCase):
                 if fail_verify and stage=='VERIFYING_RESTORE':raise restore.QnapRestoreError('Injected verification failure')
             s._progress=progress
             log=root/'operation.log';s._open_log=lambda:log.open('w');s.clock=lambda:0
+            if shared_parent:
+                os.chmod(root,0o777)
+                os.setxattr(root,'user.pcc-restore-test',b'unchanged')
             instance=restore.QnapRestore(s)
             installation=QnapPlexInstallation('1',False,str(root/'pkg'),str(live),'pool/data',str(root),'Plex',4)
             instance.paths=lambda:(installation,live,work)
@@ -79,6 +82,10 @@ class Restore(unittest.TestCase):
                 self.assertTrue(result[0][0],result)
                 self.assertEqual((live/'data').read_text(),'restored')
                 self.assertEqual((work/'previous/data').read_text(),'original')
+            if shared_parent:
+                self.assertEqual(root.stat().st_mode&0o777,0o777)
+                self.assertEqual(os.getxattr(root,'user.pcc-restore-test'),b'unchanged')
+            self.assertEqual(work.stat().st_mode&0o777,0o700)
     def test_older_glibc_uses_kernel_no_replace_without_overwriting(self):
         real=ctypes.CDLL(None,use_errno=True)
         class OldLibc:
@@ -101,15 +108,16 @@ class Restore(unittest.TestCase):
             root=Path(folder);(root/'source').mkdir();(root/'source/data').write_text('preserve')
             (root/'existing').mkdir()
             fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
+            scope={'expected_source':restore.identity(root/'source'),'workspace_fd':fd,'workspace_identity':restore.identity(root)}
             try:
                 with patch.object(restore.ctypes,'CDLL',return_value=libc):
-                    with self.assertRaises(FileExistsError):restore.rename_held(fd,'source',fd,'existing')
+                    with self.assertRaises(FileExistsError):restore.rename_held(fd,'source',fd,'existing',**scope)
                     os.symlink('missing',root/'link')
-                    with self.assertRaises(FileExistsError):restore.rename_held(fd,'source',fd,'link')
-                    restore.rename_held(fd,'source',fd,'target')
+                    with self.assertRaises(FileExistsError):restore.rename_held(fd,'source',fd,'link',**scope)
+                    restore.rename_held(fd,'source',fd,'target',**scope)
                     self.assertEqual((root/'target/data').read_text(),'preserve')
             finally:os.close(fd)
-    def test_legacy_fallback_refuses_unprotected_parent_before_any_move(self):
+    def test_legacy_fallback_requires_recorded_private_workspace(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);(root/'source').mkdir();os.chmod(root,0o777)
             fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
@@ -127,6 +135,28 @@ class Restore(unittest.TestCase):
         def rejected(*args):ctypes.set_errno(22);return -1
         libc=type('LegacyZfs',(),{})();libc.renameat2=Mock(side_effect=rejected)
         with patch.object(restore.ctypes,'CDLL',return_value=libc):self.run_restore()
+    def test_qnap_777_library_restore_and_rollback_preserve_parent_permissions(self):
+        from unittest.mock import Mock
+        def rejected(*args):ctypes.set_errno(22);return -1
+        libc=type('LegacyZfs',(),{})();libc.renameat2=Mock(side_effect=rejected)
+        with patch.object(restore.ctypes,'CDLL',return_value=libc):
+            self.run_restore(shared_parent=True)
+            self.run_restore(fail_verify=True,shared_parent=True)
+    def test_legacy_move_rejects_wrong_inode_and_exposed_workspace(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);(root/'source').mkdir()
+            fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
+            scope={'expected_source':[0,0],'workspace_fd':fd,'workspace_identity':restore.identity(root)}
+            try:
+                with self.assertRaises(restore.QnapRestoreError):restore.guarded_rename_held(fd,'source',fd,'target',**scope)
+                self.assertTrue((root/'source').is_dir())
+                scope['expected_source']=restore.identity(root/'source');os.chmod(root,0o777)
+                with self.assertRaises(restore.QnapRestoreError):restore.guarded_rename_held(fd,'source',fd,'target',**scope)
+                self.assertTrue((root/'source').is_dir());self.assertFalse((root/'target').exists())
+            finally:os.close(fd);os.chmod(root,0o700)
+    def test_coordinator_rejects_unrecorded_directory_pair(self):
+        service=type('Service',(),{})();instance=restore.QnapRestore(service)
+        with self.assertRaises(restore.QnapRestoreError):instance.move('LIVE','unrecorded')
     def test_native_directory_swap_and_verification(self):self.run_restore()
     def test_mount_failure_is_explicit_and_preserves_live(self):self.run_restore(True)
 

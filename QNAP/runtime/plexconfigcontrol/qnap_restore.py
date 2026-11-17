@@ -45,30 +45,50 @@ def sync_directory(path):
     finally:os.close(fd)
 
 
-def guarded_rename_held(source_fd,source,target_fd,target):
-    """Legacy-ZFS rename under the coordinator's exclusive operation lease.
+def guarded_rename_held(source_fd,source,target_fd,target,*,expected_source=None,
+                        workspace_fd=None,workspace_identity=None):
+    """Journal-scoped legacy ZFS move with an identified private endpoint.
 
-    Plain rename is used only for absent destinations in root-owned parents
-    with no group/other write access. Existing entries, including empty
-    directories and symlinks, are never deliberately replaced. Without these
-    protections, fail before touching the live configuration; never chmod it.
+    QNAP's Library parent may be 0777. Do not chmod it or change its ACL.
+    The coordinator admits one operation, stops Plex manually, identifies both
+    parents, and supplies the recorded source inode and private workspace.
+    Refuse existing targets; pin the source and verify the moved inode. An
+    unexpected layout is retained for explicit recovery, never auto-deleted.
     """
     for name in (source,target):
         if not isinstance(name,str) or name in ('','.','..') or '/' in name:
             raise QnapRestoreError('Invalid Restore directory entry')
+    if workspace_fd is None or workspace_fd not in (source_fd,target_fd):
+        raise QnapRestoreError('Legacy ZFS rename requires a recorded private workspace endpoint')
+    private=os.fstat(workspace_fd)
+    if (not stat.S_ISDIR(private.st_mode) or private.st_uid!=os.geteuid() or private.st_mode&0o077
+            or [private.st_dev,private.st_ino]!=workspace_identity):
+        raise QnapRestoreError('Private Restore workspace identity or permissions changed')
+    if not isinstance(expected_source,(list,tuple)) or len(expected_source)!=2:
+        raise QnapRestoreError('Recorded Restore source identity is required')
     for fd in (source_fd,target_fd):
         info=os.fstat(fd)
-        if not stat.S_ISDIR(info.st_mode) or info.st_uid!=os.geteuid() or info.st_mode&0o022:
-            raise QnapRestoreError('Legacy ZFS rename requires protected parent directories')
-    try:os.stat(target,dir_fd=target_fd,follow_symlinks=False)
-    except FileNotFoundError:pass
-    else:raise FileExistsError(errno.EEXIST,'Restore destination already exists',target)
-    if not stat.S_ISDIR(os.stat(source,dir_fd=source_fd,follow_symlinks=False).st_mode):
-        raise QnapRestoreError('Restore source is not a regular directory')
-    os.rename(source,target,src_dir_fd=source_fd,dst_dir_fd=target_fd)
+        if not stat.S_ISDIR(info.st_mode) or info.st_uid!=os.geteuid():
+            raise QnapRestoreError('Restore parent ownership changed')
+    held=os.open(source,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=source_fd)
+    try:
+        before=os.fstat(held)
+        if [before.st_dev,before.st_ino]!=list(expected_source):
+            raise QnapRestoreError('Restore source identity changed before move')
+        try:os.stat(target,dir_fd=target_fd,follow_symlinks=False)
+        except FileNotFoundError:pass
+        else:raise FileExistsError(errno.EEXIST,'Restore destination already exists',target)
+        linked=os.stat(source,dir_fd=source_fd,follow_symlinks=False)
+        if not stat.S_ISDIR(linked.st_mode) or (linked.st_dev,linked.st_ino)!=(before.st_dev,before.st_ino):
+            raise QnapRestoreError('Restore source entry changed before move')
+        os.rename(source,target,src_dir_fd=source_fd,dst_dir_fd=target_fd)
+        after=os.stat(target,dir_fd=target_fd,follow_symlinks=False)
+        if not stat.S_ISDIR(after.st_mode) or (after.st_dev,after.st_ino)!=(before.st_dev,before.st_ino):
+            raise QnapRestoreError('Restore destination identity changed; retain all directories for recovery')
+    finally:os.close(held)
 
 
-def rename_held(source_fd,source,target_fd,target):
+def rename_held(source_fd,source,target_fd,target,**scope):
     libc=ctypes.CDLL(None,use_errno=True)
     try:function=libc.renameat2
     except AttributeError:function=None
@@ -87,7 +107,7 @@ def rename_held(source_fd,source,target_fd,target):
     if result:
         code=ctypes.get_errno()
         if code not in (errno.EINVAL,errno.ENOSYS,errno.EOPNOTSUPP):raise OSError(code,os.strerror(code))
-        guarded_rename_held(source_fd,source,target_fd,target)
+        guarded_rename_held(source_fd,source,target_fd,target,**scope)
     os.fsync(source_fd);os.fsync(target_fd)
 
 
@@ -357,12 +377,17 @@ class QnapRestore:
         raise QnapRestoreError('Restore directory layout is ambiguous; no directory was removed')
 
     def move(self,source,target):
+        moves={('LIVE','previous'):'original',('prepared','LIVE'):'prepared',
+               ('LIVE','rejected'):'prepared',('previous','LIVE'):'original'}
+        if (source,target) not in moves:raise QnapRestoreError('Unrecorded Restore directory move')
+        expected=self.record[moves[(source,target)]]
         installation,live,work=self.paths()
         parent_fd=os.open(live.parent,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW);work_fd=os.open(work,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
         try:
             if [os.fstat(parent_fd).st_dev,os.fstat(parent_fd).st_ino]!=self.record['parent'] or [os.fstat(work_fd).st_dev,os.fstat(work_fd).st_ino]!=self.record['workspace_identity']:raise QnapRestoreError('Restore directory identity changed')
             source_fd=parent_fd if source=='LIVE' else work_fd;target_fd=parent_fd if target=='LIVE' else work_fd
-            rename_held(source_fd,live.name if source=='LIVE' else source,target_fd,live.name if target=='LIVE' else target)
+            rename_held(source_fd,live.name if source=='LIVE' else source,target_fd,live.name if target=='LIVE' else target,
+                        expected_source=expected,workspace_fd=work_fd,workspace_identity=self.record['workspace_identity'])
         finally:os.close(parent_fd);os.close(work_fd)
 
     def rollback(self):
@@ -419,7 +444,8 @@ class QnapRestore:
             def apply(identifier,baseline):
                 try:return unchecked_apply(identifier,baseline)
                 except Exception as error:
-                    self.job['apply_failure']={'type':type(error).__name__,'errno':getattr(error,'errno',None),'phase':self.record.get('phase')}
+                    self.job['apply_failure']={'type':type(error).__name__,'errno':getattr(error,'errno',None),'phase':self.record.get('phase'),
+                        'reason':str(error) if isinstance(error,(QnapRestoreError,SnapshotProbeError)) else os.strerror(error.errno) if isinstance(error,OSError) and error.errno is not None else type(error).__name__}
                     s._save()
                     log.write('APPLY_FAILURE: '+json.dumps(self.job['apply_failure'],sort_keys=True)+'\n')
                     log.write(traceback.format_exc()+'\n')
@@ -433,7 +459,7 @@ class QnapRestore:
                 self.job['snapshot_failure']={key:result.get(key) for key in ('created','readable','cleanup_confirmed','error','cleanup_error','id')}
                 s._save()
                 log.write('SNAPSHOT_RESULT: '+json.dumps(self.job['snapshot_failure'],sort_keys=True)+'\n')
-                raise QnapRestoreError('Restore snapshot stage failed: '+str(result['error'] or result['cleanup_error'] or 'verification incomplete'))
+                raise QnapRestoreError('Restore snapshot stage failed: '+str(self.job.get('apply_failure',{}).get('reason') or result['error'] or result['cleanup_error'] or 'verification incomplete'))
             log.write('Restore bytes/metadata verified. Recovery snapshot deletion confirmed by API and ZFS.\nStart Plex manually, check playback, then accept Restore or stop Plex manually and roll back.\n')
             success=True
         except BaseException as error:
