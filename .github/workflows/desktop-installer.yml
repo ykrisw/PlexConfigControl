@@ -7,6 +7,7 @@ permissions:
   contents: read
 jobs:
   backup-layout:
+    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'rename-only:')
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     strategy:
@@ -39,6 +40,7 @@ jobs:
           path: dist/browser-screenshots/
           retention-days: 7
   build:
+    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'rename-only:')
     strategy:
       fail-fast: false
       matrix:
@@ -112,7 +114,7 @@ jobs:
           compression-level: 0
           retention-days: 30
   publish:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && !startsWith(github.event.head_commit.message, 'rename-only:')
     needs: package
     runs-on: ubuntu-22.04
     permissions:
@@ -136,7 +138,7 @@ jobs:
 
           The current build also widens the shield horizontally by 20%, matches the archive heading and helper typography, slows indeterminate progress motion only on desktop, synchronizes manual Backup/Restore archive refresh and installs the yellow shield as the TrueNAS Apps icon.
 
-          QNAP / QuTS hero uses a separate PCC_1.0.5_x86_64.qpkg installer; do not install this desktop ZIP on QNAP.
+          QNAP / QuTS hero uses a separate PlexConfigControlQuTShero_1.6.qpkg installer; do not install this desktop ZIP on QNAP.
           RELEASE_NOTES
           gh release view v1.0.5 --json body > existing-notes.json || printf '{}' > existing-notes.json
           python3 - <<'PY'

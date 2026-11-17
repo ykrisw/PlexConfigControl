@@ -1,6 +1,6 @@
 # PlexConfigControl 1.0.5 for QNAP
 
-This is the native `PCC_1.0.5_x86_64.qpkg` installer for **QNAP QuTS hero with ZFS snapshot APIs on x86_64**. The TrueNAS SCALE desktop installer is a separate product artifact.
+This is the native `PlexConfigControlQuTShero_1.6.qpkg` installer for **QNAP QuTS hero with ZFS snapshot APIs on x86_64**. The TrueNAS SCALE desktop installer is a separate product artifact.
 
 ## Build inputs preserved in Git
 

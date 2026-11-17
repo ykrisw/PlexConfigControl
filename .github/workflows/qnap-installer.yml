@@ -17,6 +17,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
+    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'rename-only:')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -62,10 +63,10 @@ jobs:
           print("QNAP App Center icons and shared archive refresh asset: OK")
           PY
           mkdir -p qnap-release
-          cp .qnap-build/output/release/PCC_1.0.5_x86_64.qpkg qnap-release/
+          cp .qnap-build/output/release/PCC_1.0.5_x86_64.qpkg qnap-release/PlexConfigControlQuTShero_1.6.qpkg
           cp .qnap-build/output/release/build-result.json qnap-release/
           cd qnap-release
-          sha256sum PCC_1.0.5_x86_64.qpkg > SHA256SUMS_QNAP
+          sha256sum PlexConfigControlQuTShero_1.6.qpkg > SHA256SUMS_QNAP
       - name: Retain source and built installer
         uses: actions/upload-artifact@v4
         with:
@@ -98,11 +99,11 @@ jobs:
               body = body.split(heading)[0].rstrip()
           body += "\n\n" + heading + "\n\n"
           body += "PlexConfigControl 1.0.5 — native QNAP installer, separate from the TrueNAS SCALE installer above.\n\n"
-          body += "[Download PCC_1.0.5_x86_64.qpkg](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.0.5/PCC_1.0.5_x86_64.qpkg)\n\n"
+          body += "[Download PlexConfigControlQuTShero_1.6.qpkg](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.0.5/PlexConfigControlQuTShero_1.6.qpkg)\n\n"
           body += "For QuTS hero with ZFS snapshot APIs on x86_64; ARM and plain QTS are not supported by this build. Package-private Python and GNU tar are included. Uses the NAS host address and selected HTTPS port; no fixed user IP.\n\n"
           body += "Includes the 20% wider yellow shield and App Center icon, identical archive heading/helper typography, slower desktop-only indeterminate progress motion, synchronized Backup/Restore manual Refresh, compact cards, preserved sign-in fields, touch landscape scrolling and QNAP account-button spacing. Restore waits for manual Plex stop. A successful build does not replace a device-level restore test.\n\n"
           body += "Checksum: SHA256SUMS_QNAP. This QPKG is not digitally signed by QNAP.\n"
           notes.write_text(body)
           PY
-          gh release upload v1.0.5 qnap-release/PCC_1.0.5_x86_64.qpkg qnap-release/SHA256SUMS_QNAP --clobber
+          gh release upload v1.0.5 qnap-release/PlexConfigControlQuTShero_1.6.qpkg qnap-release/SHA256SUMS_QNAP --clobber
           gh release edit v1.0.5 --title "PlexConfigControl 1.0.5 — TrueNAS SCALE / QNAP QuTS hero" --notes-file release-notes.txt

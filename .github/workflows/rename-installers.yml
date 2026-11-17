@@ -1,0 +1,62 @@
+name: Rename installer downloads to 1.6
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/rename-installers.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rename:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Rename existing assets without rebuilding their contents
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, subprocess
+          repo = os.environ['GH_REPO']
+          def api(endpoint, *args):
+              result = subprocess.run(['gh', 'api', endpoint, *args], check=True, capture_output=True, text=True)
+              return json.loads(result.stdout)
+          release = api(f'repos/{repo}/releases/tags/v1.0.5')
+          changes = [
+              ('PCC_1.0.5_x86_64.qpkg', 'PlexConfigControlQuTShero_1.6.qpkg',
+               '36cecc1fc89285b5ff764912a074f031e48b17f7c26016e125afa3431c3c27f9', 'SHA256SUMS_QNAP'),
+              ('PlexConfigControl_Installer_Windows_macOS_Linux_PL_EN.zip', 'PlexConfigControlTrueNAS_1.6.zip',
+               '51f27c59f76a531e0f739f1f679384ed4ed025bd214922d27f46e3b4dd589dc7', 'SHA256SUMS'),
+          ]
+          checked = []
+          for old, new, digest, checksum in changes:
+              matches = [asset for asset in release['assets'] if asset['name'] in (old, new)]
+              assert len(matches) == 1, f'Ambiguous or missing installer: {new}'
+              asset, = matches
+              assert asset['digest'] == 'sha256:' + digest, f'Installer content changed: {new}'
+              checked.append((asset, old, new, digest, checksum))
+          output = pathlib.Path('rename-results')
+          output.mkdir()
+          results = []
+          body = release['body'] or ''
+          for asset, old, new, digest, checksum in checked:
+              if asset['name'] != new:
+                  asset = api(f"repos/{repo}/releases/assets/{asset['id']}", '--method', 'PATCH', '-f', 'name=' + new)
+              assert asset['name'] == new and asset['digest'] == 'sha256:' + digest
+              (output / checksum).write_text(digest + '  ' + new + '\n')
+              body = body.replace(old, new)
+              results.append({'name': new, 'sha256': digest, 'asset_id': asset['id'], 'url': asset['browser_download_url']})
+          notes = output / 'release-notes.md'
+          notes.write_text(body)
+          subprocess.run(['gh', 'release', 'upload', 'v1.0.5', str(output/'SHA256SUMS'), str(output/'SHA256SUMS_QNAP'), '--clobber'], check=True)
+          subprocess.run(['gh', 'release', 'edit', 'v1.0.5', '--notes-file', str(notes)], check=True)
+          (output/'verified-installers.json').write_text(json.dumps(results, indent=2) + '\n')
+          print(json.dumps(results, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-names-1.6
+          path: rename-results/
+          retention-days: 30
