@@ -106,10 +106,19 @@ class LocalMiddleware:
 
     def brand_icon(self):
         from .app_branding import install_icon
+        previous = self.call('app.config', APP)
+        def regenerate():
+            self._call('app.metadata.generate', (), job=True)
+            rows = self.call('app.query', [['name', '=', APP]])
+            from . import __version__
+            if (len(rows) != 1 or rows[0]['version'] != __version__
+                    or rows[0]['metadata'].get('app_version') != __version__
+                    or self.call('app.config', APP) != previous):
+                raise ValueError('TrueNAS version or configuration verification failed')
         try:
-            install_icon(lambda: self._call('app.metadata.generate', (), job=True))
-        except Exception:
-            print('PlexConfigControl is running; its TrueNAS Apps icon could not be updated.')
+            install_icon(regenerate)
+        except Exception as error:
+            raise InstallError('PlexConfigControl is running, but its version metadata could not be confirmed.') from error
 
 
 def _verify_private_file(path, *, owner=None):

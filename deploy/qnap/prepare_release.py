@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare the verified QNAP source export with the shared 1.0.5 frontend."""
+"""Prepare the verified QNAP source export with the shared 1.6 frontend."""
 from pathlib import Path, PurePosixPath
 import hashlib
 import json
@@ -63,8 +63,8 @@ def prepare(destination):
         subprocess.run(["node", "--check", str(file)], check=True)
     for file in (destination / "plexconfigcontrol/__init__.py", static / "settings-view.mjs"):
         text = file.read_text()
-        for old in ("0.3.0", "0.1.0.dev0", "1.0.10"):
-            text = text.replace(old, "1.0.5")
+        for old in ("0.3.0", "0.1.0.dev0", "1.0.10", "1.0.5"):
+            text = text.replace(old, "1.6")
         file.write_text(text)
     (destination / "qnap-private-tar/bin/pcc-tar").chmod(0o755)
     (destination / "deploy/qnap/qpkg/PCC.sh").chmod(0o755)

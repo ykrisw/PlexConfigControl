@@ -259,7 +259,7 @@ class SetupWindow:
         self.host = tk.StringVar()
         self.user = tk.StringVar()
         self.prompt_value = tk.StringVar()
-        root.title('PlexConfigControl Setup')
+        root.title('PlexConfigControl Setup 1.6')
         root.geometry('660x530')
         root.minsize(620, 500)
         style = ttk.Style(root)

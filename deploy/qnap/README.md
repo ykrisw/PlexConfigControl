@@ -1,4 +1,4 @@
-# PlexConfigControl 1.0.5 for QNAP
+# PlexConfigControl 1.6 for QNAP
 
 This is the native `PlexConfigControlQuTShero_1.6.qpkg` installer for **QNAP QuTS hero with ZFS snapshot APIs on x86_64**. The TrueNAS SCALE desktop installer is a separate product artifact.
 
@@ -18,7 +18,7 @@ It excludes private application state, passwords, TLS keys, history, operation l
 
 ## Installation and update
 
-Download the QNAP QPKG from release 1.0.5 after its build completes and verify against `SHA256SUMS_QNAP`. Install manually through App Center. It is not digitally signed by QNAP.
+Download the QNAP QPKG from release 1.6 after its build completes and verify against `SHA256SUMS_QNAP`. Install manually through App Center. It is not digitally signed by QNAP.
 
 Finish active operations, recovery and retained-configuration review before updating or removing PCC. The package refuses routine maintenance while these are outstanding. Existing private settings remain in the package's private state directory during an update. A fresh installation opens first-run setup.
 
@@ -35,3 +35,13 @@ QNAP authentication supports a current TOTP when required. NAS credentials are n
 Development hardware was a TVS-h674 running QuTS hero. Other x86_64 models require compatible glibc/runtime and the same native snapshot APIs; they have not all been device-tested. ARM and non-ZFS QTS are unsupported by this build. The native management API currently assumes local HTTPS port 443. A customized management port needs additional support.
 
 A successful package build and browser regression tests do not prove a full restore on every NAS. Keep an independent backup when testing a new device.
+
+## App Center description
+
+The package summary is included in QPKG metadata. App Center card descriptions are also published as a standard repository feed. To enable the Polish card description, add this URL in App Center → Settings → App Repository:
+
+https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/qnap-repository-pl.xml
+
+English feed: https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/qnap-repository.xml
+
+Adding this repository is a manual administrator action; the installer does not change trusted repositories or automatic update policy.

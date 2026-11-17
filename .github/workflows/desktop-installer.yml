@@ -66,6 +66,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -p test_setup_protocol.py
           python -m unittest discover -s tests -p test_desktop_setup.py
+          python -m unittest discover -s tests -p test_release_metadata.py
       - name: Build native installer
         run: python deploy/desktop/build.py dist
       - name: Check graphical wizard on Linux
@@ -106,7 +107,14 @@ jobs:
           path: artifacts
           merge-multiple: true
       - name: Package all platforms in one ZIP
-        run: python deploy/desktop/package.py artifacts release
+        run: |
+          python deploy/desktop/package.py artifacts release
+          python - <<'PY'
+          from zipfile import ZipFile
+          with ZipFile("release/PlexConfigControlTrueNAS_1.6.zip") as archive:
+              assert archive.read("BUILD-INFO.txt").decode().startswith("PlexConfigControl 1.6\n")
+          print("TrueNAS 1.6 installer metadata: OK")
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: PlexConfigControl-Desktop-PL-EN
@@ -114,46 +122,21 @@ jobs:
           compression-level: 0
           retention-days: 30
   publish:
-    if: github.ref == 'refs/heads/main' && !startsWith(github.event.head_commit.message, 'rename-only:')
+    if: github.ref == 'refs/heads/main'
     needs: package
     runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
           name: PlexConfigControl-Desktop-PL-EN
           path: release
-      - name: Publish the current installer
+      - name: Publish verified TrueNAS 1.6 installer
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: |
-          cat > notes.md <<'RELEASE_NOTES'
-          PlexConfigControl 1.0.5 — installer for TrueNAS SCALE.
-
-          One ZIP contains graphical launchers for Windows x64, macOS Apple Silicon and Linux x64. The application is installed on TrueNAS SCALE. Choose English or Polish in the wizard. Existing TrueNAS installations can be updated with the same installer.
-
-          This release makes Backup and Restore action cards shorter, moves explanatory text beside headings, moves Restore Refresh into the archive-list heading, expands the space for archive lists, and equalizes Dashboard account-button spacing. Light and dark themes are retained.
-
-          The current build also widens the shield horizontally by 20%, matches the archive heading and helper typography, slows indeterminate progress motion only on desktop, synchronizes manual Backup/Restore archive refresh and installs the yellow shield as the TrueNAS Apps icon.
-
-          QNAP / QuTS hero uses a separate PlexConfigControlQuTShero_1.6.qpkg installer; do not install this desktop ZIP on QNAP.
-          RELEASE_NOTES
-          gh release view v1.0.5 --json body > existing-notes.json || printf '{}' > existing-notes.json
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          previous = json.loads(Path("existing-notes.json").read_text()).get("body", "")
-          marker = "## QNAP QuTS hero — x86_64"
-          if marker in previous:
-              notes = Path("notes.md")
-              notes.write_text(notes.read_text() + "\n" + marker + previous.split(marker, 1)[1])
-          PY
-          if gh release view v1.0.5 >/dev/null 2>&1; then
-            gh api "repos/$GH_REPO/git/refs/tags/v1.0.5" --method PATCH -f sha="$GITHUB_SHA" -F force=true
-            gh release upload v1.0.5 release/* --clobber
-            gh release edit v1.0.5 --title 'PlexConfigControl 1.0.5 — TrueNAS SCALE / QNAP QuTS hero' --notes-file notes.md --latest
-          else
-            gh release create v1.0.5 release/* --target "$GITHUB_SHA" --title 'PlexConfigControl 1.0.5 — TrueNAS SCALE / QNAP QuTS hero' --notes-file notes.md --latest
-          fi
+        run: python3 deploy/publish_release.py release

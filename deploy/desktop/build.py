@@ -4,6 +4,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import plistlib
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile
 
@@ -29,9 +30,17 @@ def build(output):
                    '--specpath', str(work), str(ROOT / 'deploy/desktop/setup_app.py')]
         if sys.platform != 'darwin':
             command.insert(5, '--onefile')
+        if sys.platform == 'win32':
+            command[3:3] = ['--version-file', str(ROOT/'deploy/desktop/windows-version.txt')]
         subprocess.run(command, cwd=ROOT, check=True)
         if sys.platform == 'darwin':
             shutil.rmtree(output / 'PlexConfigControl Setup', ignore_errors=True)
+            bundle = output / 'PlexConfigControl Setup.app'
+            info = bundle / 'Contents/Info.plist'
+            data = plistlib.loads(info.read_bytes())
+            data.update(CFBundleVersion='1.6', CFBundleShortVersionString='1.6')
+            info.write_bytes(plistlib.dumps(data))
+            subprocess.run(['codesign','--force','--deep','--sign','-',str(bundle)],check=True)
 
 
 if __name__ == '__main__':
