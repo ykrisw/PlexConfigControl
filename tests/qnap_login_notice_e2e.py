@@ -71,7 +71,7 @@ with sync_playwright() as p:
     for language in ('en','pl'):
         for theme in ('light','dark'):
             fixture=Fixture(language,theme)
-            page=browser.new_page(viewport={'width':1280,'height':850},color_scheme=theme)
+            page=browser.new_page(viewport={'width':1920,'height':1080},color_scheme=theme)
             page.route('**/*',fixture.route)
             page.goto(execution.ORIGIN)
             backup='Backup' if language=='en' else 'Kopia zapasowa'
