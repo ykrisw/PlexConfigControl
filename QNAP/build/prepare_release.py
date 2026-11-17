@@ -69,6 +69,13 @@ def prepare(destination):
     for relative in ('plexconfigcontrol/qnap_restore.py','plexconfigcontrol/qnap_service.py','plexconfigcontrol/qnap_web.py','plexconfigcontrol/qnap_eventlog.py','plexconfigcontrol/qnap_session.py','qpkg/launcher.py'):
         target=destination / ('deploy/qnap/'+relative if relative.startswith('qpkg/') else relative)
         shutil.copy2(ROOT/'runtime'/relative,target)
+    control=destination/'deploy/qnap/qpkg'
+    shutil.copy2(ROOT/'build/qpkg/qpkg.cfg',control/'qpkg.cfg')
+    routines=(ROOT/'build/qpkg/package_routines').read_text()
+    orphan=(ROOT/'build/orphan_cleanup.py').read_text()
+    block="    if ! /usr/local/bin/python3 - <<'PCC_ORPHAN_PY'\n"+orphan+"\nPCC_ORPHAN_PY\n    then\n        err_log \"PCC process cleanup failed; no unverified kill was sent.\"\n        return 1\n    fi"
+    assert routines.count('    # PCC_ORPHAN_CLEANUP')==1
+    (control/'package_routines').write_text(routines.replace('    # PCC_ORPHAN_CLEANUP',block))
     static = destination / "plexconfigcontrol/static"
     for name in FRONTEND:
         shutil.copy2(ROOT / "shared-ui" / name, static / name)

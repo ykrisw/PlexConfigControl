@@ -39,9 +39,14 @@ def extract(package,destination):
         script=int(re.search(rb'^script_len=(\d+)$',header,re.M)[1])
         control=int(re.search(rb'expr \$script_len \+ (\d+)',header)[1])
         size=int(re.search(rb'^\s*data_len=(\d+)$',header,re.M)[1])
+        source.seek(script)
+        control_data=source.read(control)
         source.seek(script+control)
         data=source.read(size)
         if len(data)!=size:raise ValueError('Truncated QPKG')
+    control_dir=destination/'.qa-control';control_dir.mkdir()
+    with tarfile.open(fileobj=io.BytesIO(control_data),mode='r:gz') as archive:
+        archive.extractall(control_dir,filter='data')
     with tarfile.open(fileobj=io.BytesIO(data),mode='r:gz') as archive:
         archive.extractall(destination,filter='data')
 
@@ -63,7 +68,7 @@ def audit(package,expected):
         runtime_log=outer/'runtime.log'
         def start():
             stream=runtime_log.open('ab')
-            process=subprocess.Popen([str(root/'python/bin/python3'),'-I','-S',str(Path(__file__).resolve()),'--supervise-fixture',str(root),str(port)],stdout=stream,stderr=stream)
+            process=subprocess.Popen([str(root/'python/bin/python3'),'-I','-S',str(Path(__file__).resolve()),'--supervise-fixture',str(root),str(port),'--supervise',str(root/'launcher.py')],stdout=stream,stderr=stream)
             stream.close();return process
         def stop(process):
             if process.poll() is None:
@@ -150,6 +155,50 @@ def audit(package,expected):
             status,_,body=request('/api/logout','POST',{},cookie=cookie,csrf=csrf)
             assert status==200 and request('/api/session',cookie=cookie)[0]==401
             print('Restart, profile removal, settings, CSRF, password change, history clear and explicit logout: PASS',flush=True)
+            # Generate and run the real pinned QDK uninstaller, confined to this fixture.
+            control=root/'.qa-control'
+            qdk=(root/'build-sources/qinstall.sh').read_text()
+            function=re.search(r'(?ms)^create_uninstall_script\(\)\{.*?^\}',qdk).group()
+            for name in ('init','startup','shutdown','icons','bin'):(outer/name).mkdir()
+            which=outer/'bin/which';which.write_text('#!/bin/sh\nexit 1\n');which.chmod(0o755)
+            import shlex
+            values={'SYS_QPKG_DIR':str(root),'SYS_INIT_DIR':str(outer/'init'),
+                    'SYS_STARTUP_DIR':str(outer/'startup'),'SYS_SHUTDOWN_DIR':str(outer/'shutdown'),
+                    'SYS_RSS_IMG_DIR':str(outer/'icons'),'QPKG_SERVICE_PROGRAM':'PCC.sh','QPKG_NAME':'PCC',
+                    'CMD_CAT':'/bin/cat','CMD_CHMOD':'/bin/chmod','CMD_RM':'/bin/rm',
+                    'CMD_FIND':'/usr/bin/find','CMD_XARGS':'/usr/bin/xargs','CMD_MKDIR':'/bin/mkdir',
+                    'CMD_SLEEP':'/bin/true','CMD_SYNC':'/bin/true'}
+            script='\n'.join(key+'='+shlex.quote(value) for key,value in values.items())+'\n'+function+'\ncreate_uninstall_script\n'
+            environment=dict(os.environ,PATH=str(outer/'bin')+':/usr/bin:/bin')
+            subprocess.run(['bash','-c',script],cwd=control,env=environment,check=True)
+            uninstall=root/'.uninstall.sh'
+            assert '$SYS_QPKG_DIR' not in uninstall.read_text()
+            # Refuse removal while a recorded operation is active, preserving all files.
+            jobs=root/'var/owner/qnap-jobs';jobs.mkdir(exist_ok=True)
+            identifier='a'*32;pointer=root/'var/owner/qnap-current.json';job=jobs/(identifier+'.json')
+            pointer.write_text(json.dumps({'request_id':identifier}));pointer.chmod(0o600)
+            job.write_text(json.dumps({'state':'RUNNING'}));job.chmod(0o600)
+            result=subprocess.run(['sh',str(uninstall)],env=environment,capture_output=True)
+            assert result.returncode!=0 and (root/'launcher.py').exists(),result.stderr
+            assert process.poll() is None and request('/')[0]==200
+            pointer.unlink();job.unlink()
+            untouched=[]
+            for name in ('PlexData','Archives'):
+                directory=outer/name;directory.mkdir();keep=directory/'keep';keep.write_text(name);untouched.append(keep)
+            subprocess.run(['sh',str(uninstall)],env=environment,check=True)
+            process.wait(timeout=35)
+            assert process.returncode==0 and not root.exists()
+            assert all(path.read_text()==path.parent.name for path in untouched)
+            with socket.socket() as released:
+                released.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+                released.bind(('127.0.0.1',port))
+            print('Actual QDK uninstall: active-operation refusal, stopped service, removed app tree, released port, preserved Plex and archives: PASS',flush=True)
+            root.mkdir(mode=0o755);extract(package,root);process=start();ready(process)
+            assert request('/')[0]==200 and b'First-run setup' in request('/')[2]
+            assert (root/'var/panel/setup-token').read_text().strip()!=token
+            assert not (root/'var/panel/setup-complete.json').exists()
+            print('Clean reinstall creates fresh setup and new token: PASS',flush=True)
+
         except BaseException:
             print(runtime_log.read_text(errors='replace')[-16000:],flush=True)
             raise
@@ -161,7 +210,7 @@ def audit(package,expected):
 if __name__=='__main__':
     if os.environ.get('GITHUB_ACTIONS')!='true' or os.geteuid()!=0 or Path('/sbin/getcfg').exists():
         raise SystemExit('Run only as root on a disposable GitHub Actions Linux runner, never on a NAS.')
-    if len(sys.argv)==4 and sys.argv[1]=='--supervise-fixture':fixture_supervisor(Path(sys.argv[2]),int(sys.argv[3]))
+    if len(sys.argv)==6 and sys.argv[1]=='--supervise-fixture':fixture_supervisor(Path(sys.argv[2]),int(sys.argv[3]))
     else:
         parser=argparse.ArgumentParser();parser.add_argument('package',type=Path);parser.add_argument('--expected-sha256');args=parser.parse_args()
         audit(args.package.resolve(),args.expected_sha256)

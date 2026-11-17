@@ -15,6 +15,7 @@ pkg_pre_install(){
             "$PCC_OLD/python/bin/python3" -I -S "$PCC_OLD/launcher.py" --stop || { err_log "PCC could not be stopped safely."; return 1; }
         fi
     fi
+    # PCC_ORPHAN_CLEANUP
 }
 pkg_post_install(){
     case "$SYS_QPKG_DIR" in /share/*/.qpkg/PCC) ;; *) err_log "Unexpected PCC install location."; return 1;; esac
@@ -26,6 +27,9 @@ pkg_post_install(){
     "$SYS_QPKG_DIR/python/bin/python3" -I -S "$SYS_QPKG_DIR/launcher.py" --initialize || { err_log "PCC initialization failed."; return 1; }
     $CMD_SETCFG PCC Pid_File "$SYS_QPKG_DIR/var/service.pid" -f /etc/config/qpkg.conf
 }
-PKG_PRE_REMOVE="{
-    \"\$SYS_QPKG_DIR/python/bin/python3\" -I -S \"\$SYS_QPKG_DIR/launcher.py\" --stop || err_log \"Complete active operations or recovery before removing PCC.\"
-}"
+PKG_PRE_REMOVE="
+if ! \"$SYS_QPKG_DIR/python/bin/python3\" -I -S \"$SYS_QPKG_DIR/launcher.py\" --stop; then
+    printf '%s\\n' 'Complete active operations or recovery before removing PCC. No application files were removed.' >&2
+    exit 1
+fi
+"

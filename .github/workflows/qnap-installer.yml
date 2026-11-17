@@ -63,9 +63,9 @@ jobs:
         run: |
           python -m pip install CairoSVG==2.8.2
           python build/prepare_release.py .qnap-build/source
-          cp build/qpkg/qpkg.cfg build/qpkg/package_routines .qnap-build/source/deploy/qnap/qpkg/
           bash -n .qnap-build/source/deploy/qnap/qpkg/package_routines
           bash -n .qnap-build/source/deploy/qnap/qpkg/PCC.sh
+          python -m unittest discover -s tests -p test_lifecycle.py -v
       - name: Fetch pinned runtime and QDK
         run: |
           python - <<'PY'

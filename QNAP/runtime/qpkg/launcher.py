@@ -338,6 +338,10 @@ def status():
         payload=json.loads(response.read(4096))
         if response.status!=200 or payload.get('mode')!='qnap-install-preview' or payload.get('ready') is not True:
             raise ValueError('Panel is not ready')
+        connection.request('GET','/')
+        front=connection.getresponse()
+        front.read(1024*1024)
+        if front.status!=200:raise ValueError('Panel front page is not ready')
     finally:connection.close()
 
 
