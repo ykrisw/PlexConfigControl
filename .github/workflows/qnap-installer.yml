@@ -109,6 +109,8 @@ jobs:
           python build/make_repository.py qnap-release/PlexConfigControl_QuTShero_x86-64v1.6.qpkg qnap-release/qnap-repository-pl.xml pl
           cd qnap-release
           sha256sum PlexConfigControl_QuTShero_x86-64v1.6.qpkg > SHA256SUMS_QNAP
+      - name: Verify fresh install using the actual packaged server and service UID
+        run: sudo --preserve-env=GITHUB_ACTIONS "$(command -v python)" tests/packaged_install_e2e.py qnap-release/PlexConfigControl_QuTShero_x86-64v1.6.qpkg
       - name: Retain source and built installer
         uses: actions/upload-artifact@v4
         with:

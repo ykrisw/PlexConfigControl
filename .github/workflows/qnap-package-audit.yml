@@ -1,0 +1,31 @@
+name: Audit published QNAP package on fresh install
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/qnap-package-audit.yml, QNAP/tests/packaged_install_e2e.py]
+permissions:
+  contents: read
+jobs:
+  packaged-server:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download the published package and verify its release digest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p QNAP/.package-audit
+          gh release download v1.6 --pattern PlexConfigControl_QuTShero_x86-64v1.6.qpkg --dir QNAP/.package-audit
+          gh api repos/${GH_REPO}/releases/tags/v1.6 --jq '.assets[] | select(.name=="PlexConfigControl_QuTShero_x86-64v1.6.qpkg") | .digest' > QNAP/.package-audit/release-digest
+      - name: Test actual TLS server, privilege drop, first-run setup, IPC and restart
+        run: |
+          expected=$(sed 's/^sha256://' QNAP/.package-audit/release-digest)
+          sudo --preserve-env=GITHUB_ACTIONS "$(command -v python)" QNAP/tests/packaged_install_e2e.py QNAP/.package-audit/PlexConfigControl_QuTShero_x86-64v1.6.qpkg --expected-sha256 "$expected"
