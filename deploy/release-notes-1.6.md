@@ -14,6 +14,8 @@ Contains graphical installers for Windows x64, macOS Apple Silicon and Linux x64
 
 Publisher: Krzysztof Wojciechowski. Package version: 1.6.
 
+QNAP Backup now prompts for NAS sign-in before login; the prompt disappears immediately after successful sign-in, including when the archive folder has not yet been selected.
+
 Back up and restore your Plex configuration with full data verification. For QNAP QuTS hero x86_64. ARM and plain QTS are unsupported by this build. Includes package-private Python and GNU tar. The package is not digitally signed by QNAP.
 
 For the App Center card description, add one repository URL in App Center → Settings → App Repository:

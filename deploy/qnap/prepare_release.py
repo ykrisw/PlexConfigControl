@@ -15,6 +15,36 @@ FRONTEND = ("panel-app.mjs", "panel-app.css", "panel-layout.css",
             "backup-view.mjs", "restore-view.mjs", "backup-controller.mjs",
             "archive-refresh.mjs", "pcc-logo.svg")
 
+
+def fix_login_notice(destination):
+    """QNAP-only notice reflects NAS authentication, not backup capability."""
+    def replace(path, old, new):
+        path = destination / path
+        text = path.read_text(encoding='utf-8')
+        if text.count(old) != 1:
+            raise ValueError('Unexpected QNAP login notice source: ' + str(path))
+        path.write_text(text.replace(old, new), encoding='utf-8')
+    replace('plexconfigcontrol/qnap_web.py',
+            "{'backup_create':bool(info['authenticated']",
+            "{'qnap_authenticated':bool(info['authenticated']),'backup_create':bool(info['authenticated']")
+    replace('plexconfigcontrol/static/backup-controller.mjs',
+            'creationEnabled:capabilities.backup_create===true',
+            'qnapAuthenticated:capabilities.qnap_authenticated,creationEnabled:capabilities.backup_create===true')
+    replace('plexconfigcontrol/static/backup-view.mjs',
+            """    find('[data-backup-unavailable]').hidden=value.creationEnabled;
+    find('[data-backup-unavailable]').textContent=value.creationEnabled?'':
+      tx('Backup creation is disabled in this installation.','Tworzenie kopii jest wyłączone w tej instalacji.');""",
+            """    find('[data-backup-unavailable]').hidden=value.qnapAuthenticated!==false;
+    find('[data-backup-unavailable]').textContent=value.qnapAuthenticated===false?
+      tx('Sign in to QNAP before creating a backup.','Zaloguj się na Qnap przed utworzeniem kopii zapasowej'):'';""")
+    replace('plexconfigcontrol/static/backup-view.mjs',
+            "  find('[data-refresh]').addEventListener('click',()=>void refreshArchiveViews(client),options);",
+            """  find('[data-refresh]').addEventListener('click',()=>void refreshArchiveViews(client),options);
+  root.ownerDocument.addEventListener('pcc-qnap-auth-changed',()=>void controller.refresh(true),options);""")
+    replace('plexconfigcontrol/static/qnap-tools.mjs',
+            "try{await request('/api/qnap/auth',data);}finally{data.password='';data.totp='';}",
+            "try{await request('/api/qnap/auth',data);document.dispatchEvent(new Event('pcc-qnap-auth-changed'));}finally{data.password='';data.totp='';}")
+
 def prepare(destination):
     destination = Path(destination).absolute()
     if destination.exists():
@@ -49,6 +79,7 @@ def prepare(destination):
     text = tools.read_text()
     text = text.replace("info?.username||'ykrisw'", "info?.username||''")
     tools.write_text(text)
+    fix_login_notice(destination)
     css = (static / "qnap-tools.css").read_text()
     assert "row-gap:34px" in css and "row-gap:12px" in css
     login = (static / "panel-app.mjs").read_text()

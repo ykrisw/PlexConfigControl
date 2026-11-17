@@ -16,6 +16,33 @@ concurrency:
   group: qnap-installer-1.6
   cancel-in-progress: true
 jobs:
+  notice-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare native QNAP frontend test tools
+        run: |
+          python -m pip install 'playwright>=1.56,<2' CairoSVG==2.8.2
+          python -m playwright install --with-deps '${{ matrix.browser }}'
+          python deploy/qnap/prepare_release.py .qnap-notice/source
+      - name: Verify the QNAP sign-in notice through the real dialog
+        env:
+          PCC_STATIC: .qnap-notice/source/plexconfigcontrol/static
+          PCC_TEST_BROWSER: ${{ matrix.browser }}
+        run: python tests/qnap_login_notice_e2e.py
   build:
     if: github.event_name != 'push' || (!startsWith(github.event.head_commit.message, 'rename-only:') && !startsWith(github.event.head_commit.message, 'publish-only:'))
     runs-on: ubuntu-24.04
@@ -86,7 +113,7 @@ jobs:
           retention-days: 90
           if-no-files-found: error
   publish:
-    needs: build
+    needs: [build, notice-ui]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
