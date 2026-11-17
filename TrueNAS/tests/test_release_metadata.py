@@ -27,7 +27,7 @@ class ReleaseMetadataTests(unittest.TestCase):
         spec.loader.exec_module(module)
         with tempfile.TemporaryDirectory() as folder:
             folder = Path(folder)
-            package = folder/'PlexConfigControlQuTShero_1.6.qpkg'
+            package = folder/'PlexConfigControl_QuTShero_x86-64v1.6.qpkg'
             package.write_bytes(b'feed-test-fixture')
             for language in ('en','pl'):
                 path = folder/(language+'.xml')

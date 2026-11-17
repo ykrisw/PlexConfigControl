@@ -1,32 +1,25 @@
 # PlexConfigControl 1.6
 
-Both packages and the application now report version **1.6**. QNAP publisher: **Krzysztof Wojciechowski**.
+## QNAP QuTS hero — x86-64 (64-bit)
 
-## TrueNAS SCALE
+[**Download PlexConfigControl_QuTShero_x86-64v1.6.qpkg**](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/PlexConfigControl_QuTShero_x86-64v1.6.qpkg)
 
-[Download PlexConfigControlTrueNAS_1.6.zip](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/PlexConfigControlTrueNAS_1.6.zip)
+**Purpose and operation:** Back up and restore your Plex Media Server configuration. Backups use a ZFS snapshot while Plex keeps running, then verify the archive data. Restore verifies the selected archive, waits for you to stop Plex manually, and retains the previous configuration for review or rollback.
 
-Contains graphical installers for Windows x64, macOS Apple Silicon and Linux x64, in English and Polish. Install or update the application on TrueNAS SCALE. Updates preserve the existing configuration. The installer verifies and updates the custom application's version metadata and prepares its corresponding configuration version directory, preserving the preceding directory for recovery.
+**Installation:** Download the `.qpkg` and install it manually in QNAP App Center. Open PlexConfigControl, set the panel password, sign in to QNAP and choose the backup folder. Requires compatible QuTS hero with ZFS on x86-64; ARM and plain QTS are unsupported. The package is currently unsigned.
 
-## QNAP QuTS hero — x86_64
+**License:** PlexConfigControl uses the MIT License (© 2026 Krzysztof Wojciechowski): free to use, modify and redistribute, including commercially, with the copyright and license notices retained. Provided without warranty. Bundled third-party components retain their own licenses. This package also includes GNU tar under GPLv3, with its source and license files.
 
-[Download PlexConfigControlQuTShero_1.6.qpkg](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/PlexConfigControlQuTShero_1.6.qpkg)
+[Source code, build files and instructions](https://github.com/ykrisw/PlexConfigControl/tree/main/QNAP) · [MIT License](https://github.com/ykrisw/PlexConfigControl/blob/main/QNAP/LICENSE) · [SHA-256 checksums](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/SHA256SUMS_QNAP)
 
-Publisher: Krzysztof Wojciechowski. Package version: 1.6.
+## TrueNAS SCALE — x86-64 (64-bit)
 
-QNAP Backup now prompts for NAS sign-in before login; the prompt disappears immediately after successful sign-in, including when the archive folder has not yet been selected.
+[**Download PlexConfigControl_TrueNAS_x86-64v1.6.zip**](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/PlexConfigControl_TrueNAS_x86-64v1.6.zip)
 
-Back up and restore your Plex configuration with full data verification. For QNAP QuTS hero x86_64. ARM and plain QTS are unsupported by this build. Includes package-private Python and GNU tar. The package is not digitally signed by QNAP.
+**Purpose and operation:** Back up and restore your Plex Media Server configuration. Backups use a ZFS snapshot while Plex keeps running, then verify the archive data. Restore verifies the selected archive, waits for you to stop Plex manually, and retains the previous configuration for review.
 
-For the App Center card description, add one repository URL in App Center → Settings → App Repository:
+**Installation:** Download and extract the ZIP on your computer. Run the setup tool for Windows x64, Linux x64 or macOS Apple Silicon, connect to your TrueNAS server and choose the backup location and panel settings. The application runs on TrueNAS SCALE x86-64, not on your computer.
 
-- Polski: https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/qnap-repository-pl.xml
-- English: https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/qnap-repository.xml
+**License:** PlexConfigControl uses the MIT License (© 2026 Krzysztof Wojciechowski): free to use, modify and redistribute, including commercially, with the copyright and license notices retained. Provided without warranty. Bundled third-party components retain their own licenses.
 
-The installer does not add repositories or change automatic update policy.
-
-## Shared behavior
-
-Snapshot backups with data verification; Restore waits for manual Plex stop and retains the previous configuration for review. Includes the 20% wider yellow shield, matching archive heading/helper typography, shared manual Refresh for Backup and Restore, and slower indeterminate progress animation only on desktop. Existing mobile scrolling and sign-in fixes are retained.
-
-Verify the downloads with SHA256SUMS (TrueNAS) or SHA256SUMS_QNAP (QNAP). A successful build is not a substitute for a device-level restore test.
+[Source code, build files and instructions](https://github.com/ykrisw/PlexConfigControl/tree/main/TrueNAS) · [MIT License](https://github.com/ykrisw/PlexConfigControl/blob/main/TrueNAS/LICENSE) · [SHA-256 checksums](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/SHA256SUMS)

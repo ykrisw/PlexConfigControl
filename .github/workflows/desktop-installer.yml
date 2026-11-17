@@ -114,7 +114,7 @@ jobs:
           python deploy/desktop/package.py artifacts release
           python - <<'PY'
           from zipfile import ZipFile
-          with ZipFile("release/PlexConfigControlTrueNAS_1.6.zip") as archive:
+          with ZipFile("release/PlexConfigControl_TrueNAS_x86-64v1.6.zip") as archive:
               assert archive.read("BUILD-INFO.txt").decode().startswith("PlexConfigControl 1.6\n")
           print("TrueNAS 1.6 installer metadata: OK")
           PY

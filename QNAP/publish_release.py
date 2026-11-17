@@ -8,7 +8,7 @@ import time
 
 TAG = 'v1.6'
 TITLE = 'PlexConfigControl 1.6 — TrueNAS SCALE / QNAP QuTS hero'
-NAMES = {'PlexConfigControlTrueNAS_1.6.zip', 'PlexConfigControlQuTShero_1.6.qpkg'}
+NAMES = {'PlexConfigControl_TrueNAS_x86-64v1.6.zip', 'PlexConfigControl_QuTShero_x86-64v1.6.qpkg'}
 
 
 def gh(*args, capture=True):
@@ -44,8 +44,8 @@ def publish(directory):
     except subprocess.CalledProcessError:
         return
     aliases = {
-        'PlexConfigControlTrueNAS_1.6.zip': ('PlexConfigControlTrueNAS_1.0.5.zip', 'SHA256SUMS'),
-        'PlexConfigControlQuTShero_1.6.qpkg': ('PlexConfigControlQuTShero_1.0.5.qpkg', 'SHA256SUMS_QNAP'),
+        'PlexConfigControl_TrueNAS_x86-64v1.6.zip': ('PlexConfigControlTrueNAS_1.0.5.zip', 'SHA256SUMS'),
+        'PlexConfigControl_QuTShero_x86-64v1.6.qpkg': ('PlexConfigControlQuTShero_1.0.5.qpkg', 'SHA256SUMS_QNAP'),
     }
     out = Path('historical-checksums')
     out.mkdir(exist_ok=True)

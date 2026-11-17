@@ -8,7 +8,7 @@ import tarfile
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
-NAME = 'PlexConfigControlTrueNAS_1.6.zip'
+NAME = 'PlexConfigControl_TrueNAS_x86-64v1.6.zip'
 ROOT = Path(__file__).resolve().parents[2]
 
 

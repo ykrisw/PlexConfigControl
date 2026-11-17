@@ -36,4 +36,4 @@ Restore must wait for manual Plex stop. Do not auto-start/stop Plex, change data
 
 Target is QNAP QuTS hero with ZFS snapshot APIs, x86_64. Do not describe this as an ARM or generic QTS package. Validate runtime/library and firmware requirements before broader compatibility claims. Discover package/data locations dynamically. App Center URLs must use the NAS host address and selected port, without a fixed user IP.
 
-Publish a new PlexConfigControlQuTShero_1.6.qpkg only after build/self-tests and UI checks pass. Keep separate QNAP and TrueNAS descriptions and checksums. Do not replace the TrueNAS installer with a QPKG.
+Publish a new PlexConfigControl_QuTShero_x86-64v1.6.qpkg only after build/self-tests and UI checks pass. Keep separate QNAP and TrueNAS descriptions and checksums. Do not replace the TrueNAS installer with a QPKG.

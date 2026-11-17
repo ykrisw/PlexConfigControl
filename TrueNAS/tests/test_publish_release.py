@@ -18,12 +18,12 @@ class PublishTests(unittest.TestCase):
         def fake(*args, **kwargs):
             calls.append(args)
             if args == ('release','view','v1.6','--json','assets'):
-                return json.dumps({'assets':[{'name':'PlexConfigControlQuTShero_1.6.qpkg'}]})
+                return json.dumps({'assets':[{'name':'PlexConfigControl_QuTShero_x86-64v1.6.qpkg'}]})
             if args[0] == 'api':
                 raise AssertionError('A draft must not be read through the published tag endpoint')
             return ''
         with tempfile.TemporaryDirectory() as folder:
-            (Path(folder)/'PlexConfigControlQuTShero_1.6.qpkg').write_bytes(b'verified-fixture')
+            (Path(folder)/'PlexConfigControl_QuTShero_x86-64v1.6.qpkg').write_bytes(b'verified-fixture')
             with patch.dict(module.os.environ,GH_REPO='owner/repo'),patch.object(module,'gh',fake):
                 module.publish(folder)
         self.assertFalse(any(call[:2] == ('release','edit') for call in calls))
@@ -38,7 +38,7 @@ class PublishTests(unittest.TestCase):
                 raise subprocess.CalledProcessError(1,args)
             return ''
         with tempfile.TemporaryDirectory() as folder:
-            (Path(folder)/'PlexConfigControlTrueNAS_1.6.zip').write_bytes(b'verified-fixture')
+            (Path(folder)/'PlexConfigControl_TrueNAS_x86-64v1.6.zip').write_bytes(b'verified-fixture')
             with patch.dict(module.os.environ,GH_REPO='owner/repo'),patch.object(module,'gh',fake):
                 module.publish(folder)
         self.assertTrue(any(call[:4] == ('release','edit','v1.6','--draft=false') for call in calls))

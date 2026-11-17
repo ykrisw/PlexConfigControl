@@ -22,7 +22,7 @@ SHORTCUTS = (
     'PlexConfigControl_Windows.cmd', 'PlexConfigControl_macOS.command',
     'PlexConfigControl_Linux.desktop',
 )
-RELEASE_NAME = 'PlexConfigControlTrueNAS_1.6.zip'
+RELEASE_NAME = 'PlexConfigControl_TrueNAS_x86-64v1.6.zip'
 TRANSLATED_RUNTIME = {
     'deploy/install.sh', 'deploy/install_pl.py', 'plexconfigcontrol/host_install.py',
     'plexconfigcontrol/host_update.py',
