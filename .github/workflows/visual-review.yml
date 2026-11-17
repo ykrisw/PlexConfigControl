@@ -3,6 +3,9 @@ on:
   push:
     branches: [work/visual-105-review]
   workflow_dispatch:
+defaults:
+  run:
+    working-directory: TrueNAS
 permissions:
   contents: read
 jobs:
@@ -28,7 +31,7 @@ jobs:
           python -m pip install 'playwright>=1.56,<2' CairoSVG==2.8.2 PyYAML websocket-client
           python -m playwright install --with-deps '${{ matrix.browser }}'
       - name: Prepare the actual QNAP frontend and App Center icons
-        run: python deploy/qnap/prepare_release.py .qnap-preview/source
+        run: python ../QNAP/build/prepare_release.py .qnap-preview/source
       - name: Verify TrueNAS changes and render previews
         env:
           PCC_TEST_BROWSER: ${{ matrix.browser }}
@@ -50,5 +53,5 @@ jobs:
         if: always()
         with:
           name: visual-review-${{ matrix.browser }}
-          path: dist/visual-preview/
+          path: TrueNAS/dist/visual-preview/
           retention-days: 7

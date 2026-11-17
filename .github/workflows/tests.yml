@@ -2,6 +2,9 @@ name: Application tests
 on:
   push:
   pull_request:
+defaults:
+  run:
+    working-directory: TrueNAS
 permissions:
   contents: read
 jobs:

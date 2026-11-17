@@ -1,9 +1,9 @@
 name: Publish verified 1.6 installers
 on:
-  push:
-    branches: [main]
-    paths: [.github/workflows/publish-16-verified.yml]
   workflow_dispatch:
+defaults:
+  run:
+    working-directory: TrueNAS
 permissions:
   contents: read
 jobs:
@@ -19,13 +19,13 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: PCC-QNAP-1.6-x86_64
-          path: qnap-release
+          path: TrueNAS/qnap-release
           github-token: ${{ github.token }}
           run-id: 44032168034
       - uses: actions/download-artifact@v4
         with:
           name: PlexConfigControl-Desktop-PL-EN
-          path: release
+          path: TrueNAS/release
           github-token: ${{ github.token }}
           run-id: 44032168053
       - name: Verify downloaded installer checksums

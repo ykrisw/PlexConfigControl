@@ -9,7 +9,7 @@ import subprocess
 import sys
 import zipfile
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 BUNDLE_SHA256 = "6d71dd5161101fcc8dba84c9ec6181ffa50ac2ff9e66678c18653d48a233b0e9"
 FRONTEND = ("panel-app.mjs", "panel-app.css", "panel-layout.css",
             "backup-view.mjs", "restore-view.mjs", "backup-controller.mjs",
@@ -49,7 +49,7 @@ def prepare(destination):
     destination = Path(destination).absolute()
     if destination.exists():
         raise ValueError("Build source output already exists")
-    bundle = ROOT / "PCC_QNAP_Source_1.0.5.zip"
+    bundle = ROOT / "source/PlexConfigControl-source-baseline.zip"
     assert hashlib.sha256(bundle.read_bytes()).hexdigest() == BUNDLE_SHA256
     with zipfile.ZipFile(bundle) as archive:
         assert len(archive.infolist()) == 122
@@ -68,7 +68,7 @@ def prepare(destination):
             target.write_bytes(archive.read(member))
     static = destination / "plexconfigcontrol/static"
     for name in FRONTEND:
-        shutil.copy2(ROOT / "plexconfigcontrol/static" / name, static / name)
+        shutil.copy2(ROOT / "shared-ui" / name, static / name)
     web = destination / "plexconfigcontrol/web.py"
     code = web.read_text()
     anchor = "assets={'/assets/panel-client.mjs':'panel-client.mjs',"

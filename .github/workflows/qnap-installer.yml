@@ -5,12 +5,10 @@ on:
     branches: [main]
     paths:
       - .github/workflows/qnap-installer.yml
-      - deploy/qnap/prepare_release.py
-      - tests/qnap_login_notice_e2e.py
-      - deploy/qnap/qpkg/**
-      - plexconfigcontrol/static/panel-app.css
-      - plexconfigcontrol/static/panel-layout.css
-      - plexconfigcontrol/static/**
+      - QNAP/**
+defaults:
+  run:
+    working-directory: QNAP
 permissions:
   contents: read
 concurrency:
@@ -38,7 +36,7 @@ jobs:
         run: |
           python -m pip install 'playwright>=1.56,<2' CairoSVG==2.8.2
           python -m playwright install --with-deps '${{ matrix.browser }}'
-          python deploy/qnap/prepare_release.py .qnap-notice/source
+          python build/prepare_release.py .qnap-notice/source
       - name: Verify the QNAP sign-in notice through the real dialog
         env:
           PCC_STATIC: .qnap-notice/source/plexconfigcontrol/static
@@ -59,8 +57,8 @@ jobs:
       - name: Prepare verified QNAP source and shared UI
         run: |
           python -m pip install CairoSVG==2.8.2
-          python deploy/qnap/prepare_release.py .qnap-build/source
-          cp deploy/qnap/qpkg/qpkg.cfg deploy/qnap/qpkg/package_routines .qnap-build/source/deploy/qnap/qpkg/
+          python build/prepare_release.py .qnap-build/source
+          cp build/qpkg/qpkg.cfg build/qpkg/package_routines .qnap-build/source/deploy/qnap/qpkg/
           bash -n .qnap-build/source/deploy/qnap/qpkg/package_routines
           bash -n .qnap-build/source/deploy/qnap/qpkg/PCC.sh
       - name: Fetch pinned runtime and QDK
@@ -77,7 +75,7 @@ jobs:
           subprocess.run(["git","-C",str(root/"qdk"),"checkout","--detach",info["qdk_commit"]],check=True)
           PY
       - name: Build locked private dependencies
-        run: python deploy/qnap/build_dependencies.py --output .qnap-build/lib --smoke-test
+        run: python build/build_dependencies.py --output .qnap-build/lib --smoke-test
       - name: Build and verify native QPKG
         run: |
           python .qnap-build/source/deploy/qnap/build_qpkg_preview.py --python-archive .qnap-build/python.tar.gz --dependencies .qnap-build/lib --qdk .qnap-build/qdk --private-tar .qnap-build/source/qnap-private-tar --output .qnap-build/output
@@ -102,15 +100,15 @@ jobs:
           cp .qnap-build/output/release/PCC_1.6_x86_64.qpkg qnap-release/PlexConfigControlQuTShero_1.6.qpkg
           cp .qnap-build/output/release/build-result.json qnap-release/
           cp .qnap-build/source/deploy/qnap/qpkg/icons/PCC_80.png qnap-release/PlexConfigControl_80.png
-          python deploy/qnap/make_repository.py qnap-release/PlexConfigControlQuTShero_1.6.qpkg qnap-release/qnap-repository.xml en
-          python deploy/qnap/make_repository.py qnap-release/PlexConfigControlQuTShero_1.6.qpkg qnap-release/qnap-repository-pl.xml pl
+          python build/make_repository.py qnap-release/PlexConfigControlQuTShero_1.6.qpkg qnap-release/qnap-repository.xml en
+          python build/make_repository.py qnap-release/PlexConfigControlQuTShero_1.6.qpkg qnap-release/qnap-repository-pl.xml pl
           cd qnap-release
           sha256sum PlexConfigControlQuTShero_1.6.qpkg > SHA256SUMS_QNAP
       - name: Retain source and built installer
         uses: actions/upload-artifact@v4
         with:
           name: PCC-QNAP-1.6-x86_64
-          path: qnap-release/
+          path: QNAP/qnap-release/
           retention-days: 90
           if-no-files-found: error
   publish:
@@ -125,9 +123,9 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: PCC-QNAP-1.6-x86_64
-          path: qnap-release
+          path: QNAP/qnap-release
       - name: Publish verified QNAP 1.6 package and App Center metadata
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: python3 deploy/publish_release.py qnap-release
+        run: python3 publish_release.py qnap-release

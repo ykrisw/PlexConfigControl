@@ -1,0 +1,216 @@
+html{color-scheme:light dark;background:light-dark(#b5b9be,#151d28)}body{margin:0;font-family:Arial,sans-serif}
+#pcc-app{width:100%;margin:auto}
+.pcc-shell button,.pcc-shell input{font:inherit}
+.pcc-shell .pcc-account-actions button,.pcc-shell .pcc-dialog-actions button,.pcc-shell .pcc-login button{border:1px solid var(--pcc-line);background:var(--pcc-bg);color:var(--pcc-ink);border-radius:9px;min-height:54px;padding:10px 16px;font-weight:600;cursor:pointer}
+.pcc-shell .pcc-account-actions button{background:var(--pcc-line)}
+.pcc-shell button:disabled{cursor:wait}
+.pcc-shell .pcc-avatar{display:grid;place-items:center}
+.pcc-shell .pcc-avatar svg{width:24px;height:24px;fill:none;stroke:light-dark(#e8e8e8,#fff);stroke-width:1.5}
+.pcc-shell .pcc-avatar{position:relative;-webkit-touch-callout:none;user-select:none}
+.pcc-shell .pcc-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pcc-shell .pcc-photo-tools{position:absolute;bottom:0;left:0;right:0;z-index:1;display:flex;justify-content:center;gap:12px;padding:10px;background:light-dark(#222f3ecc,#263444cc);opacity:0;pointer-events:none;transition:opacity .15s}
+@media(any-hover:hover){
+ .pcc-shell .pcc-avatar:not([data-photo-touch]):is(:hover,:focus-within) .pcc-photo-tools{opacity:1;pointer-events:auto}
+}
+.pcc-shell[data-theme] .pcc-avatar .pcc-photo-tools button{display:grid;place-items:center;background:none;border:0;padding:4px;min-height:32px;min-width:32px;color:light-dark(#e8e8e8,#fff);cursor:pointer}
+.pcc-shell .pcc-photo-tools button:disabled{cursor:not-allowed}
+@media(any-hover:none){.pcc-shell .pcc-photo-tools{visibility:hidden}}
+.pcc-shell .pcc-avatar[data-photo-touch] .pcc-photo-tools{visibility:hidden}
+.pcc-shell .pcc-avatar[data-photo-tools-open] .pcc-photo-tools{visibility:visible;opacity:1;pointer-events:auto}
+.pcc-shell[data-theme] .pcc-avatar[data-photo-touch] .pcc-photo-tools button{min-height:44px;min-width:44px}
+@media(prefers-reduced-motion:reduce){.pcc-shell .pcc-photo-tools{transition:none}}
+.pcc-shell [data-plex-state]{font-size:13px;font-weight:600}
+.pcc-shell [data-plex-state]::before{content:'●';display:inline-block;margin-right:8px;color:light-dark(#79899c,#8596ac);-webkit-text-fill-color:currentColor}
+.pcc-shell [data-plex-state=RUNNING]::before{color:#158843;animation:pcc-live-dot 2s ease-in-out infinite}
+.pcc-shell [data-plex-state=STOPPED]::before{color:#dc2626;animation:pcc-live-dot 2s ease-in-out infinite}
+@keyframes pcc-live-dot{50%{opacity:.6;text-shadow:0 0 9px currentColor}}
+@media(prefers-reduced-motion:reduce){.pcc-shell [data-plex-state]::before{animation:none}}
+.pcc-shell .pcc-password-dialog{color:var(--pcc-ink);border-radius:14px;padding:24px;width:calc(100% - 40px);max-width:440px;max-height:90%;box-sizing:border-box}
+.pcc-shell .pcc-password-dialog::backdrop{background:light-dark(#0f152388,#10182788)}
+.pcc-shell .pcc-password-dialog label,.pcc-shell .pcc-login label{display:grid;gap:8px;margin:16px 0}
+.pcc-shell .pcc-password-dialog input,.pcc-shell .pcc-login input{width:100%;box-sizing:border-box;background:var(--pcc-card);color:var(--pcc-ink);border:1px solid var(--pcc-line);padding:12px;border-radius:8px;font-size:16px}
+.pcc-shell .pcc-dialog-actions{display:flex;justify-content:flex-end;gap:10px}
+.pcc-shell .pcc-notice{padding:12px;border-radius:9px;overflow-wrap:anywhere}
+.pcc-shell .pcc-login{max-width:400px;margin:60px auto;padding:24px;background:var(--pcc-card);border-radius:15px}
+.pcc-shell .pcc-login button{width:100%}
+.pcc-shell .pcc-notice:empty{display:none}
+.pcc-shell[data-theme=light]{color-scheme:light}
+.pcc-shell[data-theme=dark]{color-scheme:dark}
+.pcc-shell[data-theme=system]{color-scheme:light dark}
+.pcc-shell .pcc-history-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.pcc-shell .pcc-history-stats>.pcc-card{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:var(--pcc-card);border-radius:15px;padding:18px 24px;min-height:98px}
+.pcc-shell .pcc-history-stats b{display:block;font-size:28px;font-weight:500;margin-top:4px}
+.pcc-shell .pcc-history-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.pcc-shell .pcc-history button{font:600 13px Arial,sans-serif;color:var(--pcc-ink);background:var(--pcc-bg);border:1px solid var(--pcc-line);border-radius:8px;padding:9px 12px;cursor:pointer}
+.pcc-shell .pcc-history button:disabled{cursor:not-allowed}
+.pcc-shell .pcc-history-filters button{min-height:45px;border:0;background:var(--pcc-line)}
+.pcc-shell .pcc-history-filters button[aria-pressed=true]{background:var(--pcc-selection-accent);color:light-dark(var(--pcc-ink),#000)}
+.pcc-shell .pcc-history .pcc-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;margin-bottom:12px}
+.pcc-shell .pcc-history [data-archive-count]{margin:2px 0 0;font-size:.875rem}
+.pcc-shell .pcc-history h2{font-size:16px;font-weight:600;margin:0}
+.pcc-shell .pcc-history-actions{display:flex;gap:8px;flex-wrap:wrap}
+.pcc-shell .pcc-event-row{display:flex;align-items:center;gap:13px;min-height:52px;border:1px solid var(--pcc-line);border-radius:9px;padding:8px 14px;background:var(--pcc-card);cursor:pointer}
+.pcc-shell .pcc-event-row.pcc-selected{background:var(--pcc-selected);border-color:var(--pcc-selection-accent)}
+.pcc-shell .pcc-event-text{flex:1;min-width:0;font-size:13px;overflow-wrap:anywhere}
+.pcc-shell .pcc-event-text small{display:block;margin-top:3px;font-size:12px}
+.pcc-shell .pcc-event-status{font-size:12px;border-radius:20px;padding:3px 10px;white-space:nowrap}
+.pcc-shell .pcc-event-status[data-status=SUCCESS]{background:light-dark(#e0f5e9,#173e2d)}
+.pcc-shell .pcc-event-status[data-status=FAILED]{background:light-dark(#fde8e8,#4b272e)}
+.pcc-shell .pcc-event-status[data-status=INFO]{background:light-dark(#e6effb,#27394f)}
+.pcc-shell .pcc-event-status[data-status=WARNING]{background:light-dark(#fff0ca,#4e4024)}
+.pcc-shell .pcc-backup .pcc-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;margin-bottom:12px}
+.pcc-shell .pcc-backup h2{font-size:16px;font-weight:600;margin:0}
+.pcc-shell .pcc-backup button{font:600 13px Arial,sans-serif;padding:10px 14px;border:1px solid var(--pcc-line);border-radius:8px;background:var(--pcc-bg);color:var(--pcc-ink);cursor:pointer}
+.pcc-shell .pcc-backup button:disabled{cursor:not-allowed;opacity:1}
+.pcc-shell .pcc-backup .pcc-primary{width:100%;min-height:55px;background:#2a70af;color:#fff;border:0;font-size:17px}
+.pcc-shell .pcc-backup .pcc-archive-row{display:flex;align-items:center;gap:13px;min-height:54px;border:1px solid var(--pcc-line);border-radius:9px;padding:8px 14px;background:var(--pcc-card);cursor:pointer}
+.pcc-shell .pcc-backup .pcc-archive-row.pcc-selected{background:var(--pcc-selected);border-color:var(--pcc-selection-accent)}
+.pcc-shell .pcc-backup .pcc-archive-row>span{min-width:0}
+.pcc-shell .pcc-backup .pcc-archive-row strong{display:block;font-size:13px;overflow-wrap:anywhere}
+.pcc-shell .pcc-backup .pcc-archive-row small{display:block;font-size:13px}
+.pcc-shell .pcc-backup [data-confirm-files]{padding-left:20px;max-height:240px;overflow-y:auto;overflow-wrap:anywhere}
+@media(max-width:600px){.pcc-shell .pcc-backup .pcc-heading{flex-wrap:wrap}.pcc-shell .pcc-backup .pcc-archive-row{gap:9px;padding:8px}}
+.pcc-shell .pcc-language{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.pcc-shell .pcc-language select,.pcc-shell .pcc-theme-buttons button{font:600 14px Arial,sans-serif;background:var(--pcc-bg);color:var(--pcc-ink);border:1px solid var(--pcc-line);border-radius:8px;padding:10px 14px;min-height:40px}
+.pcc-shell .pcc-appearance{padding:24px!important}
+.pcc-shell .pcc-theme-row{display:flex;align-items:center;justify-content:space-between;gap:20px;border-top:1px solid var(--pcc-line);padding-top:18px;margin-top:22px}
+.pcc-shell .pcc-theme-row>strong{font-size:16px}
+.pcc-shell .pcc-theme-buttons{display:flex;gap:10px;flex-wrap:wrap}
+.pcc-shell .pcc-theme-buttons button{cursor:pointer;min-width:96px}
+.pcc-shell .pcc-theme-buttons button[aria-pressed=true]{background:var(--pcc-selected);border-color:var(--pcc-selection-accent)}
+.pcc-shell .pcc-settings .pcc-about{padding:24px}
+.pcc-shell .pcc-about-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 0;border-bottom:1px solid var(--pcc-line);font-size:13px;font-weight:600;overflow-wrap:anywhere}
+.pcc-shell .pcc-about-row>span:last-child{text-align:right}
+.pcc-shell .pcc-author{font-size:12px;font-style:normal}
+.pcc-shell .pcc-settings details{padding:22px 0;border-bottom:1px solid var(--pcc-line);font-size:13px}
+@media(max-width:600px){.pcc-shell .pcc-theme-row{flex-direction:column;align-items:flex-start}.pcc-shell .pcc-theme-buttons button{min-width:0}}
+@media(max-width:600px){
+ .pcc-shell :is(.pcc-history-stats,.pcc-history-filters){gap:8px}
+ .pcc-shell .pcc-history-stats>.pcc-card{padding:12px 4px;font-size:clamp(11px,3.5vw,14px);line-height:1.25}
+ .pcc-shell .pcc-history .pcc-history-filters button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 4px;min-width:0;min-height:52px;text-align:center;font-size:clamp(10px,3.3vw,13px);line-height:1.25}
+ .pcc-shell .pcc-history .pcc-heading{flex-wrap:wrap}
+ .pcc-shell .pcc-history-actions{width:100%}
+ .pcc-shell .pcc-history-actions button{flex:1;min-width:0}
+ .pcc-shell .pcc-event-row{gap:8px;padding:8px}
+ .pcc-shell .pcc-event-status{font-size:11px;padding:3px 6px}
+}
+
+.pcc-shell [data-recovery-snapshot]{overflow-wrap:anywhere}
+
+/* Optional read-only diagnostics stay inside the existing collapsed Details. */
+.pcc-shell .pcc-integration{margin-top:18px;overflow-wrap:anywhere}
+.pcc-shell .pcc-integration button{font:600 13px Arial,sans-serif;padding:10px 14px;border:1px solid var(--pcc-line);border-radius:8px;background:var(--pcc-bg);color:var(--pcc-ink);min-height:44px;cursor:pointer}
+.pcc-shell .pcc-integration dl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:10px 16px}
+.pcc-shell .pcc-integration dt{font-weight:600}.pcc-shell .pcc-integration dd{margin:0;min-width:0}
+@media(max-width:420px){.pcc-shell .pcc-integration dl{grid-template-columns:minmax(0,1fr)}.pcc-shell .pcc-integration dd{margin-bottom:10px}}
+
+.pcc-shell .pcc-notification-dialog .pcc-dialog-actions{flex-wrap:wrap}
+
+/* Filled actions share the approved accent in both themes. */
+.pcc-shell[data-theme] :is(.pcc-account-actions button,.pcc-theme-buttons button[aria-pressed=true],.pcc-backup .pcc-primary,.pcc-restore .pcc-primary) {
+  background:var(--pcc-selection-accent);
+  border-color:var(--pcc-selection-accent);
+  color:light-dark(var(--pcc-ink),#000);
+}
+.pcc-shell[data-theme] .pcc-restore [data-restore-action=refresh] {
+  font:600 13px Arial,sans-serif;
+  padding:10px 14px;
+  background:var(--pcc-bg);
+}
+.pcc-shell .pcc-avatar {background:light-dark(#97a5b7,#a6b5c9)}
+.pcc-shell :is(.pcc-archive-row,.pcc-event-row) input:not(:checked) {
+  background:light-dark(#e8e8e8,var(--pcc-card));
+  border-color:light-dark(#8e9fb3,#b4bfce);
+}
+
+/* Shared Backup/Restore geometry: one set of spacing and typography rules. */
+.pcc-shell .pcc-page .pcc-card.pcc-action-card{padding:18px;display:flex;flex-direction:column;gap:0}
+.pcc-shell .pcc-page .pcc-card.pcc-action-card>.pcc-heading{min-height:40px;margin:0 0 12px;gap:12px}
+.pcc-shell .pcc-page .pcc-card.pcc-action-card>.pcc-heading h2{font:600 20px/30px Arial,sans-serif;margin:0}
+.pcc-shell .pcc-page .pcc-card.pcc-action-card>p{font:400 14px/21px Arial,sans-serif;margin:0 0 14px}
+.pcc-shell .pcc-page .pcc-card.pcc-action-card>.pcc-primary{box-sizing:border-box;min-height:55px;padding:10px 14px;border:0;border-radius:8px;font:600 17px/25px Arial,sans-serif}
+.pcc-shell .pcc-page :is(.pcc-archives,.pcc-archive-card)>.pcc-heading{min-height:40px;margin:0 0 12px;gap:12px}
+.pcc-shell .pcc-page :is(.pcc-archives,.pcc-archive-card)>.pcc-heading h2{font:600 16px/24px Arial,sans-serif;margin:0}
+.pcc-shell .pcc-page :is(.pcc-archives,.pcc-archive-card) .pcc-archive-row{min-height:54px;padding:8px 14px;gap:13px;font:400 13px/18px Arial,sans-serif}
+.pcc-shell .pcc-page :is(.pcc-archives,.pcc-archive-card) .pcc-archive-row :is(strong,small){font-size:13px;line-height:18px}
+.pcc-shell .pcc-page>.pcc-plex [data-plex-state]{color:var(--pcc-ink)}
+
+/* Settings uses the same card inset and heading slot as Backup/Restore. */
+.pcc-shell .pcc-page.pcc-settings :is(.pcc-appearance,.pcc-about){padding:18px!important}
+.pcc-shell .pcc-page.pcc-settings .pcc-card>.pcc-section-title{font:600 20px/30px Arial,sans-serif;min-height:40px;display:flex;align-items:center;margin:0}
+.pcc-shell .pcc-page.pcc-settings .pcc-theme-row{margin-top:12px;padding-top:14px}
+
+/* Enlarge only the Plex status lamp to 1.4388x its original size, retaining label geometry. */
+.pcc-shell [data-plex-state]::before,.pcc-restore [data-plex-state]::before{transform:scale(1.4388);transform-origin:center}
+
+.pcc-shell {
+  --pcc-running-green: #15b716;
+  --pcc-stopped-red: #f70607;
+}
+.pcc-shell .pcc-page > .pcc-plex [data-plex-state=RUNNING]::before,
+.pcc-shell .pcc-event-status[data-status=SUCCESS] {
+  color: var(--pcc-running-green) !important;
+  -webkit-text-fill-color: var(--pcc-running-green) !important;
+}
+.pcc-shell .pcc-page > .pcc-plex [data-plex-state=STOPPED]::before,
+.pcc-shell .pcc-event-status[data-status=FAILED] {
+  color: var(--pcc-stopped-red) !important;
+  -webkit-text-fill-color: var(--pcc-stopped-red) !important;
+}
+
+.pcc-shell .pcc-page > .pcc-operation-workspace {
+  flex: 1;
+  border: 3px solid var(--pcc-selection-accent);
+  overflow-wrap: anywhere;
+}
+.pcc-shell .pcc-operation-workspace h2 {margin: 0 0 14px}
+.pcc-shell .pcc-operation-workspace button {margin-top: 8px}
+.pcc-shell .pcc-stage-progress {display:flex;align-items:center;gap:12px;margin-block:12px}
+.pcc-shell .pcc-stage-progress progress {width:100%;min-width:0;height:16px;accent-color:var(--pcc-selection-accent)}
+.pcc-shell .pcc-stage-progress span {font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Fine-pointer desktop only; touch/mobile retain their native progress motion. */
+@media (min-width:901px) and (hover:hover) and (pointer:fine){
+ .pcc-shell .pcc-stage-progress:has(progress:indeterminate){position:relative;overflow:hidden;border-radius:8px}
+ .pcc-shell .pcc-stage-progress progress:indeterminate{opacity:0}
+ .pcc-shell .pcc-stage-progress:has(progress:indeterminate)::before{content:"";position:absolute;inset:0;background:var(--pcc-line);border-radius:8px;pointer-events:none}
+ .pcc-shell .pcc-stage-progress:has(progress:indeterminate)::after{content:"";position:absolute;inset:0 auto 0 0;width:25%;border-radius:8px;background:var(--pcc-selection-accent);animation:pcc-desktop-progress 3s ease-in-out infinite;pointer-events:none}
+}
+@keyframes pcc-desktop-progress{from{transform:translateX(-100%)}to{transform:translateX(400%)}}
+@media (prefers-reduced-motion:reduce){.pcc-shell .pcc-stage-progress:has(progress:indeterminate)::after{animation:none;transform:translateX(150%)}}
+.pcc-shell .pcc-backup-name {
+  display: grid;
+  gap: 6px;
+}
+.pcc-shell .pcc-backup-name input {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--pcc-bg);
+  color: var(--pcc-ink);
+  border: 1px solid var(--pcc-line);
+  border-radius: 8px;
+}
+.pcc-shell [data-prefix-help] {margin: 6px 0 14px}
+
+/* Matched compact action cards give the saved height to flexing archive lists. */
+.pcc-shell .pcc-page>.pcc-card.pcc-action-card{padding:8px 18px;min-height:128px;display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
+.pcc-shell .pcc-page>.pcc-card.pcc-action-card>.pcc-primary{min-height:48px;padding:8px 14px;margin:0;font:600 17px/25px Arial,sans-serif}
+.pcc-shell .pcc-backup-name{gap:4px;min-width:0}
+.pcc-shell .pcc-backup-label-line{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 12px;min-width:0;line-height:20px}
+.pcc-shell .pcc-backup-label-line [data-prefix-help]{margin:0;font:400 14px/20px Arial,sans-serif}
+.pcc-shell .pcc-backup-name input{height:32px;padding:4px 12px;font:400 14px/22px Arial,sans-serif}
+.pcc-shell .pcc-page>.pcc-card.pcc-backup-action>[data-backup-unavailable]{margin:0}
+.pcc-shell .pcc-page.pcc-restore>.pcc-card.pcc-action-card{grid-template-rows:1fr auto}
+.pcc-shell .pcc-page>.pcc-card.pcc-action-card>.pcc-validation-heading{min-height:0;margin:0;justify-content:flex-start;align-items:baseline;align-self:start;flex-wrap:wrap;gap:0 14px}
+.pcc-shell .pcc-validation-heading p{margin:0;font:400 14px/21px Arial,sans-serif}
+.pcc-shell .pcc-page .pcc-card.pcc-action-card>.pcc-validation-heading h2{font:400 14px/21px Arial,sans-serif}
+.pcc-shell .pcc-backup .pcc-archive-actions {display:flex;align-items:center;gap:8px;flex-shrink:0;min-width:0}
+@media(max-width:600px){
+ .pcc-shell .pcc-backup .pcc-archives>.pcc-heading {align-items:flex-start}
+ .pcc-shell .pcc-backup .pcc-archive-actions {width:100%}
+ .pcc-shell .pcc-backup .pcc-archive-actions button {min-width:0;height:44px;min-height:44px;max-height:44px;padding:4px 8px;line-height:16px;white-space:normal}
+ .pcc-shell .pcc-backup .pcc-archive-actions [data-refresh] {flex:1 1 0}
+ .pcc-shell .pcc-backup .pcc-archive-actions [data-delete] {flex:2 1 0}
+}
+
+.pcc-shell .pcc-operation-workspace>[data-restore-progress-heading]{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.pcc-shell .pcc-operation-workspace>[data-restore-progress-heading] :is(h2,button){margin:0}

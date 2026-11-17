@@ -4,7 +4,7 @@ This is the native `PlexConfigControlQuTShero_1.6.qpkg` installer for **QNAP QuT
 
 ## Build inputs preserved in Git
 
-- `/PCC_QNAP_Source_1.0.5.zip`: verified application, launcher, service, setup page, builder and GNU tar redistribution bundle.
+- `../source/PlexConfigControl-source-baseline.zip`: verified application, launcher, service, setup page, builder and GNU tar redistribution bundle.
 - `SOURCE-CHECKPOINT-1.0.5.md`: exact source SHA-256 and provenance.
 - `build_dependencies.py` and `requirements-cp312-x86_64.txt`: offline, hash-locked dependencies.
 - `qpkg/qpkg.cfg` and `qpkg/package_routines`: generic package identity and lifecycle hooks.
@@ -38,7 +38,7 @@ A successful package build and browser regression tests do not prove a full rest
 
 ## App Center description
 
-The package summary is included in QPKG metadata. App Center card descriptions are also published as a standard repository feed. To enable the Polish card description, add this URL in App Center → Settings → App Repository:
+The package summary is included in QPKG metadata. App Center card descriptions are also published as a standard repository feed. The feed below is available, but adding it alone did not resolve the missing description on the tested NAS. This is not a verified fix:
 
 https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/qnap-repository-pl.xml
 

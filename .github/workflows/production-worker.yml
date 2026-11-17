@@ -2,24 +2,27 @@ name: Verify production worker image
 on:
   pull_request:
     paths:
-      - Dockerfile
-      - Dockerfile.worker
+      - TrueNAS/Dockerfile
+      - TrueNAS/Dockerfile.worker
       - .github/workflows/production-worker.yml
-      - plexconfigcontrol/**
-      - pyproject.toml
-      - deploy/**
-      - design/truenas-installation/**
+      - TrueNAS/plexconfigcontrol/**
+      - TrueNAS/pyproject.toml
+      - TrueNAS/deploy/**
+      - TrueNAS/design/truenas-installation/**
   push:
     branches: [main, 'work/approved-panel-goldeye']
     paths:
-      - Dockerfile
-      - Dockerfile.worker
+      - TrueNAS/Dockerfile
+      - TrueNAS/Dockerfile.worker
       - .github/workflows/production-worker.yml
-      - plexconfigcontrol/**
-      - pyproject.toml
-      - deploy/**
-      - design/truenas-installation/**
+      - TrueNAS/plexconfigcontrol/**
+      - TrueNAS/pyproject.toml
+      - TrueNAS/deploy/**
+      - TrueNAS/design/truenas-installation/**
   workflow_dispatch:
+defaults:
+  run:
+    working-directory: TrueNAS
 permissions:
   contents: read
 
@@ -128,7 +131,7 @@ jobs:
       - name: Assemble installer source bundle
         run: |
           mkdir -p dist
-          git archive --format=tar --prefix=PlexConfigControl/ HEAD \
+          git archive --format=tar --prefix=PlexConfigControl/ HEAD:TrueNAS \
             Dockerfile Dockerfile.worker pyproject.toml plexconfigcontrol \
             deploy/install.sh deploy/installation-settings.example.json design/truenas-installation \
             | gzip -n > dist/PlexConfigControl-installer.tar.gz
@@ -136,4 +139,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: PlexConfigControl-installer-candidate
-          path: dist/
+          path: TrueNAS/dist/

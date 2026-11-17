@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.qnap-build/
+.qnap-notice/
+dist/
+*.egg-info/

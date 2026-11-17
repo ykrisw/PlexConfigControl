@@ -3,7 +3,10 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: [.github/workflows/qnap-source-inspect.yml, PCC_QNAP_Source_1.0.5.zip]
+    paths: [.github/workflows/qnap-source-inspect.yml, QNAP/source/**]
+defaults:
+  run:
+    working-directory: QNAP
 permissions:
   contents: read
 jobs:
@@ -15,7 +18,7 @@ jobs:
         run: |
           python3 - <<'PY'
           import hashlib, zipfile, pathlib, stat
-          p = pathlib.Path("PCC_QNAP_Source_1.0.5.zip")
+          p = pathlib.Path("source/PlexConfigControl-source-baseline.zip")
           assert hashlib.sha256(p.read_bytes()).hexdigest() == "6d71dd5161101fcc8dba84c9ec6181ffa50ac2ff9e66678c18653d48a233b0e9"
           with zipfile.ZipFile(p) as z:
               assert len(z.infolist()) == 122

@@ -3,6 +3,9 @@ on:
   push:
     branches: ['work/full-click', main]
   workflow_dispatch:
+defaults:
+  run:
+    working-directory: TrueNAS
 permissions:
   contents: read
 jobs:
@@ -37,7 +40,7 @@ jobs:
         if: always()
         with:
           name: backup-layout-${{ matrix.browser }}
-          path: dist/browser-screenshots/
+          path: TrueNAS/dist/browser-screenshots/
           retention-days: 7
   build:
     if: github.event_name != 'push' || (!startsWith(github.event.head_commit.message, 'rename-only:') && !startsWith(github.event.head_commit.message, 'publish-only:') && !startsWith(github.event.head_commit.message, 'qnap-only:'))
@@ -88,7 +91,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-${{ matrix.platform }}
-          path: '${{ matrix.platform }}.tar.gz'
+          path: TrueNAS/${{ matrix.platform }}.tar.gz
           compression-level: 0
           retention-days: 14
   package:
@@ -104,7 +107,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           pattern: desktop-*
-          path: artifacts
+          path: TrueNAS/artifacts
           merge-multiple: true
       - name: Package all platforms in one ZIP
         run: |
@@ -118,7 +121,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: PlexConfigControl-Desktop-PL-EN
-          path: release/*
+          path: TrueNAS/release/*
           compression-level: 0
           retention-days: 30
   publish:
@@ -134,7 +137,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: PlexConfigControl-Desktop-PL-EN
-          path: release
+          path: TrueNAS/release
       - name: Publish verified TrueNAS 1.6 installer
         env:
           GH_TOKEN: ${{ github.token }}

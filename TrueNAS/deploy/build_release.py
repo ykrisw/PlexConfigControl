@@ -30,7 +30,7 @@ TRANSLATED_RUNTIME = {
 
 
 def git(*args):
-    return subprocess.check_output(['git', *args])
+    return subprocess.check_output(['git', *args], cwd=Path(__file__).resolve().parents[2])
 
 
 def write_zip(path, files):
@@ -43,12 +43,12 @@ def write_zip(path, files):
 
 
 def release(commit, output):
-    tree = git('rev-parse', f'{commit}^{{tree}}').decode().strip()
-    tracked = git('ls-tree', '-r', '--name-only', '-z', commit, '--', 'plexconfigcontrol')
+    tree = git('rev-parse', f'{commit}:TrueNAS').decode().strip()
+    tracked = git('ls-tree', '-r', '--name-only', '-z', f'{commit}:TrueNAS', '--', 'plexconfigcontrol')
     runtime = RUNTIME_FILES + tuple(path.decode() for path in tracked.split(b'\0') if path)
 
     def read(path):
-        return git('show', f'{commit}:{path}')
+        return git('show', f'{commit}:TrueNAS/{path}')
 
     catalog = dict(line.split('\t', 1) for line in read('deploy/installer-en.tsv').decode().splitlines())
     translations = re.compile('|'.join(map(re.escape, sorted(catalog, key=len, reverse=True))))

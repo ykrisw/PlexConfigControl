@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+defaults:
+  run:
+    working-directory: TrueNAS
 permissions:
   contents: read
 jobs:
@@ -68,7 +71,7 @@ jobs:
         if: always()
         with:
           name: PlexConfigControl-browser-screenshots
-          path: dist/browser-screenshots/
+          path: TrueNAS/dist/browser-screenshots/
           if-no-files-found: ignore
           retention-days: 14
       # One explicitly requested package; ordinary code pushes remain test-only.
@@ -100,11 +103,11 @@ jobs:
         with:
           name: PlexConfigControl-test-installation
           path: |
-            dist/PlexConfigControl-test-image.tar.gz
-            dist/TEST-INSTALL.md
-            dist/TEST-INSTALL-PL.md
-            dist/SHA256SUMS
-            dist/BUILD-INFO.txt
+            TrueNAS/dist/PlexConfigControl-test-image.tar.gz
+            TrueNAS/dist/TEST-INSTALL.md
+            TrueNAS/dist/TEST-INSTALL-PL.md
+            TrueNAS/dist/SHA256SUMS
+            TrueNAS/dist/BUILD-INFO.txt
           compression-level: 0
           retention-days: 30
 
@@ -134,12 +137,12 @@ jobs:
           profile: pixel_5
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: PCC_MOBILE_MODE=android PCC_ANDROID_EMULATOR_ONLY=1 python tests/mobile_e2e.py
+          script: cd TrueNAS && PCC_MOBILE_MODE=android PCC_ANDROID_EMULATOR_ONLY=1 python tests/mobile_e2e.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: PlexConfigControl-Android-browser-screenshots
-          path: dist/browser-screenshots/android-system/
+          path: TrueNAS/dist/browser-screenshots/android-system/
           if-no-files-found: ignore
           retention-days: 14
 
@@ -169,6 +172,6 @@ jobs:
         if: always()
         with:
           name: PlexConfigControl-${{ matrix.target }}-screenshots
-          path: dist/browser-screenshots/${{ matrix.target }}/
+          path: TrueNAS/dist/browser-screenshots/${{ matrix.target }}/
           if-no-files-found: ignore
           retention-days: 14

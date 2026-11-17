@@ -5,7 +5,7 @@ This directory is for the QNAP QPKG, separate from the TrueNAS SCALE installer.
 ## Export pending import
 
 The source export was created successfully on 2026-11-16:
-- File: `PCC_QNAP_Source_1.0.5.zip`
+- File: `QNAP/source/PlexConfigControl-source-baseline.zip`
 - Files: 122
 - SHA-256: `6d71dd5161101fcc8dba84c9ec6181ffa50ac2ff9e66678c18653d48a233b0e9`
 
