@@ -1,0 +1,54 @@
+name: Record confirmed 1.6 release
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/confirm-16.yml
+      - QNAP/RELEASE-1.6.json
+      - TrueNAS/RELEASE-1.6.json
+permissions:
+  contents: write
+jobs:
+  confirm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify existing downloads and finalize release documentation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,subprocess,tempfile
+          from pathlib import Path
+          def gh(*args):
+              return subprocess.check_output(['gh',*args],text=True)
+          repo=os.environ['GH_REPO']
+          release=json.loads(gh('api',f'repos/{repo}/releases/tags/v1.6'))
+          assets={item['name']:item for item in release['assets']}
+          records=[json.loads(Path(folder,'RELEASE-1.6.json').read_text()) for folder in ('QNAP','TrueNAS')]
+          assert Path('QNAP/release-notes-1.6.md').read_bytes()==Path('TrueNAS/deploy/release-notes-1.6.md').read_bytes()
+          with tempfile.TemporaryDirectory() as directory:
+              for record in records:
+                  item=assets[record['filename']]
+                  assert item['digest']=='sha256:'+record['sha256']
+                  assert item['size']==record['bytes']
+                  gh('release','download','v1.6','--pattern',record['filename'],'--dir',directory)
+                  data=Path(directory,record['filename']).read_bytes()
+                  assert len(data)==record['bytes']
+                  assert hashlib.sha256(data).hexdigest()==record['sha256']
+                  print(record['filename'],record['sha256'],'VERIFIED')
+          # Move the source tag only from the known previous reference or this exact finalization.
+          target=os.environ['GITHUB_SHA']
+          ref=json.loads(gh('api',f'repos/{repo}/git/ref/tags/v1.6'))
+          assert ref['object']['sha'] in ('e5042223760c2f1edbad7cb5cba502e966247833',target),'Release source tag changed independently'
+          if ref['object']['sha']!=target:
+              gh('api',f'repos/{repo}/git/refs/tags/v1.6','--method','PATCH','-f','sha='+target,'-F','force=true')
+          gh('release','edit','v1.6','--title','PlexConfigControl 1.6 — TrueNAS SCALE / QNAP QuTS hero',
+             '--notes-file','QNAP/release-notes-1.6.md','--latest')
+          print('Confirmed binary downloads retained. Source tag and release documentation finalized.')
+          PY

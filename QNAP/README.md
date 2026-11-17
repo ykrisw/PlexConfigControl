@@ -1,5 +1,7 @@
 # PlexConfigControl 1.6 — QNAP QuTS hero x86-64 (64-bit)
 
+**Potwierdzona działająca wersja — 17.11.2026:** właściciel potwierdził wykonanie kopii i przywracanie oraz brak bieżących zastrzeżeń do wyglądu. [Zapis weryfikacji](VALIDATION-1.6.md) · [Plik i suma SHA-256](RELEASE-1.6.json).
+
 [**Pobierz instalator QNAP QuTS hero 1.6**](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/PlexConfigControl_QuTShero_x86-64v1.6.qpkg)
 
 Pakiet dla QuTS hero z ZFS na x86-64, nie dla ARM ani zwykłego QTS. Wydawca: Krzysztof Wojciechowski. Pakiet pozostaje niepodpisany cyfrowo.

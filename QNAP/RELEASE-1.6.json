@@ -1,0 +1,17 @@
+{
+  "version": "1.6",
+  "status": "owner-confirmed-working-baseline",
+  "confirmed_on": "2026-11-17",
+  "platform": "QNAP QuTS hero x86-64",
+  "filename": "PlexConfigControl_QuTShero_x86-64v1.6.qpkg",
+  "download_url": "https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/PlexConfigControl_QuTShero_x86-64v1.6.qpkg",
+  "sha256": "772687998b1a5520260dba43551a5715aabaca8280b0f2d30f7f9960060f8568",
+  "bytes": 30440010,
+  "application_source_commit": "3971b155a30a042c7f99e39bf31279765b606a1a",
+  "build_run_url": "https://github.com/ykrisw/PlexConfigControl/actions/runs/44165465671",
+  "owner_report": {
+    "backup": "passed",
+    "restore": "passed",
+    "appearance": "no_objections_reported"
+  }
+}

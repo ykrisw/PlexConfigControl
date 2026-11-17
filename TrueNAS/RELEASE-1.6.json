@@ -1,0 +1,17 @@
+{
+  "version": "1.6",
+  "status": "owner-confirmed-working-baseline",
+  "confirmed_on": "2026-11-17",
+  "platform": "TrueNAS SCALE x86-64",
+  "filename": "PlexConfigControl_TrueNAS_x86-64v1.6.zip",
+  "download_url": "https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/PlexConfigControl_TrueNAS_x86-64v1.6.zip",
+  "sha256": "c224e879853b8b30b2c7693c179e53a73a4aa5d63597ddd4776cc83b78185d03",
+  "bytes": 69056130,
+  "application_source_commit": "3971b155a30a042c7f99e39bf31279765b606a1a",
+  "build_run_url": "https://github.com/ykrisw/PlexConfigControl/actions/runs/44165465724",
+  "owner_report": {
+    "backup": "passed",
+    "restore": "passed",
+    "appearance": "no_objections_reported"
+  }
+}

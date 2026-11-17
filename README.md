@@ -1,5 +1,7 @@
 # PlexConfigControl 1.6
 
+**Confirmed working baseline — 17 November 2026.** The project owner confirmed successful backup and restore on both platforms and reported no current appearance issues. [QNAP verification](QNAP/VALIDATION-1.6.md) · [TrueNAS verification](TrueNAS/VALIDATION-1.6.md). Exact package checksums are recorded separately for each platform.
+
 ## QNAP QuTS hero — x86-64 (64-bit)
 
 [**Download PlexConfigControl_QuTShero_x86-64v1.6.qpkg**](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/PlexConfigControl_QuTShero_x86-64v1.6.qpkg)

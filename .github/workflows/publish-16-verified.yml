@@ -21,19 +21,29 @@ jobs:
           name: PCC-QNAP-1.6-x86_64
           path: TrueNAS/qnap-release
           github-token: ${{ github.token }}
-          run-id: 44032168034
+          run-id: 44165465671
       - uses: actions/download-artifact@v4
         with:
           name: PlexConfigControl-Desktop-PL-EN
           path: TrueNAS/release
           github-token: ${{ github.token }}
-          run-id: 44032168053
+          run-id: 44165465724
       - name: Verify downloaded installer checksums
         run: |
           cd qnap-release
           sha256sum -c SHA256SUMS_QNAP
           cd ../release
           sha256sum -c SHA256SUMS
+      - name: Match the owner-confirmed release records
+        run: |
+          python3 - <<'PYVERIFY'
+          import hashlib,json
+          from pathlib import Path
+          for folder,manifest in ((Path('qnap-release'),Path('../QNAP/RELEASE-1.6.json')),(Path('release'),Path('RELEASE-1.6.json'))):
+              record=json.loads(manifest.read_text());data=(folder/record['filename']).read_bytes()
+              assert len(data)==record['bytes']
+              assert hashlib.sha256(data).hexdigest()==record['sha256']
+          PYVERIFY
       - name: Publish the already verified packages
         env:
           GH_TOKEN: ${{ github.token }}
