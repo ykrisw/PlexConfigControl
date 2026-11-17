@@ -19,3 +19,7 @@ ZIP źródeł jest historyczną bazą 1.0.5 o zachowanej sumie kontrolnej. Aplik
 Ten katalog zawiera własne dane wejściowe budowania i nie wymaga plików z TrueNAS. Zmiany wspólnego wyglądu należy stosować w obu zbiorach. Licencje i źródła GNU tar oraz jego zależności pozostają w eksporcie źródłowym.
 
 [TrueNAS](../TrueNAS/README.md)
+
+## Maintenance source
+
+Native runtime fixes are readable under [runtime](runtime/). The preparation script overlays them onto the verified baseline. The NAS session token is stored only in root-owned private application storage; no password or TOTP code is saved. A read-only keepalive retains the session until QNAP itself invalidates it. Profile/account events create permanent files in the selected `Logs` folder; events before folder selection are queued privately and exported when the folder is configured.

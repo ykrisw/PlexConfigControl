@@ -37,11 +37,16 @@ jobs:
           python -m pip install 'playwright>=1.56,<2' CairoSVG==2.8.2
           python -m playwright install --with-deps '${{ matrix.browser }}'
           python build/prepare_release.py .qnap-notice/source
+          PCC_QNAP_SOURCE="$PWD/.qnap-notice/source" python -m unittest discover -s tests -p test_runtime_fixes.py -v
+          PCC_QNAP_SOURCE="$PWD/.qnap-notice/source" node --test tests/test_restore_selection.mjs
       - name: Verify the QNAP sign-in notice through the real dialog
         env:
           PCC_STATIC: .qnap-notice/source/plexconfigcontrol/static
           PCC_TEST_BROWSER: ${{ matrix.browser }}
-        run: python tests/qnap_login_notice_e2e.py
+        run: |
+          python tests/qnap_login_notice_e2e.py
+          python tests/qnap_archives_e2e.py
+          PCC_PLATFORM=qnap python ../TrueNAS/tests/visual_refresh_preview_e2e.py
   build:
     if: github.event_name != 'push' || (!startsWith(github.event.head_commit.message, 'rename-only:') && !startsWith(github.event.head_commit.message, 'publish-only:'))
     runs-on: ubuntu-24.04

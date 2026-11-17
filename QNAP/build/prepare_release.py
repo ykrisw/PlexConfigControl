@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BUNDLE_SHA256 = "6d71dd5161101fcc8dba84c9ec6181ffa50ac2ff9e66678c18653d48a233b0e9"
 FRONTEND = ("panel-app.mjs", "panel-app.css", "panel-layout.css",
             "backup-view.mjs", "restore-view.mjs", "backup-controller.mjs",
-            "archive-refresh.mjs", "pcc-logo.svg")
+            "archive-refresh.mjs", "pcc-logo.svg", "restore-panel.mjs")
 
 
 def fix_login_notice(destination):
@@ -66,6 +66,9 @@ def prepare(destination):
             target = destination / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(archive.read(member))
+    for relative in ('plexconfigcontrol/qnap_restore.py','plexconfigcontrol/qnap_service.py','plexconfigcontrol/qnap_web.py','plexconfigcontrol/qnap_eventlog.py','plexconfigcontrol/qnap_session.py','qpkg/launcher.py'):
+        target=destination / ('deploy/qnap/'+relative if relative.startswith('qpkg/') else relative)
+        shutil.copy2(ROOT/'runtime'/relative,target)
     static = destination / "plexconfigcontrol/static"
     for name in FRONTEND:
         shutil.copy2(ROOT / "shared-ui" / name, static / name)

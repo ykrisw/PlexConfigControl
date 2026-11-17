@@ -1,3 +1,4 @@
+import {refreshArchiveViews} from './archive-refresh.mjs';
 import {PanelClient} from './panel-client.mjs';
 import {mountPanelShell} from './panel-shell.mjs';
 import {mountDashboardView} from './dashboard-view.mjs';
@@ -108,7 +109,10 @@ export function mountPanelApp(root) {
     const viewDisposers = new Map();
     const signedOut = reason => showLogin(reason === 'password_changed_history_pending' ? 'Password changed. Sign in with your new password. The History entry could not be confirmed.' : reason === 'password_changed' ? 'Password changed. Sign in with your new password.' : '');
     const shell = mountPanelShell(root, {theme: prefs.theme, onNavigate(key, section) {
-      if (viewDisposers.has(key)) return;
+      if (viewDisposers.has(key)) {
+        if(key==='backup'||key==='restore')void refreshArchiveViews(client);
+        return;
+      }
       if (key === 'dashboard') viewDisposers.set(key, mountDashboardView(section, client, {language: prefs.language, onSignedOut: signedOut}));
       else if (key === 'backup') viewDisposers.set(key,mountBackupView(section,client,{language:prefs.language,timezone:prefs.timezone}));
       else if (key === 'restore') viewDisposers.set(key, mountRestoreView(section, client,{language:prefs.language}));

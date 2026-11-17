@@ -8,7 +8,8 @@ from types import SimpleNamespace
 from urllib.parse import urlsplit
 from unittest.mock import Mock
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]/'TrueNAS/tests'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]/'TrueNAS'))
 import execution_ui_e2e as execution
 import mobile_archives_e2e as mobile
 from playwright.sync_api import sync_playwright, expect
@@ -16,13 +17,15 @@ from playwright.sync_api import sync_playwright, expect
 STATIC = Path(os.environ['PCC_STATIC']).resolve()
 execution.STATIC = mobile.STATIC = STATIC
 source = STATIC.parents[1]
+import plexconfigcontrol
+plexconfigcontrol.__path__.append(str(source/'plexconfigcontrol'))
 spec = importlib.util.spec_from_file_location('plexconfigcontrol.qnap_notice_backend_fixture', source/'plexconfigcontrol/qnap_web.py')
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 for signed_in in (False,True):
     client = Mock()
     client.request.return_value = {'authenticated':signed_in,'location':None,'recovery_required':False}
-    app = module.QnapWeb(SimpleNamespace(sessions=SimpleNamespace(authenticated=lambda token:True)),client)
+    app = module.QnapWeb(SimpleNamespace(sessions=SimpleNamespace(authenticated=lambda token:True),history=Mock()),client)
     response = json.loads(b''.join(app({'PATH_INFO':'/api/capabilities','REQUEST_METHOD':'GET'}, lambda *args:None)))
     assert response['qnap_authenticated'] is signed_in
     assert response['backup_create'] is False
