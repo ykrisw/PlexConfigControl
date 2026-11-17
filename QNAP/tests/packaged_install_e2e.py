@@ -45,7 +45,9 @@ def extract(package,destination):
         data=source.read(size)
         if len(data)!=size:raise ValueError('Truncated QPKG')
     control_dir=destination/'.qa-control';control_dir.mkdir()
-    with tarfile.open(fileobj=io.BytesIO(control_data),mode='r:*') as archive:
+    with tarfile.open(fileobj=io.BytesIO(control_data),mode='r:') as wrapper:
+        control_gzip=wrapper.extractfile('control.tar.gz').read()
+    with tarfile.open(fileobj=io.BytesIO(control_gzip),mode='r:gz') as archive:
         archive.extractall(control_dir,filter='data')
     with tarfile.open(fileobj=io.BytesIO(data),mode='r:gz') as archive:
         archive.extractall(destination,filter='data')
