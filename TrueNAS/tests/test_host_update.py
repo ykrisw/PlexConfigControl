@@ -140,3 +140,28 @@ class HostUpdateTests(unittest.TestCase):
         self.api.start.assert_not_called()
         self.api.configure.assert_not_called()
         self.assertFalse(self.record.exists())
+
+    def test_stopped_app_can_be_updated_without_remote_api_readiness(self):
+        self.status='STOPPED'
+        update._update(self.api)
+        self.assertEqual(self.status,'RUNNING')
+        self.assertNotEqual(self.compose['services']['worker']['image'],self.old['services']['worker']['image'])
+        self.assertFalse(self.record.exists())
+
+    def test_old_unhealthy_panel_does_not_prevent_a_verified_new_start(self):
+        self.ready.side_effect=[InstallError('old API TLS is unavailable'),None]
+        update._update(self.api)
+        self.assertEqual(self.status,'RUNNING')
+        self.assertFalse(self.record.exists())
+
+    def test_trust_only_stop_preserves_recovery_records(self):
+        self.set_operation('RECOVERY_REQUIRED')
+        before=(self.state/'operations.sqlite3').read_bytes()
+        update._stop(self.api,self.compose,trust_only=True)
+        self.assertEqual(self.status,'STOPPED')
+        self.assertEqual((self.state/'operations.sqlite3').read_bytes(),before)
+
+    def test_trust_only_stop_cannot_interrupt_an_owned_operation(self):
+        with operation_lock(self.state), self.assertRaises(Exception):
+            update._stop(self.api,self.compose,trust_only=True)
+        self.api.stop.assert_not_called()

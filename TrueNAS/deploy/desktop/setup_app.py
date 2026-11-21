@@ -2,17 +2,19 @@
 import base64
 import codecs
 import hashlib
+import ipaddress
 import json
 from pathlib import Path
 import queue
 import re
 import shlex
 import socket
+import ssl
 import sys
 import threading
 import time
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import webbrowser
 
 import paramiko
@@ -43,7 +45,7 @@ def classify_prompt(event):
     if event.get('confirmation'):
         return 'confirmation'
     if event.get('choices'):
-        return 'dataset'
+        return event.get('input_kind','dataset')
     if event.get('secret'):
         return 'password-confirm' if re.search('Powtórz|Repeat|Confirm', text) else 'panel-password'
     if re.search('folder|Folder', text):
@@ -90,6 +92,30 @@ class TrustHost(paramiko.MissingHostKeyPolicy):
             self.approved.add(identity)
         client.get_host_keys().add(hostname, key.get_name(), key)
 
+
+def desktop_public_roots():
+    """Public certificates only. The NAS selects/verifies the issuer of its SSH-authenticated certificate."""
+    bundles=[]
+    if sys.platform=='darwin':
+        import subprocess
+        for keychain in (None,'/Library/Keychains/System.keychain','/System/Library/Keychains/SystemRootCertificates.keychain'):
+            try:
+                result=subprocess.run(['security','find-certificate','-a','-p']+([keychain] if keychain else []),capture_output=True,text=True,timeout=10)
+                if result.returncode==0 and len(result.stdout.encode())<=2097152:bundles.append(result.stdout)
+            except (OSError,subprocess.TimeoutExpired):pass
+    elif sys.platform=='win32':
+        for store in ('ROOT','CA'):
+            try:
+                bundles.extend(ssl.DER_cert_to_PEM_cert(cert) for cert,encoding,trust in ssl.enum_certificates(store) if encoding=='x509_asn')
+            except OSError:pass
+    else:
+        for name in ('/etc/ssl/certs/ca-certificates.crt','/etc/pki/tls/certs/ca-bundle.crt'):
+            try:
+                path=Path(name)
+                if path.is_file() and path.stat().st_size<=2097152:bundles.append(path.read_text())
+            except OSError:pass
+    result='\n'.join(dict.fromkeys(cert for bundle in bundles for cert in re.findall(r'-----BEGIN CERTIFICATE-----[A-Za-z0-9+/=\s]+?-----END CERTIFICATE-----',bundle)))
+    return result if len(result.encode())<=2097152 else ''
 
 class Installer:
     def __init__(self, event_queue, cancelled, approved, credentials):
@@ -160,9 +186,13 @@ class Installer:
             channel = client.get_transport().open_session(timeout=15)
             channel.get_pty(term='dumb', width=120, height=40)
             path = shlex.quote(remote + '/setup.py')
+            try:ipaddress.ip_address(host);api_host=''
+            except ValueError:
+                if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}',host):raise SetupError('CONNECTION')
+                api_host=' --api-host '+shlex.quote(host)
             channel.exec_command(
                 'stty -echo; sudo -S -p PCC_SUDO_PASSWORD: -- python3 ' + path
-                + ' --desktop --gui --ssh-connection $SSH_CONNECTION')
+                + api_host + ' --desktop --gui --ssh-connection $SSH_CONNECTION')
             channel.settimeout(.2)
             buffer = ''
             decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
@@ -200,7 +230,12 @@ class Installer:
                     line = line.strip('\r')
                     if line.startswith(PREFIX):
                         event = json.loads(line[len(PREFIX):])
-                        if event.get('type') == 'prompt':
+                        if event.get('type') == 'trust_candidates':
+                            from_sources=desktop_public_roots()
+                            channel.settimeout(15)
+                            try:channel.sendall((json.dumps({'answer':base64.b64encode(from_sources.encode()).decode('ascii')})+'\n').encode())
+                            finally:channel.settimeout(.2)
+                        elif event.get('type') == 'prompt':
                             answer = self.ask(event)
                             channel.sendall((json.dumps({'answer': answer}, ensure_ascii=False) + '\n').encode())
                             answer = None
@@ -259,7 +294,7 @@ class SetupWindow:
         self.host = tk.StringVar()
         self.user = tk.StringVar()
         self.prompt_value = tk.StringVar()
-        root.title('PlexConfigControl Setup 1.6')
+        root.title('PlexConfigControl Setup 1.6.1')
         root.geometry('660x530')
         root.minsize(620, 500)
         style = ttk.Style(root)
@@ -403,12 +438,15 @@ class SetupWindow:
             self.field.config(show='•')
             self.field.pack(fill='x')
             self.field.focus_set()
+        elif event.get('input_kind') == 'certificate':
+            text=self.tx(event.get('message_en',''),event.get('message',''))
+            self.primary.config(text=self.tx('Choose public certificate…','Wybierz publiczny certyfikat…'),command=self.choose_certificate)
         elif kind == 'host-key':
             text = self.tx('Compare this SSH fingerprint with your TrueNAS server, then confirm.', 'Porównaj ten odcisk klucza SSH z serwerem TrueNAS i potwierdź.') + '\n\n' + event['host'] + '\n' + event['fingerprint']
             self.primary.config(text=self.tx('Trust and connect', 'Zaufaj i połącz'))
         else:
             key = classify_prompt(event)
-            text = event.get('message', '')
+            text = self.tx(event.get('message_en',event.get('message','')),event.get('message',''))
             if key == 'confirmation':
                 if event['confirmation'] in ('od nowa', 'start over'):
                     text = self.tx('Replace the previous setup and install PlexConfigControl? Existing backups will be kept.', 'Zastąpić poprzednie przygotowanie i zainstalować PlexConfigControl? Kopie zostaną zachowane.')
@@ -419,8 +457,8 @@ class SetupWindow:
                 if review:
                     text += '\n\n' + review
                 self.primary.config(text=self.tx('Install / update', 'Instaluj / aktualizuj'))
-            elif key == 'dataset':
-                text = self.tx('Choose where to keep backup archives and logs.', 'Wybierz miejsce na archiwa kopii i logi.')
+            elif key in ('dataset','action'):
+                text = self.tx('Choose an action.','Wybierz działanie.') if key=='action' else self.tx('Choose where to keep backup archives and logs.', 'Wybierz miejsce na archiwa kopii i logi.')
                 options = [label for _, label in event['choices']]
                 self.choice.config(values=options)
                 previous = self.values.get(key)
@@ -435,6 +473,26 @@ class SetupWindow:
         self.prompt_label.config(text=text)
         self.note.config(text=prompt_feedback(event) or self.tx('Your entries are kept only while this installer window is open.', 'Wpisane dane są zachowane tylko na czas otwarcia tego okna.'))
 
+    def choose_certificate(self):
+        event=self.pending
+        if not event or event.get('input_kind')!='certificate':return
+        path=filedialog.askopenfilename(parent=self.root,title=self.tx('Public TrueNAS CA certificate','Publiczny certyfikat CA TrueNAS'),
+            filetypes=[('PEM / CRT / CER','*.pem *.crt *.cer'),('All files','*')])
+        if not path:return
+        try:
+            data=Path(path).read_bytes()
+            if not 0<len(data)<=262144:raise ValueError('Certificate file is too large')
+            pem=data.decode('utf-8')
+            certificates=re.findall(r'-----BEGIN CERTIFICATE-----[A-Za-z0-9+/=\s]+?-----END CERTIFICATE-----',pem)
+            if 'PRIVATE KEY' in pem or not certificates:raise ValueError('Choose public PEM certificates, without private keys')
+            fingerprints=[hashlib.sha256(ssl.PEM_cert_to_DER_cert(cert)).hexdigest().upper() for cert in certificates]
+            summary='\n'.join('SHA-256: '+':'.join(digest[i:i+2] for i in range(0,len(digest),2)) for digest in fingerprints)
+            if not messagebox.askyesno('PlexConfigControl',self.tx('Trust these public certificates for your TrueNAS connection?','Zaufać tym publicznym certyfikatom dla połączenia z TrueNAS?')+'\n\n'+summary,parent=self.root):return
+            self.pending=None;self.prompt_label.config(text='');self.primary.config(state='disabled')
+            event['response'].put(base64.b64encode(data).decode('ascii'))
+        except (OSError,ValueError,UnicodeError) as error:
+            self.note.config(text=str(error))
+
     def answer(self):
         event = self.pending
         if not event:
@@ -447,7 +505,7 @@ class SetupWindow:
             key = classify_prompt(event)
             if key == 'confirmation':
                 value = event['confirmation']
-            elif key == 'dataset':
+            elif key in ('dataset','action'):
                 self.values[key] = value
                 value = next(index for index, label in event['choices'] if label == value)
             else:

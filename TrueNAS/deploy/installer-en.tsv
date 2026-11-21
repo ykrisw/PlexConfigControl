@@ -190,3 +190,9 @@ Zapisz hasło teraz. Usuń je z logu przed udostępnieniem.	Save the password no
 USTAW HASŁO DO PANELU	CHOOSE YOUR PANEL PASSWORD
 Jeśli aplikacja nie pojawiła się w TrueNAS Apps, uruchom instalator ponownie.	If the app has not appeared in TrueNAS Apps, run the installer again.
 The managed private iXVolume could not be verified	The managed private iXVolume could not be verified
+PROMPT_LANGUAGE = "pl"	PROMPT_LANGUAGE = "en"
+3. Napraw połączenie z TrueNAS	3. Repair connection to TrueNAS
+Publiczny certyfikat TrueNAS potwierdzony przez uwierzytelnione SSH.	TrueNAS public certificate confirmed through authenticated SSH.
+Wpisz tak, aby naprawić połączenie i uruchomić ponownie tylko PlexConfigControl:	Type yes to repair the connection and restart only PlexConfigControl:
+Połączenie naprawione. Otwórz	Connection repaired. Open
+Poczekaj na zakończenie zatrzymywania PlexConfigControl.	Wait for PlexConfigControl to finish stopping.

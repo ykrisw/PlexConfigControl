@@ -1,8 +1,10 @@
-# PlexConfigControl 1.6 — TrueNAS SCALE x86-64 (64-bit)
+# PlexConfigControl 1.6.1 — TrueNAS SCALE x86-64 (64-bit)
 
 **Potwierdzona działająca wersja — 17.11.2026:** właściciel potwierdził wykonanie kopii i przywracanie oraz brak bieżących zastrzeżeń do wyglądu. [Zapis weryfikacji](VALIDATION-1.6.md) · [Plik i suma SHA-256](RELEASE-1.6.json).
 
-[**Pobierz instalator TrueNAS SCALE x86-64 (64-bit) — 1.6**](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/PlexConfigControl_TrueNAS_x86-64v1.6.zip)
+[**Pobierz instalator TrueNAS SCALE x86-64 (64-bit) — 1.6.1**](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6.1/PlexConfigControl_TrueNAS_x86-64v1.6.1.zip)
+
+Poprawka 1.6.1 obsługuje zaufanie do HTTPS przez uwierzytelnione SSH, odłączone API i naprawę połączenia bez reinstalacji. [Instrukcja HTTPS](INSTALL-EN.md#https-and-connection-repair-161). Poprzednia [wersja 1.6 pozostaje do pobrania](https://github.com/ykrisw/PlexConfigControl/releases/tag/v1.6).
 
 Aplikacja działa na serwerze TrueNAS SCALE x86-64. ZIP zawiera narzędzia instalacyjne na komputer Windows x64, Linux x64 lub macOS Apple Silicon.
 

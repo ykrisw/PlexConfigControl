@@ -10,6 +10,8 @@ from .execution import (
     AcceptedOperation, BackupRequest, ExecutionGateway, InvalidExecutionRequest,
     RestoreRequest, SubmissionUnconfirmed, parse_archive_deletion, parse_backup_request, parse_restore_request,
 )
+from .rpc import TrueNASConnectionError
+from .connection_errors import CODES
 from .archive_store import ArchiveChanged
 from .locking import OperationBusy
 from .operations import OperationDenied
@@ -65,6 +67,8 @@ class _ExecutionHandler(socketserver.BaseRequestHandler):
         try:
             result = self.server.dispatch(_read(self.request))
             reply = {'result': result}
+        except TrueNASConnectionError as error:
+            reply = {'error':'connection','code':error.code}
         except (OperationBusy, OperationDenied, ArchiveChanged, FileNotFoundError):
             reply = {'error': 'denied'}
         except (InvalidExecutionRequest, ValueError, TypeError):
@@ -131,6 +135,8 @@ class ExecutionSocketClient:
         except (OSError, ValueError) as error:
             raise SubmissionUnconfirmed('Execution owner reply could not be verified') from None
         if isinstance(reply, dict):
+            if set(reply)=={'error','code'} and reply['error']=='connection' and reply['code'] in CODES:
+                raise TrueNASConnectionError(reply['code'])
             if set(reply) == {'result'}:
                 return reply['result']
             if reply == {'error': 'denied'}:

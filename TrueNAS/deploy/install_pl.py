@@ -28,6 +28,7 @@ from plexconfigcontrol.storage import RenameRequired
 
 ROLES = ["APPS_READ", "FILESYSTEM_ATTRS_READ", "SNAPSHOT_READ", "SNAPSHOT_WRITE", "SNAPSHOT_DELETE"]
 CERT_NAME = "pcc_lan_https"
+PROMPT_LANGUAGE = "pl"
 PREPARATION_FILES = ("truenas-key", "panel-verifier", "settings.json")
 PREPARATION_RECORDS = (
     ("user.query", "username", "konto techniczne"),
@@ -158,41 +159,52 @@ def ask_panel_port(ip):
 
 
 def verified_ca(client, ui, ip, host, path, supplied):
+    from plexconfigcontrol.installer_trust import trusted_issuer_chain,desktop_candidates,select_certificate,public_certificates,certificate_pem
     def verify(pem):
+        public_certificates(pem)
         context = ssl.create_default_context(cadata=pem)
+        context.verify_flags |= ssl.VERIFY_X509_PARTIAL_CHAIN
         with socket.create_connection((str(ip), ui["ui_httpsport"]), timeout=8) as conn:
-            with context.wrap_socket(conn, server_hostname=host):
-                pass
+            with context.wrap_socket(conn, server_hostname=host):pass
 
-    if path.is_symlink():
-        raise ValueError("Plik CA nie może być dowiązaniem symbolicznym.")
-    if path.exists() or supplied:
-        pem = (path if path.exists() else supplied).read_text()
-        verify(pem)
-        return pem
+    if path.is_symlink():raise ValueError("Plik CA nie może być dowiązaniem symbolicznym.")
+    for candidate in (supplied,path if path.exists() else None):
+        if candidate is None:continue
+        pem=candidate.read_text()
+        try:verify(pem);return pem
+        except ssl.SSLError:pass
 
+    # This configuration and file are obtained locally on the authenticated SSH host.
     configured = ui.get("ui_certificate")
-    cert_id = configured.get("id") if isinstance(configured, dict) else configured
+    cert_id = configured.get("id") if isinstance(configured,dict) else configured
+    leaf=None
     if type(cert_id) is int:
-        cert = client.call("certificate.query", [["id", "=", cert_id]],
-                           {"get": True, "select": ["certificate_path"]})
-        if cert.get("certificate_path"):
-            pem = Path(cert["certificate_path"]).read_text()
-            try:
-                verify(pem)
-                return pem
-            except ssl.SSLError:
-                pass
-    bundle = Path("/etc/ssl/certs/ca-certificates.crt")
-    if bundle.is_file():
-        pem = bundle.read_text()
-        try:
-            verify(pem)
-            return pem
-        except ssl.SSLError:
-            pass
-    raise ValueError("Certyfikat HTTPS TrueNAS nie pasuje do adresu lub brakuje zaufanej CA. "
-                     "Sprawdź sekcję HTTPS w INSTRUKCJA-PL.md.")
+        cert=client.call("certificate.query",[["id","=",cert_id]],{"get":True,"select":["certificate_path"]})
+        if cert.get("certificate_path"):leaf=certificate_pem(Path(cert["certificate_path"]).read_text())
+    bundle=Path("/etc/ssl/certs/ca-certificates.crt")
+    candidates=bundle.read_text() if bundle.is_file() else ''
+    if leaf:
+        chain=trusted_issuer_chain(leaf,leaf+'\n'+candidates)
+        if chain:
+            try:verify(chain);return chain
+            except ssl.SSLError:pass
+    if candidates:
+        try:verify(candidates);return candidates
+        except ssl.SSLError:pass
+    if leaf:
+        chain=trusted_issuer_chain(leaf,desktop_candidates())
+        if chain:
+            try:verify(chain);return chain
+            except ssl.SSLError:pass
+        # Last automatic fallback: exact configured public certificate, authenticated
+        # over SSH, not an unverified certificate fetched from the network.
+        try:verify(leaf);return leaf
+        except ssl.SSLCertVerificationError as error:
+            if error.verify_code in (9,10,62,64):
+                message='Certyfikat HTTPS skonfigurowany w TrueNAS jest nieważny lub nie pasuje do adresu. Popraw certyfikat/adres w TrueNAS.' if PROMPT_LANGUAGE=='pl' else 'The configured TrueNAS HTTPS certificate is expired/not yet valid or does not match the address. Correct the NAS certificate/address.'
+                raise ValueError(message) from None
+        except ssl.SSLError:pass
+    return select_certificate(host,verify,PROMPT_LANGUAGE)
 
 
 def certificate(client, ip, private):
@@ -523,6 +535,9 @@ def settings(client, args, private, *, staging=None):
     values["connection"].update(api_key_file=str(key), api_ca_file=str(ca))
     if not ca.exists():
         save(ca, pem, mode=0o644)
+    elif ca.read_text()!=pem:
+        from plexconfigcontrol.connection_repair import _replace
+        _replace(ca,pem)
     group_id = client.call("group.create", {"name": APP, "smb": False})
     group = client.call("group.query", [["name", "=", APP]], {"get": True})
     client.call("privilege.create", {"name": APP, "local_groups": [group["gid"]],
@@ -578,9 +593,9 @@ def choose_action(installed):
     print(f"1. {first}\n2. Sprawdź wymagania")
     if not installed:
         print("3. Wznów instalację")
+    else:print("3. Napraw połączenie z TrueNAS")
     actions = {"1": "aktualizuj" if installed else "instaluj", "2": "sprawdz"}
-    if not installed:
-        actions["3"] = "wznowienie"
+    actions["3"] = "wznowienie" if not installed else "napraw-polaczenie"
     while True:
         choice = input("Wybierz działanie [1]: ").strip() or "1"
         if choice in actions:
@@ -642,7 +657,7 @@ def review_resume(client, private):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("krok", nargs="?", default="instaluj", choices=("sprawdz", "certyfikat", "ustawienia", "instaluj", "aktualizuj"))
+    parser.add_argument("krok", nargs="?", default="instaluj", choices=("sprawdz", "certyfikat", "ustawienia", "instaluj", "aktualizuj", "napraw-polaczenie"))
     parser.add_argument("--ip", type=ipaddress.IPv4Address)
     parser.add_argument("--api-host", help="Nazwa DNS w istniejącym certyfikacie HTTPS TrueNAS.")
     parser.add_argument("--ca", type=Path, help="Publiczny plik PEM zaufanej CA TrueNAS.")
@@ -682,9 +697,16 @@ def main():
                 installed = installed_app_exists(client)
             desktop_section(args.desktop, "PlexConfigControl  /  Wybór działania")
             if args.desktop:
-                args.krok = "aktualizuj" if installed else "instaluj"
+                if installed and args.gui:
+                    from plexconfigcontrol.setup_protocol import choose_action as choose_gui_action
+                    args.krok=choose_gui_action(PROMPT_LANGUAGE)
+                else:args.krok = "aktualizuj" if installed else "instaluj"
             else:
                 args.krok = choose_action(installed)
+        if args.krok == "napraw-polaczenie":
+            from plexconfigcontrol.connection_repair import repair_connection
+            repair_connection(LocalMiddleware(),client,verified_ca,args.ca)
+            return
         if args.krok == "aktualizuj" or (installed and args.krok == "sprawdz"):
             from plexconfigcontrol.host_update import run_update
             checking = args.krok == "sprawdz"

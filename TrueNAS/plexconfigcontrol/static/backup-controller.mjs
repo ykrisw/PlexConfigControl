@@ -8,6 +8,7 @@ const validArchive=row=>row&&typeof row.name==='string'&&archiveName.test(row.na
 
 export function createBackupController(client,render,{schedule=setTimeout,cancel=clearTimeout,makeId}={}){
   let entries=[],selected=new Set(),available=false,loading=false,busy=false,disposed=false,timer,refreshing;
+  let plexError=null;
   let capabilities={},operation=null,plan=null,plex='UNKNOWN',error='',notice='';
   let manualCheck='';
   const lifecycle=new AbortController();
@@ -18,7 +19,7 @@ export function createBackupController(client,render,{schedule=setTimeout,cancel
     ['IDLE','SUCCESS','FAILED'].includes(operation.operation?.phase)&&!operation.operation.snapshot_id&&operation.publication?.status==='NONE';}
   function canDelete(){return executionFree()&&available&&capabilities.archive_delete===true&&operation&&
     ['IDLE','SUCCESS','FAILED'].includes(operation.operation?.phase)&&!operation.operation.snapshot_id&&operation.publication?.status==='NONE';}
-  function emit(){if(!disposed)render({entries:entries.map(row=>({...row})),selected:[...selected],available,loading,busy,plex,error,notice,
+  function emit(){if(!disposed)render({entries:entries.map(row=>({...row})),selected:[...selected],available,loading,busy,plex,plexError,error,notice,
     operation:operation?structuredClone(operation):null,submission:submission.view(),manualCheck,canCreate:Boolean(canCreate()),creationEnabled:capabilities.backup_create===true,overwriteEnabled:capabilities.backup_overwrite===true,canDelete:Boolean(canDelete()),deletionEnabled:capabilities.archive_delete===true,plan:plan?structuredClone(plan):null});}
   function refresh(fresh=false){
     if(disposed||busy)return Promise.resolve(false);
@@ -34,6 +35,7 @@ export function createBackupController(client,render,{schedule=setTimeout,cancel
     if(disposed)return false;
     const [archives,caps,op,choice,status]=results;
     plex=status.status==='fulfilled'&&status.value?.available!==false&&['RUNNING','STOPPED'].includes(status.value?.state)?status.value.state:'UNKNOWN';
+    plexError=status.status==='fulfilled'?status.value?.error_code:null;
     capabilities=caps.status==='fulfilled'&&caps.value&&typeof caps.value==='object'?caps.value:{};
     operation=op.status==='fulfilled'?op.value:null;
     if(archives.status==='fulfilled'&&Array.isArray(archives.value)&&archives.value.every(validArchive)){

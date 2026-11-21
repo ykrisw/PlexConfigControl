@@ -115,10 +115,13 @@ def main(argv=None):
             return 0
         api = build_client(args.truenas_url, args.api_username, read_secret(args.api_key_file),
                            args.ca_file, timeout=10)
-        plan = discover_plex_storage(api, manual_source=args.host_config, stopped_dataset=args.dataset)
-        storage = ExecutionStorage(api, plan, args.config_mount, args.state, args.archives)
-        worker = build_execution_worker(storage, sqlite_executable=args.plex_sqlite,
-                                        sqlite_version=args.sqlite_version)
+        from .deferred_worker import DeferredWorker
+        def verified_owner():
+            plan = discover_plex_storage(api, manual_source=args.host_config, stopped_dataset=args.dataset)
+            storage = ExecutionStorage(api, plan, args.config_mount, args.state, args.archives)
+            return build_execution_worker(storage, sqlite_executable=args.plex_sqlite,
+                                          sqlite_version=args.sqlite_version)
+        worker = DeferredWorker(args.state,args.archives,api,verified_owner)
         serve(worker, Path(args.socket), args.panel_uid)
         return 0
     except Exception:

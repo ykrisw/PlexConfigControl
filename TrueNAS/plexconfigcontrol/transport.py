@@ -6,10 +6,16 @@ from .rpc import TrueNASClient
 class SecureWebSocket:
     def __init__(self,ca_file=None,timeout=30,connector=None):
         if not 0<timeout<=600: raise ValueError('Invalid network timeout')
-        self.context=ssl.create_default_context(cafile=ca_file)
-        self.context.minimum_version=ssl.TLSVersion.TLSv1_2
+        self.ca_file=ca_file
         self.timeout=timeout
         self.connector=connector
+
+    @property
+    def context(self):
+        context=ssl.create_default_context(cafile=self.ca_file)
+        context.minimum_version=ssl.TLSVersion.TLSv1_2
+        context.verify_flags |= ssl.VERIFY_X509_PARTIAL_CHAIN
+        return context
 
     def __call__(self,url):
         return self.connect_with_timeout(url,self.timeout)
@@ -19,12 +25,17 @@ class SecureWebSocket:
         parsed=urlsplit(url)
         if parsed.scheme!='wss' or not parsed.hostname or parsed.username or parsed.password:
             raise ValueError('WSS endpoint required')
+        # A CA file may be replaced during an explicit maintenance repair.
+        # Build trust anew for every connection; never disable hostname checking.
+        context=ssl.create_default_context(cafile=self.ca_file)
+        context.minimum_version=ssl.TLSVersion.TLSv1_2
+        context.verify_flags |= ssl.VERIFY_X509_PARTIAL_CHAIN
         connector=self.connector
         if connector is None:
             from websocket import create_connection
             connector=create_connection
         return connector(url,timeout=min(self.timeout,timeout),
-                         sslopt={'context':self.context},redirect_limit=0,
+                         sslopt={'context':context},redirect_limit=0,
                          http_no_proxy=['*'],enable_multithread=True)
 
 

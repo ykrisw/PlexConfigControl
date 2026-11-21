@@ -53,3 +53,14 @@ def enable():
     builtins.input = _ask
     getpass.getpass = lambda prompt='Password: ', **kwargs: _ask(prompt, secret=True)
     emit('stage', code='CHECK_REQUIREMENTS')
+
+
+def choose_action(language="pl"):
+    emit('prompt',input_kind='action',message='Wybierz działanie dla istniejącej aplikacji.',
+         message_en='Choose an action for the existing application.',secret=False,
+         choices=[['aktualizuj','Update application' if language=='en' else 'Aktualizuj aplikację'],['napraw-polaczenie','Repair connection' if language=='en' else 'Napraw połączenie']],
+         confirmation=None,context='')
+    reply=json.loads(sys.stdin.readline())
+    if not isinstance(reply,dict) or reply.get('answer') not in ('aktualizuj','napraw-polaczenie'):
+        raise ValueError('Choose an installation action')
+    return reply['answer']

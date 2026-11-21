@@ -60,7 +60,7 @@ def inspect_integration(store, archives=None, plex=None, snapshot_inspector=None
                     ('RUNNING', 'STOPPED', 'DEPLOYING', 'STOPPING', 'CRASHED')):
                 result['plex'].update(state='READ_VERIFIED', app_state=status['state'])
             else:
-                result['plex']['state'] = 'UNAVAILABLE'
+                result['plex']['state'] = status.get('error_code','UNAVAILABLE')
         except Exception:
             result['plex']['state'] = 'UNAVAILABLE'
     if archives is None:

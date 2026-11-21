@@ -12,7 +12,7 @@ export function mountIntegrationView(root,client,{language='en'}={}){
     const button=find('[data-integration-check]');button.disabled=state.loading;
     button.textContent=state.loading?tx('Checking…','Sprawdzanie…'):tx('Run checks','Sprawdź połączenie');
     const unchecked=tx('Not checked','Nie sprawdzono');
-    const labels={NOT_CHECKED:unchecked,NOT_CONFIGURED:tx('Not configured','Nie skonfigurowano'),
+    const labels={TLS_UNTRUSTED:tx('TrueNAS certificate/CA is not trusted. Use Setup → Repair connection.','Certyfikat/CA TrueNAS nie jest zaufany. Użyj kreatora → Napraw połączenie.'),TLS_HOSTNAME:tx('Certificate address mismatch','Adres nie pasuje do certyfikatu'),TLS_EXPIRED:tx('Certificate validity error','Certyfikat wygasł lub nie jest jeszcze ważny'),TLS_CA_UNAVAILABLE:tx('Trust file is unavailable','Plik zaufania jest niedostępny'),TLS_INVALID:tx('TLS verification failed','Weryfikacja TLS nie powiodła się'),API_UNREACHABLE:tx('TrueNAS API is unreachable','API TrueNAS jest nieosiągalne'),API_AUTHENTICATION:tx('API credentials were rejected','Dane uwierzytelniające API zostały odrzucone'),NOT_CHECKED:unchecked,NOT_CONFIGURED:tx('Not configured','Nie skonfigurowano'),
       UNAVAILABLE:tx('Read could not be confirmed','Nie potwierdzono odczytu'),
       NO_RECORDED_SNAPSHOT:tx('Configured; no recorded snapshot to verify access','Skonfigurowano; brak zapisanego snapshotu do sprawdzenia dostępu'),
       PRESENT:tx('Recorded snapshot presence confirmed','Potwierdzono obecność zapisanego snapshotu'),

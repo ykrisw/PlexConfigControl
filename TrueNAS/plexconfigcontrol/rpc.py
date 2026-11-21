@@ -7,12 +7,20 @@ request budget. Injected factories must enforce their own connection/I/O bounds.
 Mutating requests are never automatically retried.
 """
 import json
+from .connection_errors import connection_code
 import threading
 import time
 from urllib.parse import urlsplit
 
 class RPCError(RuntimeError):
     pass
+
+class TrueNASConnectionError(RPCError):
+    def __init__(self, code):
+        from .connection_errors import CODES
+        if code not in CODES: raise ValueError('Invalid connection diagnostic')
+        self.code=code
+        super().__init__('TrueNAS connection requires attention')
 
 class TrueNASClient:
     ALLOWED={'app.query','app.config','app.ix_volume.query','filesystem.statfs','pool.snapshot.query','pool.snapshot.create',
@@ -76,14 +84,16 @@ class TrueNASClient:
                         'mechanism':'API_KEY_PLAIN','username':self.username,
                         'api_key':self._key,'login_options':{'user_info':False}}],deadline)
                     if not isinstance(result,dict) or result.get('response_type')!='SUCCESS':
-                        raise RPCError('TrueNAS authentication failed')
+                        raise TrueNASConnectionError('API_AUTHENTICATION')
                 return self._request(method,list(params),deadline)
-            except Exception:
+            except Exception as error:
                 if self.connection is not None:
                     try: self.connection.close()
                     except Exception: pass
                 self.connection=None
                 # Do not leak server errors, secrets or transport diagnostics.
+                code=connection_code(error)
+                if code: raise TrueNASConnectionError(code) from None
                 raise RPCError('TrueNAS request failed; result may require reconciliation') from None
         finally:
             self.lock.release()

@@ -1,3 +1,4 @@
+import {renderConnectionNotice} from './connection-notice.mjs';
 import {backupSubmission} from './archive-labels.mjs';
 import {mountOperationWorkspace,activeExecution,mountStageProgress} from './operation-workspace.mjs';
 import {submissionText} from './submission-controller.mjs';
@@ -74,6 +75,7 @@ export function mountBackupView(root,client,{language='en',timezone='Europe/Lond
   };
   function render(value){
     state=value;recovery.observe(value.operation);
+    renderConnectionNotice(root,value.plexError,language);
     const defaultName=value.plan?.archive_prefix;
     if(typeof defaultName==='string'&&/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(defaultName)){
       find('[data-prefix-label]').textContent=tx(

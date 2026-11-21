@@ -1,3 +1,4 @@
+import {renderConnectionNotice} from './connection-notice.mjs';
 import {createDashboardController} from './dashboard-controller.mjs';
 import {createPhotoController} from './photo-controller.mjs';
 
@@ -64,6 +65,7 @@ export function mountDashboardView(root, client, {onSignedOut, language = 'en'} 
   const controller = createDashboardController(client, state => {
     accountBusy = state.busy;
     const status = find('[data-plex-state]');
+    renderConnectionNotice(root,state.plexError,language);
     status.dataset.plexState = state.plex;
     status.textContent = pl ? ({RUNNING: 'DZIAŁA', STOPPED: 'ZATRZYMANY', UNKNOWN: 'NIEZNANY'}[state.plex]) : state.plex;
     updateActions();

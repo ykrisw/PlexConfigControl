@@ -78,6 +78,21 @@ def _ensure_idle():
         raise InstallError('Zakończ bieżącą operację lub odzyskiwanie przed aktualizacją.')
 
 
+def _ensure_repair_state():
+    for filename,query in (('operations.sqlite3','SELECT payload FROM operation WHERE id=1'),
+                           ('execution.sqlite3','SELECT state FROM requests')):
+        path=STATE/filename
+        if not stat.S_ISREG(path.lstat().st_mode):raise InstallError('Application operation records require review')
+        with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as db:
+            rows=db.execute(query).fetchall()
+        if filename.startswith('operations'):
+            if len(rows)!=1:raise InstallError('Application operation record is missing')
+            from .operations import Phase
+            Phase(json.loads(rows[0][0])['phase'])
+        elif any(row[0] not in ('QUEUED','RUNNING','SUCCEEDED','FAILED','RECOVERY_REQUIRED') for row in rows):
+            raise InstallError('Application execution records require review')
+
+
 def _write_record(path, previous, candidate):
     temporary = path.with_name(f'.{RECORD}.{uuid4().hex}')
     fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
@@ -114,16 +129,20 @@ def _ensure_no_app_job(api):
         raise InstallError('TrueNAS nadal wykonuje zadanie PlexConfigControl. Spróbuj ponownie po jego zakończeniu.')
 
 
-def _stop(api, expected, *, record=None, candidate=None):
+def _stop(api, expected, *, record=None, candidate=None, trust_only=False):
     with operation_lock(STATE):
         _ensure_no_app_job(api)
         if api.call('app.config', APP) != expected:
             raise InstallError('Konfiguracja aplikacji zmieniła się. Uruchom kreator ponownie.')
         state = _installed(api)
-        allowed = ('RUNNING',) if record is not None else ('RUNNING', 'STOPPED', 'DEPLOYING', 'CRASHED')
+        allowed = ('RUNNING', 'STOPPED', 'DEPLOYING', 'CRASHED')
         if state not in allowed:
             raise InstallError('PlexConfigControl musi zakończyć uruchamianie lub zatrzymywanie.')
-        _ensure_idle()
+        if trust_only:
+            # The operation lock above excludes live writers. A retained recovery
+            # record must not block fixing the connection needed to inspect it.
+            _ensure_repair_state()
+        else:_ensure_idle()
         if record is not None:
             _write_record(record, expected, candidate)
         if state != 'STOPPED':
@@ -211,9 +230,15 @@ def _update(api, *, check_only=False):
         _recover(api, record, saved['previous'], saved['candidate'], endpoint)
         print('Poprzednia wersja PlexConfigControl działa. Uruchom kreator ponownie, aby ją zaktualizować.')
         return
-    if app_state != 'RUNNING':
-        raise InstallError('Uruchom PlexConfigControl w TrueNAS Apps przed aktualizacją.')
-    _ready(endpoint, timeout=10)
+    if app_state not in ('RUNNING','STOPPED','DEPLOYING','CRASHED'):
+        raise InstallError('Poczekaj na zakończenie zatrzymywania PlexConfigControl.')
+    # API/TLS failure must not require the broken old worker to be healthy before
+    # replacing it. Local storage identity, operation locks and journals remain
+    # mandatory, and the new images must still pass readiness before completion.
+    old_ready=app_state=='RUNNING'
+    if old_ready:
+        try:_ready(endpoint,timeout=10)
+        except InstallError:old_ready=False
     with operation_lock(STATE):
         _ensure_no_app_job(api)
         _ensure_idle()
@@ -223,7 +248,8 @@ def _update(api, *, check_only=False):
             or initializer['environment']['PCC_SQLITE_VERSION'] != version):
         raise InstallError('Obraz Plexa zmienił się od instalacji. Ta aktualizacja wymaga zgodnego Plex SQLite.')
 
-    _check_running_images(previous)
+    if old_ready:_check_running_images(previous)
+    else:_inspect_images(previous)
     if check_only:
         print('Wymagania aktualizacji spełnione. Budowa nowych obrazów zostanie sprawdzona podczas aktualizacji.')
         return

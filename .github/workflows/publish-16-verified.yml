@@ -49,5 +49,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          python3 deploy/publish_release.py qnap-release
-          python3 deploy/publish_release.py release
+          python3 ../QNAP/publish_release.py qnap-release
+          python3 ../QNAP/publish_release.py release

@@ -13,12 +13,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class ReleaseMetadataTests(unittest.TestCase):
     def test_application_panel_and_qnap_control_metadata_match_release(self):
-        self.assertEqual(__version__, '1.6')
+        self.assertEqual(__version__, '1.6.1')
         self.assertEqual(tomllib.loads((ROOT/'pyproject.toml').read_text(encoding="utf-8"))['project']['version'], __version__)
         settings = (ROOT/'plexconfigcontrol/static/settings-view.mjs').read_text(encoding="utf-8")
-        self.assertIn("'[data-version]':'1.6'", settings)
+        self.assertIn("'[data-version]':'1.6.1'", settings)
         cfg = (ROOT.parent/'QNAP/build/qpkg/qpkg.cfg').read_text(encoding="utf-8")
-        self.assertEqual(re.search(r'^QPKG_VER="([^"]+)"',cfg,re.M)[1], __version__)
+        self.assertEqual(re.search(r'^QPKG_VER="([^"]+)"',cfg,re.M)[1], '1.6')
         self.assertEqual(re.search(r'^QPKG_AUTHOR="([^"]+)"',cfg,re.M)[1], 'Krzysztof Wojciechowski')
 
     def test_app_center_feed_preserves_identity_version_author_and_description(self):
@@ -34,7 +34,7 @@ class ReleaseMetadataTests(unittest.TestCase):
                 module.make(package,path,language)
                 item = ET.parse(path).getroot().find('item')
                 self.assertEqual(item.findtext('internalName'), 'PCC')
-                self.assertEqual(item.findtext('version'), __version__)
+                self.assertEqual(item.findtext('version'), '1.6')
                 self.assertEqual(item.findtext('developer'), 'Krzysztof Wojciechowski')
                 self.assertEqual(item.findtext('description'), module.DESCRIPTION[language])
                 self.assertTrue(item.findtext('platform/location').endswith('/v1.6/'+package.name))

@@ -88,7 +88,7 @@ class GuidedInstallerTests(unittest.TestCase):
         addresses = install_pl.local_ipv4_addresses(client)
         self.assertEqual(addresses, [ipaddress.IPv4Address('192.168.1.120'),
                                      ipaddress.IPv4Address('192.168.10.120')])
-        with patch('builtins.input', side_effect=['3', '2']):
+        with patch('builtins.input', side_effect=['invalid', '2']):
             self.assertEqual(install_pl.ask_ipv4_address(addresses), addresses[1])
         with patch('builtins.input', return_value=''):
             self.assertEqual(install_pl.ask_ipv4_address(addresses[:1]), addresses[0])
@@ -183,6 +183,8 @@ class GuidedInstallerTests(unittest.TestCase):
         with patch('builtins.input', side_effect=['/home/copied-by-mistake', 'ArchivePool/Family']) as prompt:
             self.assertEqual(install_pl.ask_archive_parent(), Path('/mnt/ArchivePool/Family'))
         self.assertEqual(prompt.call_count, 2)
+        with patch('builtins.input', return_value='3'):
+            self.assertEqual(install_pl.choose_action(True), 'napraw-polaczenie')
         self.assertEqual(install_pl.archive_parent('/mnt/ArchivePool/Family'), Path('/mnt/ArchivePool/Family'))
         with self.assertRaises(ValueError):
             install_pl.archive_parent('ArchivePool/../Family')
@@ -290,7 +292,7 @@ class GuidedInstallerTests(unittest.TestCase):
             save.assert_any_call(staging / 'panel-verifier', 'stored-verifier\n', owner=568)
 
     def test_desktop_menu_offers_resume_only_before_app_creation(self):
-        with patch('builtins.input', side_effect=['3', '2']) as prompt:
+        with patch('builtins.input', side_effect=['invalid', '2']) as prompt:
             self.assertEqual(install_pl.choose_action(True), 'sprawdz')
         self.assertEqual(prompt.call_count, 2)
         with patch('builtins.input', return_value='3'):

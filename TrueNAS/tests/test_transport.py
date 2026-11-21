@@ -17,7 +17,7 @@ class TransportTests(unittest.TestCase):
         with self.assertRaises(ValueError): transport('ws://nas/api/current')
     def test_missing_credentials_or_ca_fail_closed(self):
         with self.assertRaises(ValueError): build_client('wss://nas/api/current','user','')
-        with self.assertRaises(OSError): SecureWebSocket('/nonexistent/pcc-ca.pem')
+        with self.assertRaises(OSError): SecureWebSocket('/nonexistent/pcc-ca.pem')('wss://nas/api/current')
 
     def test_remaining_deadline_caps_connection_timeout(self):
         calls=[]

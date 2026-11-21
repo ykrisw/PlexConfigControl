@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('publish_release', ROOT/'deploy/publish_release.py')
+spec = importlib.util.spec_from_file_location('publish_release', ROOT.parent/'QNAP/publish_release.py')
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 

@@ -52,3 +52,13 @@ Przywracanie konfiguracji wymaga zweryfikowania archiwum i ręcznego zatrzymania
 Plexa. Po zakończeniu przywracania uruchom Plex ręcznie.
 
 Licencja MIT. https://github.com/ykrisw/PlexConfigControl
+
+## HTTPS i naprawa połączenia (1.6.1)
+
+Zwykła instalacja nie wymaga szukania pliku CA. Po uwierzytelnieniu serwera przez SSH kreator odczytuje publiczny certyfikat HTTPS skonfigurowany w TrueNAS. Może rozpoznać podpisującą CA w publicznych certyfikatach systemowych komputera. Obce certyfikaty nie stają się zaufane: łańcuch wystawcy musi kryptograficznie pasować do certyfikatu NAS-a odczytanego przez SSH. Gdy wystawca nie jest dostępny, kreator może zaufać temu konkretnemu certyfikatowi. Ręczny wybór publicznego pliku PEM jest wariantem awaryjnym. Klucz prywatny nie jest potrzebny.
+
+Dla istniejącej aplikacji uruchom Setup i wybierz **Aktualizuj aplikację**, aby wgrać 1.6.1. Można zaktualizować także starą aplikację zatrzymaną lub niekończącą startu, jeśli pozwalają na to jej lokalne zapisy operacji. Następnie wybierz **Napraw połączenie**, jeśli zmienił się certyfikat lub CA API. Kreator potwierdzi certyfikat przez SSH, zmieni wyłącznie publiczny plik zaufania PCC i uruchomi PCC ponownie. Zachowuje ustawienia, klucze API, dane Plexa, archiwa i logi. Naprawa zaufania nie przerywa aktywnego zapisu; wcześniejsze zapisy odzyskiwania i migawki pozostają do sprawdzenia po odzyskaniu połączenia.
+
+Odnowienie certyfikatu pod tą samą zapisaną CA działa automatycznie. Zmiana CA lub odnowienie certyfikatu przypiętego bez CA wymaga naprawy przez niezależnie uwierzytelnione SSH. Panel pozostaje dostępny i wyświetla konkretną przyczynę problemu. Certyfikat wygasły albo niepasujący do adresu NAS-a wymaga poprawienia konfiguracji HTTPS w TrueNAS — weryfikacja certyfikatów nie jest wyłączana.
+
+Jeżeli certyfikat HTTPS obejmuje nazwę DNS NAS-a zamiast jego numerycznego IP, wpisz tę nazwę DNS w Setup. Instalator zachowa ją do weryfikacji nazwy i sprawdzi, czy wskazuje instalowany NAS. Adresu nieobecnego w certyfikacie nie naprawia się przez wyłączenie weryfikacji.

@@ -3,17 +3,18 @@ export function createDashboardController(client, render, {
   onSignedOut = () => {}, schedule = setTimeout, cancel = clearTimeout,
 } = {}) {
   const lifecycle = new AbortController();
-  const state = {plex: 'UNKNOWN', busy: false, error: ''};
+  const state = {plex: 'UNKNOWN', plexError: null, busy: false, error: ''};
   let timer, disposed = false;
   const emit = () => { if (!disposed) render({...state}); };
   async function poll() {
-    let value = 'UNKNOWN';
+    let value = 'UNKNOWN',code=null;
     try {
       const result = await client.status(lifecycle.signal);
+      code=result.error_code;
       if (result.available !== false && ['RUNNING', 'STOPPED'].includes(result.state)) value = result.state;
     } catch { /* Failed reads invalidate the previous service state. */ }
     if (disposed) return;
-    state.plex = value; emit();
+    state.plex = value;state.plexError=code; emit();
     timer = schedule(poll, 2000);
   }
   async function mutate(action, reason) {

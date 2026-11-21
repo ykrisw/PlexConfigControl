@@ -1,3 +1,4 @@
+import {renderConnectionNotice} from './connection-notice.mjs';
 import {restoreProgressName,archiveProgress} from './archive-labels.mjs';
 import {mountOperationWorkspace,activeExecution,mountStageProgress} from './operation-workspace.mjs';
 import {submissionText} from './submission-controller.mjs';
@@ -177,13 +178,15 @@ export function mountRestoreView(root, client, {language='en'}={}) {
   const updatePlex = async () => {
     if(statusLoading)return;
     clearTimeout(statusTimer);statusLoading=true;
-    let value = 'UNKNOWN';
+    let value = 'UNKNOWN',code=null;
     try {
       const result = await client.status(lifecycle.signal);
+      code=result?.error_code;
       if (result?.available!==false&&['RUNNING', 'STOPPED'].includes(result?.state)) value = result.state;
     } catch { /* A failed read must remove any old green/red status. */ }
     statusLoading=false;
     if (lifecycle.signal.aborted) return;
+    renderConnectionNotice(root,code,language);
     status.dataset.plexState = value; status.textContent = pl?({RUNNING:'DZIAŁA',STOPPED:'ZATRZYMANY',UNKNOWN:'NIEZNANY'})[value]:value;
     renderResultPlex();
     statusTimer = setTimeout(updatePlex, 2000);

@@ -41,8 +41,10 @@ def main(argv=None):
         result=probe(client)
         print(json.dumps(result))
         return 0
-    except Exception:
-        print(json.dumps({'connected':False,'error':'Connection check failed. Verify endpoint, credentials, permissions and certificate.'}))
+    except Exception as error:
+        from .connection_errors import connection_code
+        code=connection_code(error)
+        print(json.dumps({**({'error_code':code} if code else {}),'connected':False,'error':'Connection check failed. Verify endpoint, credentials, permissions and certificate.'}))
         return 1
 
 if __name__=='__main__':

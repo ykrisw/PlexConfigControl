@@ -20,8 +20,10 @@ class PlexStatus:
                 state='UNKNOWN'
             return {'state':state,'checked_at':checked,'available':state!='UNKNOWN',
                     'restore_allowed':state=='STOPPED'}
-        except Exception:
+        except Exception as error:
             # Do not expose arbitrary API exception strings: they may contain
             # transport URLs, authentication data or other host information.
-            return {'state':'UNKNOWN','checked_at':checked,'available':False,
+            from .connection_errors import connection_code
+            code=connection_code(error)
+            return {**({'error_code':code} if code else {}),'state':'UNKNOWN','checked_at':checked,'available':False,
                     'restore_allowed':False}
