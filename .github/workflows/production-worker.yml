@@ -131,7 +131,7 @@ jobs:
       - name: Assemble installer source bundle
         run: |
           mkdir -p dist
-          git archive --format=tar --prefix=PlexConfigControl/ HEAD:TrueNAS \
+          git -C .. archive --format=tar --prefix=PlexConfigControl/ HEAD:TrueNAS \
             Dockerfile Dockerfile.worker pyproject.toml plexconfigcontrol \
             deploy/install.sh deploy/installation-settings.example.json design/truenas-installation \
             | gzip -n > dist/PlexConfigControl-installer.tar.gz
@@ -141,4 +141,5 @@ jobs:
           name: PlexConfigControl-installer-candidate
           path: TrueNAS/dist/
       - name: Verify actual panel and worker startup with an untrusted API certificate
-        run: python3 tests/offline_worker_e2e.py
+        run: PYTHONPATH=. python3 tests/offline_worker_e2e.py
+
