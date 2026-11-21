@@ -140,3 +140,5 @@ jobs:
         with:
           name: PlexConfigControl-installer-candidate
           path: TrueNAS/dist/
+      - name: Verify actual panel and worker startup with an untrusted API certificate
+        run: python3 tests/offline_worker_e2e.py
