@@ -1,4 +1,5 @@
 import ipaddress
+import json
 import os
 import runpy
 import stat
@@ -45,6 +46,64 @@ class GuidedInstallerTests(unittest.TestCase):
             call('group.delete', 20, {'delete_users': False}),
         ])
 
+
+    def test_legacy_ca_requires_original_pcc_configuration_binding(self):
+        with tempfile.TemporaryDirectory() as directory:
+            private=Path(directory)
+            ca=private/'truenas-ca.pem'
+            ca.write_text('PUBLIC CERTIFICATE - MUST REMAIN IF UNPROVEN')
+            for name in ('truenas-key','panel-verifier'):
+                (private/name).write_text('dummy secret')
+            config=private/'settings.json'
+            valid={'connection': {
+                'api_user': install_pl.APP,
+                'api_ca_file': str(ca),
+                'api_key_file': str(private/'truenas-key'),
+                'api_url': 'wss://192.0.2.10/api/current',
+            },'panel':{'verifier_file':str(private/'panel-verifier')}}
+            files=[private/name for name in (*install_pl.PREPARATION_FILES,'truenas-ca.pem')]
+            cases=[
+                None, {},
+                {'connection':{'api_user':'other-app','api_ca_file':str(ca)},
+                 'panel':{}},
+                {**valid,'connection':{**valid['connection'],
+                  'api_ca_file':str(private/'unrelated.pem')}},
+            ]
+            for data in cases:
+                with self.subTest(data=data):
+                    if data is None:
+                        config.unlink(missing_ok=True)
+                    else:
+                        config.write_text(json.dumps(data))
+                    with self.assertRaisesRegex(ValueError,'Nie potwierdzono'):
+                        install_pl.verify_owned_legacy_ca(files)
+                    self.assertTrue(ca.exists())
+            config.write_text(json.dumps(valid))
+            config.chmod(0o600)
+            # Actual TrueNAS root-owned legacy configuration.
+            info=config.lstat()
+            with patch.object(Path,'lstat',autospec=True) as stat_call:
+                def root_owner(path):
+                    value=info if path==config else path.stat()
+                    return SimpleNamespace(st_mode=value.st_mode,st_uid=0,
+                                           st_nlink=value.st_nlink,st_size=value.st_size)
+                stat_call.side_effect=root_owner
+                install_pl.verify_owned_legacy_ca(files)
+            self.assertTrue(ca.exists())
+
+    def test_reset_never_deletes_unproven_legacy_certificate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            private=Path(directory)
+            ca=private/'truenas-ca.pem'
+            ca.write_text('UNRELATED CERTIFICATE')
+            client=Mock()
+            client.call.side_effect=[[],[],[],[],[],[]]
+            with patch.object(install_pl,'private_directory'):
+                with self.assertRaisesRegex(ValueError,'Nie potwierdzono'):
+                    install_pl.reset_previous_preparation(client,private,[ca],{})
+            self.assertTrue(ca.exists())
+            self.assertFalse(any(call.args[0].endswith('.delete')
+                                 for call in client.call.call_args_list))
 
     def test_stale_gui_payload_cleanup_preserves_active_unknown_and_archives(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -392,7 +451,7 @@ class GuidedInstallerTests(unittest.TestCase):
             path.touch(mode=0o600)
             client.call.side_effect = [[], [], [], [], []]
             with patch.object(Path, 'lstat', return_value=SimpleNamespace(
-                    st_mode=stat.S_IFREG | 0o600, st_uid=0)), patch('builtins.print') as output:
+                    st_mode=stat.S_IFREG | 0o600, st_uid=0, st_nlink=1)), patch('builtins.print') as output:
                 install_pl.check_previous_preparation(client, private, allow_reset=True)
             self.assertTrue(path.exists())
         self.assertEqual(output.call_args_list, [])

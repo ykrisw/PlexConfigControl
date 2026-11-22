@@ -24,3 +24,7 @@ Unused PCC image tags are cleaned after a verified update. The last working pair
 ## Corrected installer (same 1.6.3 version)
 
 A completely fresh installation can now use the existing factory `truenas_default` HTTPS certificate even when that certificate does not contain the NAS IP address in its SAN. The installer reads the configured public certificate through an independently authenticated SSH connection and pins that exact certificate. PCC verifies the same pin **before** sending WebSocket API requests; a different server certificate is rejected. Expired or not-yet-valid certificates remain rejected. No TrueNAS certificate replacement or CA installation is required. This supersedes the earlier 1.6.3 installer asset without changing the version number.
+
+## Legacy certificate cleanup safety (corrected 1.6.3)
+
+The installer never deletes certificates from the TrueNAS certificate database, system trust stores, or other applications. The old `PCC-Private/truenas-ca.pem` public trust file is deleted only when the old root-owned PCC `settings.json` proves the precise file/path association, the matching PCC technical key and panel verifier files are present, and their ownership, permissions and link counts pass strict checks. Filename and file mode alone are not proof. Ambiguous or unrelated certificates are preserved and the cleanup stops for administrator review; backup archives and Logs are never part of this cleanup.
