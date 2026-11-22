@@ -755,6 +755,13 @@ def cleanup_stale_gui_payloads(base=Path("/var/tmp"), proc=Path("/proc")):
             if (not stat.S_ISREG(si.st_mode) or si.st_uid != info.st_uid
                     or stat.S_IMODE(si.st_mode) != 0o600 or si.st_nlink != 1):
                 continue
+            # Filename and mode alone do not establish that a temporary
+            # script belongs to PCC. Read the exact native-installer marker
+            # before deleting an orphaned upload.
+            with script.open("rb") as payload:
+                if not payload.read(256).startswith(
+                        b"#!/usr/bin/env python3\\n# PlexConfigControl installer for TrueNAS x86-64.\\n"):
+                    continue
             needle = str(work).encode()
             busy = False
             for process in proc.iterdir():
