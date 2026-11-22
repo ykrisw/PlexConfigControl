@@ -45,6 +45,30 @@ class GuidedInstallerTests(unittest.TestCase):
             call('group.delete', 20, {'delete_users': False}),
         ])
 
+
+    def test_stale_gui_payload_cleanup_preserves_active_unknown_and_archives(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory); proc = base/'proc'; proc.mkdir()
+            def candidate(name):
+                work=base/name;work.mkdir(mode=0o700)
+                (work/'setup.py').write_text('installer')
+                (work/'setup.py').chmod(0o600)
+                return work
+            stale=candidate('pcc-gui.ABCDEFGH')
+            active=candidate('pcc-gui.BCDEFGHI')
+            unknown=candidate('pcc-gui.CDEFGHIJ')
+            (unknown/'notes.txt').write_text('preserve')
+            archives=base/'Plex Config';archives.mkdir()
+            (archives/'backup.tar.gz').write_text('keep')
+            live=proc/'1234';live.mkdir()
+            (live/'cmdline').write_bytes(str(active/'setup.py').encode())
+            (live/'cwd').symlink_to(base,target_is_directory=True)
+            self.assertEqual(install_pl.cleanup_stale_gui_payloads(base,proc),1)
+            self.assertFalse(stale.exists())
+            self.assertTrue(active.exists())
+            self.assertTrue(unknown.exists())
+            self.assertTrue((archives/'backup.tar.gz').exists())
+
     def test_legacy_ca_alone_is_detected_for_cleanup(self):
         with tempfile.TemporaryDirectory() as directory:
             private=Path(directory)
