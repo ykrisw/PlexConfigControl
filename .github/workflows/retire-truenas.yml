@@ -1,0 +1,18 @@
+name: Retire superseded TrueNAS downloads
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/retire-truenas.yml']
+permissions:
+  contents: write
+jobs:
+  retire:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Retain current TrueNAS and QNAP downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 TrueNAS/deploy/retire_superseded_truenas.py

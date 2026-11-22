@@ -11,7 +11,7 @@
 
 Run the setup program for your computer. For an existing installation, choose **Update** first to install 1.6.2, including when the old app is stopped or unable to finish startup. Then choose **Repair connection** if its API trust requires renewal. Local operation/ownership checks remain mandatory before a code update. Trust-only repair can preserve an interrupted-operation/recovery record so that the API connection needed to inspect it can be restored; it never replays the operation or removes its snapshot. The application runs on TrueNAS SCALE x86-64. QNAP remains a separate 1.6 package.
 
-The previously owner-confirmed [1.6 release](https://github.com/ykrisw/PlexConfigControl/releases/tag/v1.6) is retained. This maintenance release does not claim a new owner-run NAS validation until reported separately.
+Superseded TrueNAS 1.6 and 1.6.1 installers have been removed. The QNAP 1.6 package remains available. This maintenance release does not claim a new owner-run NAS validation until reported separately.
 
 MIT License, © 2026 Krzysztof Wojciechowski. Bundled dependencies retain their licenses. [Source and instructions](https://github.com/ykrisw/PlexConfigControl/tree/main/TrueNAS).
 

@@ -26,4 +26,4 @@
 
 [Source code, build files and instructions](TrueNAS/README.md) · [MIT License](TrueNAS/LICENSE) · [SHA-256 checksums](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6.2/SHA256SUMS)
 
-TrueNAS 1.6.2 adds certificate recovery through authenticated SSH and keeps the local panel available when the API cannot be verified. [HTTPS and repair instructions](TrueNAS/INSTALL-EN.md#https-and-connection-repair-161). The owner-confirmed [1.6 release](https://github.com/ykrisw/PlexConfigControl/releases/tag/v1.6) remains available; QNAP stays at 1.6.
+TrueNAS 1.6.2 adds certificate recovery through authenticated SSH and keeps the local panel available when the API cannot be verified. [HTTPS and repair instructions](TrueNAS/INSTALL-EN.md#https-and-connection-repair-161). Superseded TrueNAS 1.6 and 1.6.1 installers have been removed; QNAP stays at 1.6.
