@@ -698,7 +698,7 @@ def cleanup_stale_gui_payloads(base=Path("/var/tmp"), proc=Path("/proc")):
     """
     removed = 0
     for work in base.glob("pcc-gui.*"):
-        if not re.fullmatch(r"pcc-gui\\.[A-Za-z0-9]{8}", work.name):
+        if not re.fullmatch(r"pcc-gui\.[A-Za-z0-9]{8}", work.name):
             continue
         try:
             info = work.lstat()
