@@ -45,6 +45,7 @@ class HostUpdateTests(unittest.TestCase):
                                             return_value=('plex@sha256:fixture', '3.53.3', 'id', 'image')))
         self.stack.enter_context(patch.object(update, '_inspect_images'))
         self.stack.enter_context(patch.object(update, '_check_running_images'))
+        self.stack.enter_context(patch.object(update, 'prune_unused'))
         self.stack.enter_context(patch.object(update.subprocess, 'run'))
         self.stack.enter_context(patch('builtins.input', return_value='tak'))
         self.ready = self.stack.enter_context(patch.object(update, '_ready'))

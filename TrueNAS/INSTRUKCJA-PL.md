@@ -53,11 +53,11 @@ Plexa. Po zakończeniu przywracania uruchom Plex ręcznie.
 
 Licencja MIT. https://github.com/ykrisw/PlexConfigControl
 
-## HTTPS i naprawa połączenia (1.6.2)
+## HTTPS i naprawa połączenia (1.6.3)
 
 Zwykła instalacja nie wymaga szukania pliku CA. Po uwierzytelnieniu serwera przez SSH kreator odczytuje publiczny certyfikat HTTPS skonfigurowany w TrueNAS. Może rozpoznać podpisującą CA w publicznych certyfikatach systemowych komputera. Obce certyfikaty nie stają się zaufane: łańcuch wystawcy musi kryptograficznie pasować do certyfikatu NAS-a odczytanego przez SSH. Gdy wystawca nie jest dostępny, kreator może zaufać temu konkretnemu certyfikatowi. Ręczny wybór publicznego pliku PEM jest wariantem awaryjnym. Klucz prywatny nie jest potrzebny.
 
-Dla istniejącej aplikacji uruchom Setup i wybierz **Aktualizuj aplikację**, aby wgrać 1.6.2. Można zaktualizować także starą aplikację zatrzymaną lub niekończącą startu, jeśli pozwalają na to jej lokalne zapisy operacji. Następnie wybierz **Napraw połączenie**, jeśli zmienił się certyfikat lub CA API. Kreator potwierdzi certyfikat przez SSH, zmieni wyłącznie publiczny plik zaufania PCC i uruchomi PCC ponownie. Zachowuje ustawienia, klucze API, dane Plexa, archiwa i logi. Naprawa zaufania nie przerywa aktywnego zapisu; wcześniejsze zapisy odzyskiwania i migawki pozostają do sprawdzenia po odzyskaniu połączenia.
+Dla istniejącej aplikacji uruchom Setup i wybierz **Aktualizuj aplikację**, aby wgrać 1.6.3. Można zaktualizować także starą aplikację zatrzymaną lub niekończącą startu, jeśli pozwalają na to jej lokalne zapisy operacji. Następnie wybierz **Napraw połączenie**, jeśli zmienił się certyfikat lub CA API. Kreator potwierdzi certyfikat przez SSH, zmieni wyłącznie publiczny plik zaufania PCC i uruchomi PCC ponownie. Zachowuje ustawienia, klucze API, dane Plexa, archiwa i logi. Naprawa zaufania nie przerywa aktywnego zapisu; wcześniejsze zapisy odzyskiwania i migawki pozostają do sprawdzenia po odzyskaniu połączenia.
 
 Odnowienie certyfikatu pod tą samą zapisaną CA działa automatycznie. Zmiana CA lub odnowienie certyfikatu przypiętego bez CA wymaga naprawy przez niezależnie uwierzytelnione SSH. Panel pozostaje dostępny i wyświetla konkretną przyczynę problemu. Certyfikat wygasły albo niepasujący do adresu NAS-a wymaga poprawienia konfiguracji HTTPS w TrueNAS — weryfikacja certyfikatów nie jest wyłączana.
 

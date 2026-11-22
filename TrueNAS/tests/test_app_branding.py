@@ -30,12 +30,12 @@ class BrandingTests(unittest.TestCase):
         app_branding.install_icon(regenerate)
         after = yaml.safe_load(self.path.read_text())
         self.assertTrue(after['metadata']['icon'].startswith('data:image/svg+xml;base64,'))
-        self.assertEqual(after['version'], '1.6.2')
-        self.assertEqual(after['human_version'], '1.6.2')
-        self.assertEqual(after['metadata']['app_version'], '1.6.2')
+        self.assertEqual(after['version'], '1.6.3')
+        self.assertEqual(after['human_version'], '1.6.3')
+        self.assertEqual(after['metadata']['app_version'], '1.6.3')
         self.assertEqual(after['metadata']['name'], self.original['metadata']['name'])
         self.assertEqual(after['portals'], self.original['portals'])
-        self.assertEqual((self.path.parent/'versions/1.6.2/user_config.yaml').read_text(), self.compose)
+        self.assertEqual((self.path.parent/'versions/1.6.3/user_config.yaml').read_text(), self.compose)
         self.assertEqual((self.source/'user_config.yaml').read_text(), self.compose)
         self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
         regenerate.assert_called_once()
@@ -48,7 +48,7 @@ class BrandingTests(unittest.TestCase):
         self.assertEqual((self.source/'user_config.yaml').read_text(), self.compose)
 
     def test_existing_different_target_config_is_not_overwritten(self):
-        target = self.path.parent / 'versions/1.6.2'
+        target = self.path.parent / 'versions/1.6.3'
         (target/'templates/rendered').mkdir(parents=True)
         (target/'user_config.yaml').write_text('other configuration')
         before = self.path.read_bytes()

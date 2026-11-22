@@ -14,9 +14,9 @@
 
 [Source code, build files and instructions](QNAP/README.md) · [MIT License](QNAP/LICENSE) · [SHA-256 checksums](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/SHA256SUMS_QNAP)
 
-## TrueNAS SCALE 1.6.2 — x86-64 (64-bit)
+## TrueNAS SCALE 1.6.3 — x86-64 (64-bit)
 
-[**Download PlexConfigControl_TrueNAS_x86-64v1.6.2.zip**](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6.2/PlexConfigControl_TrueNAS_x86-64v1.6.2.zip)
+[**Download PlexConfigControl_TrueNAS_x86-64v1.6.3.zip**](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6.3/PlexConfigControl_TrueNAS_x86-64v1.6.3.zip)
 
 **Purpose and operation:** Back up and restore your Plex Media Server configuration. Backups use a ZFS snapshot while Plex keeps running, then verify the archive data. Restore verifies the selected archive, waits for you to stop Plex manually, and retains the previous configuration for review.
 
@@ -24,6 +24,6 @@
 
 **License:** PlexConfigControl uses the MIT License (© 2026 Krzysztof Wojciechowski): free to use, modify and redistribute, including commercially, with the copyright and license notices retained. Provided without warranty. Bundled third-party components retain their own licenses.
 
-[Source code, build files and instructions](TrueNAS/README.md) · [MIT License](TrueNAS/LICENSE) · [SHA-256 checksums](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6.2/SHA256SUMS)
+[Source code, build files and instructions](TrueNAS/README.md) · [MIT License](TrueNAS/LICENSE) · [SHA-256 checksums](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6.3/SHA256SUMS)
 
-TrueNAS 1.6.2 adds certificate recovery through authenticated SSH and keeps the local panel available when the API cannot be verified. [HTTPS and repair instructions](TrueNAS/INSTALL-EN.md#https-and-connection-repair-161). Superseded TrueNAS 1.6 and 1.6.1 installers have been removed; QNAP stays at 1.6.
+TrueNAS 1.6.3 adds certificate recovery through authenticated SSH and keeps the local panel available when the API cannot be verified. [HTTPS and repair instructions](TrueNAS/INSTALL-EN.md#https-and-connection-repair-161). Superseded TrueNAS 1.6 and 1.6.1 installers have been removed; QNAP stays at 1.6.

@@ -8,7 +8,7 @@ import tarfile
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
-NAME = 'PlexConfigControl_TrueNAS_x86-64v1.6.2.zip'
+NAME = 'PlexConfigControl_TrueNAS_x86-64v1.6.3.zip'
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -29,7 +29,7 @@ def package(artifacts, output):
                 archive.extractall(destination, filter='data')
         for name in ('INSTALL-EN.md', 'INSTRUKCJA-PL.md', 'LICENSE'):
             (bundle / name).write_bytes((ROOT / name).read_bytes())
-        (bundle / 'BUILD-INFO.txt').write_text('PlexConfigControl 1.6.2\nFor TrueNAS SCALE. Desktop launchers: Windows x64, Linux x64 and macOS Apple Silicon.\n')
+        (bundle / 'BUILD-INFO.txt').write_text('PlexConfigControl 1.6.3\nFor TrueNAS SCALE. Desktop launchers: Windows x64, Linux x64 and macOS Apple Silicon.\n')
         result = output / NAME
         with ZipFile(result, 'w', compression=ZIP_DEFLATED, compresslevel=6) as archive:
             for path in sorted(bundle.rglob('*')):

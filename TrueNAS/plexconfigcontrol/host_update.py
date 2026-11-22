@@ -12,6 +12,7 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 from .host_install import APP, APPS_MOUNT, InstallError, LocalMiddleware, _ready, require_truenas_version
+from .image_cleanup import prune_unused, compose_images
 from .locking import OperationBusy, operation_lock
 from .plex_runtime import detect_plex_runtime
 from .plex_storage import _zfs
@@ -228,6 +229,7 @@ def _update(api, *, check_only=False):
         _approve('Wykryto przerwaną aktualizację. Wpisz tak, aby uruchomić poprzednią wersję: ')
         _inspect_images(saved['previous'])
         _recover(api, record, saved['previous'], saved['candidate'], endpoint)
+        prune_unused(compose_images(saved['previous']))
         print('Poprzednia wersja PlexConfigControl działa. Uruchom kreator ponownie, aby ją zaktualizować.')
         return
     if app_state not in ('RUNNING','STOPPED','DEPLOYING','CRASHED'):
@@ -254,9 +256,14 @@ def _update(api, *, check_only=False):
         print('Wymagania aktualizacji spełnione. Budowa nowych obrazów zostanie sprawdzona podczas aktualizacji.')
         return
     _approve('Znaleziono pełny PlexConfigControl. Wpisz tak, aby go zaktualizować: ')
+    prune_unused(compose_images(previous))
     tag = 'update-' + uuid4().hex
     panel, worker = (f'{repository}:{tag}' for repository in REPOSITORIES.values())
-    subprocess.run(['sh', 'deploy/install.sh', '--build-update', panel, worker], check=True)
+    try:
+        subprocess.run(['sh', 'deploy/install.sh', '--build-update', panel, worker], check=True)
+    except (Exception, KeyboardInterrupt):
+        prune_unused(compose_images(previous))
+        raise
     if detect_plex_runtime()[:2] != (reference, version):
         raise InstallError('Obraz Plexa zmienił się podczas budowy. Uruchom kreator ponownie.')
     candidate = copy.deepcopy(previous)
@@ -277,8 +284,10 @@ def _update(api, *, check_only=False):
             _recover(api, record, previous, candidate, endpoint)
         except (Exception, KeyboardInterrupt):
             raise InstallError('Nie potwierdzono powrotu do poprzedniej wersji. Uruchom ponownie ten sam kreator.') from None
+        prune_unused(compose_images(previous))
         raise InstallError('Aktualizacja nie powiodła się. Poprzednia wersja działa.') from None
     _clear_record(record)
+    prune_unused(compose_images(candidate))
     if hasattr(api, 'brand_icon'):
         api.brand_icon()
     print(f'PlexConfigControl zaktualizowany. Otwórz https://{endpoint.host_ip}:{endpoint.host_port}')

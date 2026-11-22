@@ -364,6 +364,8 @@ def install_app(api, settings, expected, *, confirmed=False, plex_reference=None
     if installed.get('state') == 'STOPPED':
         api.start()
     _ready(deployment)
+    from .image_cleanup import prune_unused, compose_images
+    prune_unused(compose_images(compose))
     if hasattr(api, 'brand_icon'):
         api.brand_icon()
     return {'app': APP, 'host_ip': deployment.host_ip, 'port': deployment.host_port}

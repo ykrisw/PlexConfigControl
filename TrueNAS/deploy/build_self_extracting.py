@@ -22,6 +22,55 @@ from pathlib import Path
 from zipfile import ZipFile
 
 
+def cleanup_previous_payloads(base=Path('/var/tmp'), proc=Path('/proc')):
+    # Only unpacked installer code, never app volumes, archives or settings.
+    import shutil
+    import stat
+    import fcntl
+    removed = 0
+    for work in base.glob('pcc-rc.*'):
+        try:
+            info = work.lstat()
+            if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.geteuid() or stat.S_IMODE(info.st_mode) != 0o700:
+                continue
+            names = {p.name for p in work.iterdir()}
+            if names - {'PlexConfigControl_RC_Install', '.pcc-active'} or 'PlexConfigControl_RC_Install' not in names:
+                continue
+            package = work / 'PlexConfigControl_RC_Install'
+            if not (package / 'INSTALUJ.sh').is_file():
+                continue
+            if any(p.is_symlink() or p.lstat().st_uid != os.geteuid() or not (p.is_file() or p.is_dir()) for p in work.rglob('*')):
+                continue
+            marker = work / '.pcc-active'
+            lock = None
+            try:
+                if marker.exists():
+                    lock = os.open(marker, os.O_RDWR | os.O_NOFOLLOW)
+                    try: fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    except BlockingIOError: continue
+                busy = False
+                needle = str(work).encode()
+                for entry in proc.iterdir():
+                    if not entry.name.isdigit(): continue
+                    try:
+                        if needle in (entry / 'cmdline').read_bytes(): busy = True; break
+                        cwd = os.readlink(entry / 'cwd')
+                        if cwd == str(work) or cwd.startswith(str(work) + '/'): busy = True; break
+                    except FileNotFoundError: continue
+                    except OSError:
+                        # Inability to inspect a process means no deletion.
+                        busy = True; break
+                if busy: continue
+                shutil.rmtree(work)
+                removed += 1
+            finally:
+                if lock is not None: os.close(lock)
+        except OSError:
+            continue
+    return removed
+
+
+
 def main():
     if sys.argv[1:] in (["--help"], ["-h"]):
         print("Uruchom w Shell TrueNAS: sudo python3 " + Path(__file__).name)
@@ -34,14 +83,22 @@ def main():
     if hashlib.sha256(package).hexdigest() != SHA256:
         print("Paczka wewnątrz instalatora jest uszkodzona. Pobierz plik ponownie.", file=sys.stderr)
         return 1
+    removed = cleanup_previous_payloads()
+    print(f"PCC: removed {removed} unused installer payload directories.", flush=True)
     env = dict(os.environ, PCC_INSTALLER_FILE=str(Path(__file__).resolve()))
     with tempfile.TemporaryDirectory(prefix="pcc-rc.", dir="/var/tmp") as directory:
         work = Path(directory)
+        import fcntl
+        active = (work / '.pcc-active').open('x')
+        fcntl.flock(active.fileno(), fcntl.LOCK_EX)
         with ZipFile(io.BytesIO(package)) as archive:
             archive.extractall(work)
         start = work / ENTRY_POINT
         print("Paczka sprawdzona. Uruchamiam kreator PlexConfigControl.", flush=True)
-        return subprocess.call(["sh", str(start), *sys.argv[1:]], env=env)
+        try:
+            return subprocess.call(["sh", str(start), *sys.argv[1:]], env=env)
+        finally:
+            active.close()
 
 
 """

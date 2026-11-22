@@ -38,7 +38,7 @@ def build(output):
             bundle = output / 'PlexConfigControl Setup.app'
             info = bundle / 'Contents/Info.plist'
             data = plistlib.loads(info.read_bytes())
-            data.update(CFBundleVersion='1.6.2', CFBundleShortVersionString='1.6.2')
+            data.update(CFBundleVersion='1.6.3', CFBundleShortVersionString='1.6.3')
             info.write_bytes(plistlib.dumps(data))
             subprocess.run(['codesign','--force','--deep','--sign','-',str(bundle)],check=True)
 

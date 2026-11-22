@@ -116,9 +116,9 @@ jobs:
           python deploy/desktop/package.py artifacts release
           python - <<'PY'
           from zipfile import ZipFile
-          with ZipFile("release/PlexConfigControl_TrueNAS_x86-64v1.6.2.zip") as archive:
-              assert archive.read("BUILD-INFO.txt").decode().startswith("PlexConfigControl 1.6.2\n")
-          print("TrueNAS 1.6.2 installer metadata: OK")
+          with ZipFile("release/PlexConfigControl_TrueNAS_x86-64v1.6.3.zip") as archive:
+              assert archive.read("BUILD-INFO.txt").decode().startswith("PlexConfigControl 1.6.3\n")
+          print("TrueNAS 1.6.3 installer metadata: OK")
           PY
       - uses: actions/upload-artifact@v4
         with:
@@ -140,7 +140,7 @@ jobs:
         with:
           name: PlexConfigControl-Desktop-PL-EN
           path: TrueNAS/release
-      - name: Publish verified TrueNAS 1.6.2 installer
+      - name: Publish verified TrueNAS 1.6.3 installer
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

@@ -13,10 +13,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class ReleaseMetadataTests(unittest.TestCase):
     def test_application_panel_and_qnap_control_metadata_match_release(self):
-        self.assertEqual(__version__, '1.6.2')
+        self.assertEqual(__version__, '1.6.3')
         self.assertEqual(tomllib.loads((ROOT/'pyproject.toml').read_text(encoding="utf-8"))['project']['version'], __version__)
         settings = (ROOT/'plexconfigcontrol/static/settings-view.mjs').read_text(encoding="utf-8")
-        self.assertIn("'[data-version]':'1.6.2'", settings)
+        self.assertIn("'[data-version]':'1.6.3'", settings)
         cfg = (ROOT.parent/'QNAP/build/qpkg/qpkg.cfg').read_text(encoding="utf-8")
         self.assertEqual(re.search(r'^QPKG_VER="([^"]+)"',cfg,re.M)[1], '1.6')
         self.assertEqual(re.search(r'^QPKG_AUTHOR="([^"]+)"',cfg,re.M)[1], 'Krzysztof Wojciechowski')
