@@ -110,13 +110,16 @@ class GuidedInstallerTests(unittest.TestCase):
             base = Path(directory); proc = base/'proc'; proc.mkdir()
             def candidate(name):
                 work=base/name;work.mkdir(mode=0o700)
-                (work/'setup.py').write_text('installer')
+                (work/'setup.py').write_text('#!/usr/bin/env python3\\n# PlexConfigControl installer for TrueNAS x86-64.\\n')
                 (work/'setup.py').chmod(0o600)
                 return work
             stale=candidate('pcc-gui.ABCDEFGH')
             active=candidate('pcc-gui.BCDEFGHI')
             unknown=candidate('pcc-gui.CDEFGHIJ')
             (unknown/'notes.txt').write_text('preserve')
+            unrelated=candidate('pcc-gui.DEFGHIJK')
+            (unrelated/'setup.py').write_text('Unrelated installer; do not remove')
+            (unrelated/'setup.py').chmod(0o600)
             archives=base/'Plex Config';archives.mkdir()
             (archives/'backup.tar.gz').write_text('keep')
             live=proc/'1234';live.mkdir()
@@ -126,6 +129,8 @@ class GuidedInstallerTests(unittest.TestCase):
             self.assertFalse(stale.exists())
             self.assertTrue(active.exists())
             self.assertTrue(unknown.exists())
+            self.assertTrue(unrelated.exists())
+            self.assertEqual((unrelated/'setup.py').read_text(),'Unrelated installer; do not remove')
             self.assertTrue((archives/'backup.tar.gz').exists())
 
     def test_legacy_ca_alone_is_detected_for_cleanup(self):
