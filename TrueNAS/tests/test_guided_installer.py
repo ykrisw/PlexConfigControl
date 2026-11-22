@@ -14,7 +14,7 @@ from deploy import build_self_extracting, install_pl
 
 
 class GuidedInstallerTests(unittest.TestCase):
-    def test_reset_removes_recognized_preparation_and_preserves_ca(self):
+    def test_reset_removes_recognized_preparation_and_legacy_ca(self):
         records = {
             'user.query': {'id': 10, 'full_name': 'PlexConfigControl', 'builtin': False, 'smb': False,
                            'password_disabled': True, 'shell': '/usr/sbin/nologin', 'home': '/var/empty'},
@@ -31,17 +31,65 @@ class GuidedInstallerTests(unittest.TestCase):
             for path in files:
                 path.touch(mode=0o600)
             certificate = private / 'truenas-ca.pem'
-            certificate.touch()
-            with patch.object(install_pl, 'private_directory'), patch.object(Path, 'lstat') as info:
-                info.return_value = SimpleNamespace(st_mode=stat.S_IFREG | 0o600, st_uid=568)
+            certificate.touch(mode=0o644)
+            files.append(certificate)
+            with patch.object(install_pl, 'private_directory'), patch.object(install_pl, 'verified_preparation', return_value=(records['user.query'],records['group.query'],records['privilege.query'],records['api_key.query'])):
+                for path in files:
+                    path.chmod(0o644 if path.name=='truenas-ca.pem' else 0o600)
                 install_pl.reset_previous_preparation(client, private, files, records)
-            self.assertTrue(certificate.exists())
+            self.assertFalse(private.exists())
             self.assertFalse(any(path.exists() for path in files))
         self.assertEqual(client.call.call_args_list[-4:], [
             call('api_key.delete', 40), call('privilege.delete', 30),
             call('user.delete', 10, {'delete_group': False}),
             call('group.delete', 20, {'delete_users': False}),
         ])
+
+
+    def test_stale_gui_payload_cleanup_preserves_active_unknown_and_archives(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory); proc = base/'proc'; proc.mkdir()
+            def candidate(name):
+                work=base/name;work.mkdir(mode=0o700)
+                (work/'setup.py').write_text('installer')
+                (work/'setup.py').chmod(0o600)
+                return work
+            stale=candidate('pcc-gui.ABCDEFGH')
+            active=candidate('pcc-gui.BCDEFGHI')
+            unknown=candidate('pcc-gui.CDEFGHIJ')
+            (unknown/'notes.txt').write_text('preserve')
+            archives=base/'Plex Config';archives.mkdir()
+            (archives/'backup.tar.gz').write_text('keep')
+            live=proc/'1234';live.mkdir()
+            (live/'cmdline').write_bytes(str(active/'setup.py').encode())
+            (live/'cwd').symlink_to(base,target_is_directory=True)
+            self.assertEqual(install_pl.cleanup_stale_gui_payloads(base,proc),1)
+            self.assertFalse(stale.exists())
+            self.assertTrue(active.exists())
+            self.assertTrue(unknown.exists())
+            self.assertTrue((archives/'backup.tar.gz').exists())
+
+    def test_legacy_ca_alone_is_detected_for_cleanup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            private=Path(directory)
+            (private/'truenas-ca.pem').write_text('PUBLIC CERTIFICATE')
+            client=Mock()
+            client.call.return_value=[]
+            files,records=install_pl.previous_preparation(client,private)
+            self.assertEqual([p.name for p in files],['truenas-ca.pem'])
+            self.assertEqual(records,{})
+
+    def test_reset_refuses_unknown_files_in_legacy_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            private=Path(directory)
+            (private/'settings.json').touch()
+            (private/'user-document').write_text('preserve')
+            client=Mock()
+            client.call.side_effect=[[],[],[],[],[],[]]
+            with patch.object(install_pl,'private_directory'):
+                with self.assertRaisesRegex(ValueError,'obce pliki'):
+                    install_pl.reset_previous_preparation(client,private,[private/'settings.json'],{})
+            self.assertTrue((private/'user-document').exists())
 
     def test_reset_refuses_an_existing_app_or_volume(self):
         for responses in ([[{'name': install_pl.APP}]], [[], [{'name': 'state'}]]):
@@ -62,14 +110,15 @@ class GuidedInstallerTests(unittest.TestCase):
                 install_pl.reset_previous_preparation(client, Path('/mnt/Pool/PCC-Private'), [], records)
         self.assertTrue(all(entry.args[0].endswith('.query') for entry in client.call.call_args_list))
 
-    def test_old_preparation_requires_explicit_reset_confirmation(self):
+    def test_old_preparation_requires_normal_install_confirmation(self):
         private = Path('/mnt/Pool/PCC-Private')
         client = Mock()
         with patch.object(install_pl, 'preflight', return_value=({}, 'pem')), \
              patch.object(install_pl, 'previous_preparation', return_value=([private / 'settings.json'], {})), \
+             patch.object(install_pl, 'verified_preparation'), \
              patch.object(install_pl, 'ask_password_verifier', return_value='verifier'), \
              patch.object(install_pl, 'reset_previous_preparation') as reset, \
-             patch('builtins.input', return_value='tak'):
+             patch('builtins.input', return_value='nie'):
             with self.assertRaisesRegex(ValueError, 'anulowane'):
                 install_pl.settings(client, SimpleNamespace(krok='instaluj'), private)
         reset.assert_not_called()
@@ -346,7 +395,7 @@ class GuidedInstallerTests(unittest.TestCase):
                     st_mode=stat.S_IFREG | 0o600, st_uid=0)), patch('builtins.print') as output:
                 install_pl.check_previous_preparation(client, private, allow_reset=True)
             self.assertTrue(path.exists())
-        self.assertIn('Można przejść do świeżej instalacji', str(output.call_args_list))
+        self.assertEqual(output.call_args_list, [])
         self.assertNotIn('--wznow', str(output.call_args_list))
         self.assertTrue(all(entry.args[0].endswith('.query') for entry in client.call.call_args_list))
 
