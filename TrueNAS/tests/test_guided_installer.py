@@ -110,7 +110,7 @@ class GuidedInstallerTests(unittest.TestCase):
             base = Path(directory); proc = base/'proc'; proc.mkdir()
             def candidate(name):
                 work=base/name;work.mkdir(mode=0o700)
-                (work/'setup.py').write_text('#!/usr/bin/env python3\\n# PlexConfigControl installer for TrueNAS x86-64.\\n')
+                (work/'setup.py').write_text('#!/usr/bin/env python3\n# PlexConfigControl installer for TrueNAS x86-64.\n')
                 (work/'setup.py').chmod(0o600)
                 return work
             stale=candidate('pcc-gui.ABCDEFGH')
