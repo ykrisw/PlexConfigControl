@@ -689,6 +689,56 @@ def review_resume(client, private):
     return config
 
 
+
+def cleanup_stale_gui_payloads(base=Path("/var/tmp"), proc=Path("/proc")):
+    """Remove only abandoned PCC GUI uploads; never touch archives or state.
+
+    The active process is identified through procfs. Ambiguous/inaccessible
+    process information means skip deletion, not assume the payload is idle.
+    """
+    removed = 0
+    for work in base.glob("pcc-gui.*"):
+        if not re.fullmatch(r"pcc-gui\\.[A-Za-z0-9]{8}", work.name):
+            continue
+        try:
+            info = work.lstat()
+            if not stat.S_ISDIR(info.st_mode) or stat.S_IMODE(info.st_mode) != 0o700:
+                continue
+            if {p.name for p in work.iterdir()} != {"setup.py"}:
+                continue
+            script = work / "setup.py"
+            si = script.lstat()
+            if (not stat.S_ISREG(si.st_mode) or si.st_uid != info.st_uid
+                    or stat.S_IMODE(si.st_mode) != 0o600 or si.st_nlink != 1):
+                continue
+            needle = str(work).encode()
+            busy = False
+            for process in proc.iterdir():
+                if not process.name.isdigit():
+                    continue
+                try:
+                    if needle in (process / "cmdline").read_bytes():
+                        busy = True
+                        break
+                    cwd = os.readlink(process / "cwd")
+                    if cwd == str(work) or cwd.startswith(str(work) + "/"):
+                        busy = True
+                        break
+                except FileNotFoundError:
+                    continue
+                except OSError:
+                    busy = True
+                    break
+            if busy:
+                continue
+            script.unlink()
+            work.rmdir()
+            removed += 1
+        except OSError:
+            continue
+    return removed
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("krok", nargs="?", default="instaluj", choices=("sprawdz", "certyfikat", "ustawienia", "instaluj", "aktualizuj", "napraw-polaczenie"))
@@ -712,6 +762,11 @@ def main():
         parser.error("Uruchom polecenie przez sudo w Shell TrueNAS.")
     if args.wznow and args.krok != "instaluj":
         parser.error("--wznow służy wyłącznie do ponowienia instalacji.")
+    # Remove orphaned remote GUI payloads from interrupted older setups.
+    # The current uploader stays protected by procfs and is removed by its owner.
+    removed = cleanup_stale_gui_payloads()
+    if removed:
+        print(f"PCC: removed {removed} abandoned GUI installer payload(s).", flush=True)
     # Private files and directories set their own modes. Keep the caller's
     # umask for the child installer that creates the archive and Logs folders.
     try:
