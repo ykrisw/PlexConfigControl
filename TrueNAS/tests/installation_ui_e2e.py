@@ -66,7 +66,7 @@ def exercise(browser,output,language,theme,width,*,uncertain):
         expect(page.locator('[data-install-check]')).to_be_disabled();expect(parent).to_be_disabled()
         assert page.evaluate('window.calls.creates.length')==1
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
-        if theme=='light':expect(page.locator('h2')).to_have_css('color','rgb(0, 0, 0)')
+        if theme=='light':expect(page.locator('h2')).to_have_css('color','rgb(32, 36, 45)')
         assert not errors,errors
         page.screenshot(path=str(output/f'result-{language}-{theme}-{width}.png'),full_page=True)
     except BaseException:
