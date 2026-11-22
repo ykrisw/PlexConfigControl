@@ -411,7 +411,9 @@ class SetupWindow:
                 'CANCELLED': ('Setup stopped. Check the application in TrueNAS Apps.', 'Instalator zatrzymany. Sprawdź aplikację w TrueNAS Apps.'),
             }
             self.stage.config(text=self.tx('Setup could not finish.', 'Instalacja nie została zakończona.'))
-            self.note.config(text=self.tx(*messages[code]) if code in messages else code if code.startswith(('Przerwano:', 'Stopped:', 'ERROR:')) else self.tx('Check the NAS connection and application state, then try again.', 'Sprawdź połączenie z NAS i stan aplikacji, a następnie spróbuj ponownie.'))
+            detail = self.tx(*messages[code]) if code in messages else code if code.startswith(('Przerwano:', 'Stopped:', 'ERROR:')) else self.tx('Check the NAS connection and application state, then try again.', 'Sprawdź połączenie z NAS i stan aplikacji, a następnie spróbuj ponownie.')
+            self.stage.config(text=self.tx('Setup could not finish.', 'Instalacja nie została zakończona.') + '\n' + detail)
+            self.note.config(text=detail)
             self.primary.config(text=self.tx('Try again', 'Spróbuj ponownie'), state='normal', command=self.start)
 
     def finish(self):

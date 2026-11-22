@@ -72,7 +72,7 @@ class LocalMiddleware:
         if managed_private:
             volumes.append(('pcc', '/var/lib/plexconfigcontrol-private'))
         return self._call('app.create', ({
-            'app_name': APP, 'catalog_app': 'ix-app', 'train': 'stable', 'version': '1.4.8',
+            'app_name': APP, 'catalog_app': 'ix-app', 'train': 'stable', 'version': 'latest',
             'values': {
                 'image': {'repository': repository, 'tag': tag, 'pull_policy': 'never'},
                 'entrypoint': ['/bin/sleep'], 'command': ['infinity'],

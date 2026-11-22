@@ -16,3 +16,5 @@ Superseded TrueNAS 1.6 and 1.6.1 installers have been removed. The QNAP 1.6 pack
 MIT License, © 2026 Krzysztof Wojciechowski. Bundled dependencies retain their licenses. [Source and instructions](https://github.com/ykrisw/PlexConfigControl/tree/main/TrueNAS).
 
 Installer transport correction: the allocated SSH terminal uses noncanonical input so public certificate replies larger than 4095 bytes are not truncated. A real PTY regression test transfers a 600,000-character reply.
+
+Installation correction for TrueNAS 25.10.8: resolve the current ix-app catalog version through the supported latest selector instead of requiring removed version 1.4.8. Failure details are displayed beside the setup failure heading as well as at the bottom.

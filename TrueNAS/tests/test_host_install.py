@@ -158,6 +158,7 @@ class HostInstallTests(unittest.TestCase):
         definition = json.loads(args[4])
         self.assertEqual(definition['app_name'], APP)
         self.assertEqual(definition['catalog_app'], 'ix-app')
+        self.assertEqual(definition['version'], 'latest')
         self.assertNotIn('ports', definition['values'])
         self.assertEqual(definition['values']['storage'], [{
             'type': 'ix_volume', 'read_only': False, 'mount_path': '/var/lib/plexconfigcontrol',
