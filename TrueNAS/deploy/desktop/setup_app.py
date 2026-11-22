@@ -450,10 +450,7 @@ class SetupWindow:
             key = classify_prompt(event)
             text = self.tx(event.get('message_en',event.get('message','')),event.get('message',''))
             if key == 'confirmation':
-                if event['confirmation'] in ('od nowa', 'start over'):
-                    text = self.tx('Replace the previous setup and install PlexConfigControl? Existing backups will be kept.', 'Zastąpić poprzednie przygotowanie i zainstalować PlexConfigControl? Kopie zostaną zachowane.')
-                else:
-                    text = self.tx('Continue with the reviewed settings?', 'Kontynuować z wybranymi ustawieniami?')
+                text = self.tx('Continue with the reviewed settings?', 'Kontynuować z wybranymi ustawieniami?')
                 review = '\n'.join(line for line in event.get('context', '').splitlines()
                                    if line.startswith(('Folder kopii:', 'Backup folder:', 'Panel:')))
                 if review:
