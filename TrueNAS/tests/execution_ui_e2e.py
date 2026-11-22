@@ -100,7 +100,7 @@ class FixtureAPI:
             path=STATIC/name
             if not path.is_file():
                 route.fulfill(status=404,body='Missing fixture asset');return
-            route.fulfill(content_type='text/css' if path.suffix=='.css' else 'text/javascript',body=path.read_text());return
+            route.fulfill(content_type='text/css' if path.suffix=='.css' else 'text/javascript',body=path.read_text(encoding='utf-8'));return
         if url.path=='/':
             mount='mountBackupView' if self.panel=='backup' else 'mountRestoreView'
             module='backup-view' if self.panel=='backup' else 'restore-view'
