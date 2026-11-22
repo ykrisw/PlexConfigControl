@@ -760,7 +760,7 @@ def cleanup_stale_gui_payloads(base=Path("/var/tmp"), proc=Path("/proc")):
             # before deleting an orphaned upload.
             with script.open("rb") as payload:
                 if not payload.read(256).startswith(
-                        b"#!/usr/bin/env python3\\n# PlexConfigControl installer for TrueNAS x86-64.\\n"):
+                        b"#!/usr/bin/env python3\n# PlexConfigControl installer for TrueNAS x86-64.\n"):
                     continue
             needle = str(work).encode()
             busy = False
