@@ -51,11 +51,11 @@ manually after restore completes.
 
 MIT license. https://github.com/ykrisw/PlexConfigControl
 
-## HTTPS and connection repair (1.6.1)
+## HTTPS and connection repair (1.6.2)
 
 Normal setup does not require finding a CA file. After authenticating the NAS over SSH, setup reads its configured public HTTPS certificate. It can identify the signing CA from public certificates in your computer's system stores. Unrelated certificates are not trusted: the issuer chain must cryptographically match the NAS certificate obtained over SSH. If no issuer is available, setup can use an exact certificate pin. A public PEM file chooser is a fallback; private keys are never requested.
 
-For an installed app, run Setup and choose **Update application** to install 1.6.1. An old stopped or unhealthy app can be updated if its local state and operation checks permit it. Then choose **Repair connection** when the API certificate/CA has changed. Setup verifies the NAS certificate through SSH, updates only PCC's public trust file and restarts PCC. Settings, API keys, Plex data, archives and logs are retained. A trust repair cannot interrupt a live operation; retained recovery records and snapshots remain for review after connectivity returns.
+For an installed app, run Setup and choose **Update application** to install 1.6.2. An old stopped or unhealthy app can be updated if its local state and operation checks permit it. Then choose **Repair connection** when the API certificate/CA has changed. Setup verifies the NAS certificate through SSH, updates only PCC's public trust file and restarts PCC. Settings, API keys, Plex data, archives and logs are retained. A trust repair cannot interrupt a live operation; retained recovery records and snapshots remain for review after connectivity returns.
 
 Renewal under the same stored CA is accepted automatically. Replacing the CA or renewing an exact-certificate pin requires repair through independently authenticated SSH. The panel remains available and shows a specific connection error instead of depending on remote API readiness. An expired certificate or a certificate for the wrong NAS address still requires correcting the NAS HTTPS configuration; certificate checking is never disabled.
 
