@@ -94,7 +94,7 @@ def exercise(driver, api, url, output):
                 if key=='history':
                     click(root+' [data-clear]');visible(root+' dialog[open]');click(root+' [data-cancel]')
             if theme=='Light':
-                heading=visible(root+' h2' if key!='dashboard' else root+' h3')
+                heading=visible(root+' '+{'dashboard':'[data-account]', 'backup':'[data-existing]', 'restore':'.pcc-validation-heading h2', 'history':'[data-heading]', 'settings':'[data-about]'}[key])
                 assert driver.execute_script('return getComputedStyle(arguments[0]).color',heading)=='rgb(32, 36, 45)'
             screenshot(f'{key}-{language}-{theme}-{width}')
         tab('dashboard')
