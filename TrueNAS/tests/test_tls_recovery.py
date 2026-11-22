@@ -165,7 +165,9 @@ class TLSRecovery(unittest.TestCase):
                 self.assertIsNotNone(read_leaf_pin(chosen))
                 self.assertNotIn('PRIVATE KEY',chosen)
                 self.assertEqual(chosen,make_leaf_pin(pem(stock[1])))
-                # A different peer must not be accepted even under this pin.
-                with server(folder/'other',certificate()) as other_port:
-                    with self.assertRaises(ssl.SSLError):
-                        installer.verified_ca(api,{'ui_httpsport':other_port,'ui_certificate':{'id':1}},'127.0.0.1','127.0.0.1',folder/'saved.pem',Path('/nonexistent'))
+                with tempfile.TemporaryDirectory() as second:
+                    ca=Path(second)/'pinned.pem';ca.write_text(chosen)
+                    transport=SecureWebSocket(str(ca),connector=connector)
+                    with server(folder/'different',certificate()) as other_port:
+                        with self.assertRaises(ssl.SSLError):
+                            transport(f'wss://127.0.0.1:{other_port}/api/current')
