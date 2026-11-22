@@ -417,7 +417,8 @@ def verify_owned_legacy_ca(files):
         return
     ca = ca_files[0]
     settings_file = ca.with_name("settings.json")
-    if settings_file not in files:
+    if (settings_file not in files or ca.with_name("truenas-key") not in files
+            or ca.with_name("panel-verifier") not in files):
         raise ValueError(
             "Nie potwierdzono, że stary certyfikat truenas-ca.pem należy do PCC. "
             "Plik pozostaje nietknięty; wymagane ręczne sprawdzenie.")
@@ -453,7 +454,7 @@ def verified_preparation(client, files, records):
         expected_owner = 0 if path.name in ("settings.json", "truenas-ca.pem") else 568
         allowed_mode = 0o644 if path.name == "truenas-ca.pem" else 0o600
         if (not stat.S_ISREG(info.st_mode) or info.st_uid != expected_owner
-                or stat.S_IMODE(info.st_mode) != allowed_mode):
+                or stat.S_IMODE(info.st_mode) != allowed_mode or info.st_nlink != 1):
             raise ValueError(f"Nie można bezpiecznie usunąć pliku {path.name}.")
 
     user = records.get("user.query")
