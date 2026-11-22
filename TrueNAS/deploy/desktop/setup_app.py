@@ -191,7 +191,7 @@ class Installer:
                 if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}',host):raise SetupError('CONNECTION')
                 api_host=' --api-host '+shlex.quote(host)
             channel.exec_command(
-                'stty -echo; sudo -S -p PCC_SUDO_PASSWORD: -- python3 ' + path
+                'stty -echo -icanon min 1 time 0 && sudo -S -p PCC_SUDO_PASSWORD: -- python3 ' + path
                 + api_host + ' --desktop --gui --ssh-connection $SSH_CONNECTION')
             channel.settimeout(.2)
             buffer = ''

@@ -49,7 +49,7 @@ class DesktopSetupTests(unittest.TestCase):
                  patch.object(installer, 'ask', return_value='Moje kopie') as ask:
                 installer.run('192.0.2.10', 'admin', 'pl')
         self.assertEqual(ask.call_args.args[0]['message'], 'Wybór folderu kopii')
-        self.assertIn('stty -echo; sudo -S', channel.exec_command.call_args.args[0])
+        self.assertIn('stty -echo -icanon min 1 time 0 && sudo -S', channel.exec_command.call_args.args[0])
         self.assertEqual(channel.sendall.call_args_list[0].args[0], b'account-secret\n')
         delivered = []
         while not events.empty():

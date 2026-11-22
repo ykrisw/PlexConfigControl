@@ -14,3 +14,5 @@ Run the setup program for your computer. For an existing installation, choose **
 The previously owner-confirmed [1.6 release](https://github.com/ykrisw/PlexConfigControl/releases/tag/v1.6) is retained. This maintenance release does not claim a new owner-run NAS validation until reported separately.
 
 MIT License, © 2026 Krzysztof Wojciechowski. Bundled dependencies retain their licenses. [Source and instructions](https://github.com/ykrisw/PlexConfigControl/tree/main/TrueNAS).
+
+Installer transport correction: the allocated SSH terminal uses noncanonical input so public certificate replies larger than 4095 bytes are not truncated. A real PTY regression test transfers a 600,000-character reply.

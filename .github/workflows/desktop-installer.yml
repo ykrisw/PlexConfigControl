@@ -70,6 +70,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -p test_setup_protocol.py
           python -m unittest discover -s tests -p test_desktop_setup.py
+          python -m unittest discover -s tests -p test_desktop_pty.py
           python -m unittest discover -s tests -p test_release_metadata.py
       - name: Build native installer
         run: python deploy/desktop/build.py dist
