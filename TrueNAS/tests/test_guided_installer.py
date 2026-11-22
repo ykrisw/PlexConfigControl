@@ -451,7 +451,7 @@ class GuidedInstallerTests(unittest.TestCase):
             path.touch(mode=0o600)
             client.call.side_effect = [[], [], [], [], []]
             with patch.object(Path, 'lstat', return_value=SimpleNamespace(
-                    st_mode=stat.S_IFREG | 0o600, st_uid=0)), patch('builtins.print') as output:
+                    st_mode=stat.S_IFREG | 0o600, st_uid=0, st_nlink=1)), patch('builtins.print') as output:
                 install_pl.check_previous_preparation(client, private, allow_reset=True)
             self.assertTrue(path.exists())
         self.assertEqual(output.call_args_list, [])
