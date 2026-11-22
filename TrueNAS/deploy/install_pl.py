@@ -404,7 +404,50 @@ def require_fresh_app(client):
         raise ValueError("Wolumen stanu PlexConfigControl już istnieje. Sprawdź poprzednią instalację.")
 
 
+
+def verify_owned_legacy_ca(files):
+    """Authorize deleting the legacy public CA only from PCC's own settings.
+
+    A matching filename, UID or permissions is not proof of ownership. Without
+    the original PCC configuration tying this exact file to the API connection,
+    leave it untouched and stop rather than guessing.
+    """
+    ca_files = [p for p in files if p.name == "truenas-ca.pem"]
+    if not ca_files:
+        return
+    ca = ca_files[0]
+    settings_file = ca.with_name("settings.json")
+    if settings_file not in files:
+        raise ValueError(
+            "Nie potwierdzono, że stary certyfikat truenas-ca.pem należy do PCC. "
+            "Plik pozostaje nietknięty; wymagane ręczne sprawdzenie.")
+    try:
+        info = settings_file.lstat()
+        if (not stat.S_ISREG(info.st_mode) or info.st_uid != 0
+                or stat.S_IMODE(info.st_mode) != 0o600 or info.st_nlink != 1
+                or info.st_size > 65536):
+            raise ValueError
+        values = json.loads(settings_file.read_text(encoding="utf-8"))
+        connection, panel = values["connection"], values["panel"]
+        owned = (
+            connection.get("api_user") == APP
+            and connection.get("api_ca_file") == str(ca)
+            and connection.get("api_key_file") == str(ca.with_name("truenas-key"))
+            and panel.get("verifier_file") == str(ca.with_name("panel-verifier"))
+            and isinstance(connection.get("api_url"), str)
+            and urlsplit(connection["api_url"]).scheme == "wss"
+            and urlsplit(connection["api_url"]).path == "/api/current"
+        )
+        if not owned:
+            raise ValueError
+    except (OSError, ValueError, TypeError, KeyError, UnicodeError, json.JSONDecodeError):
+        raise ValueError(
+            "Nie potwierdzono pochodzenia truenas-ca.pem z konfiguracji PCC. "
+            "Żadnego certyfikatu nie usunięto; wymagane ręczne sprawdzenie.") from None
+
+
 def verified_preparation(client, files, records):
+    verify_owned_legacy_ca(files)
     for path in files:
         info = path.lstat()
         expected_owner = 0 if path.name in ("settings.json", "truenas-ca.pem") else 568
