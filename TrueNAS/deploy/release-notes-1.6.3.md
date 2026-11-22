@@ -20,3 +20,7 @@ Installer transport correction: the allocated SSH terminal uses noncanonical inp
 Installation correction for TrueNAS 25.10.8: resolve the current ix-app catalog version through the supported latest selector instead of requiring removed version 1.4.8. Failure details are displayed beside the setup failure heading as well as at the bottom.
 
 Unused PCC image tags are cleaned after a verified update. The last working pair is retained during the update and on recovery; older unused PCC images are removed. Images used by any container and images belonging to other applications are preserved. Recognized inactive unpacked installer payloads are removed without touching archives, logs or application volumes.
+
+## Corrected installer (same 1.6.3 version)
+
+A completely fresh installation can now use the existing factory `truenas_default` HTTPS certificate even when that certificate does not contain the NAS IP address in its SAN. The installer reads the configured public certificate through an independently authenticated SSH connection and pins that exact certificate. PCC verifies the same pin **before** sending WebSocket API requests; a different server certificate is rejected. Expired or not-yet-valid certificates remain rejected. No TrueNAS certificate replacement or CA installation is required. This supersedes the earlier 1.6.3 installer asset without changing the version number.
