@@ -34,7 +34,7 @@ def tick(service):
                 if set(record)!={'username','sid'} or not isinstance(record['sid'],str) or not re.fullmatch('[A-Za-z0-9_-]{8,128}',record['sid']):raise ValueError('Invalid private session record')
                 user=administrator(record['username'])
                 context,pin=local_certificate_context(Path('/etc/stunnel/stunnel.pem').read_text())
-                api=QnapLocalReadOnlyApi(443,tls_context=context,certificate_sha256=pin)
+                api=QnapLocalReadOnlyApi(443,tls_context=context,certificate_sha256=pin,local_certificate_path="/etc/stunnel/stunnel.pem")
                 api._session=record['sid']
             api.snapshot_count(service.discover().volume_id)
             if restoring:service.api,service.user=api,user

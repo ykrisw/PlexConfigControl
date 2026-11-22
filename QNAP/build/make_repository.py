@@ -9,7 +9,7 @@ DESCRIPTION = {
     'en': 'Back up and restore your Plex configuration with full data verification. For QNAP QuTS hero x86_64.',
     'pl': 'Kopie zapasowe i przywracanie konfiguracji Plexa z weryfikacją danych. Dla QNAP QuTS hero x86_64.',
 }
-BASE = 'https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6/'
+BASE = 'https://github.com/ykrisw/PlexConfigControl/releases/download/qnap-v1.6.3/'
 
 
 def make(package, output, language):
@@ -21,7 +21,7 @@ def make(package, output, language):
         'name': 'PlexConfigControl', 'internalName': 'PCC', 'category': 'Backup/Sync',
         'description': DESCRIPTION[language], 'developer': 'Krzysztof Wojciechowski',
         'developerLink': 'https://github.com/ykrisw/PlexConfigControl',
-        'maintainer': 'Krzysztof Wojciechowski', 'version': '1.6',
+        'maintainer': 'Krzysztof Wojciechowski', 'version': '1.6.3',
         'icon80': BASE + 'PlexConfigControl_80.png', 'icon100': BASE + 'PlexConfigControl_80.png',
         'type': 'Backup/Sync', 'language': 'English, Polski',
         'publishedDate': datetime.now(timezone.utc).strftime('%Y/%m/%d'), 'volumeSelect': '1',

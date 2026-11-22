@@ -1,4 +1,4 @@
-name: QNAP 1.6 installer
+name: QNAP 1.6.3 installer
 on:
   workflow_dispatch:
   push:
@@ -12,7 +12,7 @@ defaults:
 permissions:
   contents: read
 concurrency:
-  group: qnap-installer-1.6
+  group: qnap-installer-1.6.3
   cancel-in-progress: true
 jobs:
   notice-ui:
@@ -66,6 +66,7 @@ jobs:
           bash -n .qnap-build/source/deploy/qnap/qpkg/package_routines
           bash -n .qnap-build/source/deploy/qnap/qpkg/PCC.sh
           python -m unittest discover -s tests -p test_lifecycle.py -v
+          python -m unittest discover -s tests -p test_certificate_reload.py -v
       - name: Fetch pinned runtime and QDK
         run: |
           python - <<'PY'
@@ -93,28 +94,28 @@ jobs:
                   assert "./" + name in names, name
           from pathlib import Path
           cfg = Path(".qnap-build/output/verified-qpkg/qpkg.cfg").read_text()
-          assert 'QPKG_VER="1.6"' in cfg
+          assert 'QPKG_VER="1.6.3"' in cfg
           assert 'QPKG_AUTHOR="Krzysztof Wojciechowski"' in cfg
           assert 'Plex configuration backup and restore with data verification.' in cfg
           with tarfile.open(".qnap-build/output/verified-qpkg/data.tar.gz") as archive:
               settings = archive.extractfile("./app/plexconfigcontrol/static/settings-view.mjs").read().decode()
-              assert "'[data-version]':'1.6'" in settings
-          print("QNAP version 1.6, publisher, summary, icons and refresh asset: OK")
+              assert "'[data-version]':'1.6.3'" in settings
+          print("QNAP version 1.6.3, publisher, summary, icons and refresh asset: OK")
           PY
           mkdir -p qnap-release
-          cp .qnap-build/output/release/PCC_1.6_x86_64.qpkg qnap-release/PlexConfigControl_QuTShero_x86-64v1.6.qpkg
+          cp .qnap-build/output/release/PCC_1.6.3_x86_64.qpkg qnap-release/PlexConfigControl_QuTShero_x86-64v1.6.3.qpkg
           cp .qnap-build/output/release/build-result.json qnap-release/
           cp .qnap-build/source/deploy/qnap/qpkg/icons/PCC_80.png qnap-release/PlexConfigControl_80.png
-          python build/make_repository.py qnap-release/PlexConfigControl_QuTShero_x86-64v1.6.qpkg qnap-release/qnap-repository.xml en
-          python build/make_repository.py qnap-release/PlexConfigControl_QuTShero_x86-64v1.6.qpkg qnap-release/qnap-repository-pl.xml pl
+          python build/make_repository.py qnap-release/PlexConfigControl_QuTShero_x86-64v1.6.3.qpkg qnap-release/qnap-repository.xml en
+          python build/make_repository.py qnap-release/PlexConfigControl_QuTShero_x86-64v1.6.3.qpkg qnap-release/qnap-repository-pl.xml pl
           cd qnap-release
-          sha256sum PlexConfigControl_QuTShero_x86-64v1.6.qpkg > SHA256SUMS_QNAP
+          sha256sum PlexConfigControl_QuTShero_x86-64v1.6.3.qpkg > SHA256SUMS_QNAP
       - name: Verify fresh install using the actual packaged server and service UID
-        run: sudo --preserve-env=GITHUB_ACTIONS "$(command -v python)" tests/packaged_install_e2e.py qnap-release/PlexConfigControl_QuTShero_x86-64v1.6.qpkg
+        run: sudo --preserve-env=GITHUB_ACTIONS "$(command -v python)" tests/packaged_install_e2e.py qnap-release/PlexConfigControl_QuTShero_x86-64v1.6.3.qpkg
       - name: Retain source and built installer
         uses: actions/upload-artifact@v4
         with:
-          name: PCC-QNAP-1.6-x86_64
+          name: PCC-QNAP-1.6.3-x86_64
           path: QNAP/qnap-release/
           retention-days: 90
           if-no-files-found: error
@@ -129,10 +130,10 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          name: PCC-QNAP-1.6-x86_64
+          name: PCC-QNAP-1.6.3-x86_64
           path: QNAP/qnap-release
-      - name: Publish verified QNAP 1.6 package and App Center metadata
+      - name: Publish verified QNAP 1.6.3 package and App Center metadata
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: python3 publish_release.py qnap-release
+        run: python3 publish_maintenance.py qnap-release

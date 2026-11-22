@@ -188,7 +188,7 @@ class QnapBackupService:
         api=None
         try:
             context,pin=local_certificate_context(Path('/etc/stunnel/stunnel.pem').read_text())
-            api=QnapLocalReadOnlyApi(443,tls_context=context,certificate_sha256=pin)
+            api=QnapLocalReadOnlyApi(443,tls_context=context,certificate_sha256=pin,local_certificate_path="/etc/stunnel/stunnel.pem")
             try:api.login(user.pw_name,password,security_code_provider=lambda:totp)
             except QnapApiError:
                 self.history.add('QNAP_LOGIN','FAILED','QNAP sign-in failed for local administrator '+user.pw_name+'. Password and TOTP were not stored.')
