@@ -358,7 +358,10 @@ def resume_command(config):
 
 
 def previous_preparation(client, private):
-    files = [private / name for name in PREPARATION_FILES if os.path.lexists(private / name)]
+    # The old pre-iXVolume installer also left an SSH trust certificate outside Apps.
+    # Treat it as owned setup state so a fresh install cannot inherit its trust.
+    files = [private / name for name in (*PREPARATION_FILES, "truenas-ca.pem")
+             if os.path.lexists(private / name)]
     records = {}
     for method, field, label in PREPARATION_RECORDS:
         rows = client.call(method, [[field, "=", APP]])
@@ -382,8 +385,8 @@ def check_previous_preparation(client, private, *, allow_reset=False):
     message = previous_preparation_summary(private, files, records)
     if allow_reset:
         verified_preparation(client, files, records)
-        print(message, flush=True)
-        print("Można przejść do świeżej instalacji. Zastąpienie poprzedniego przygotowania wymaga potwierdzenia.", flush=True)
+        # Clean installation will discard these verified PCC-only artifacts
+        # after the ordinary install confirmation; no old settings are reused.
         return
     if len(records) == len(PREPARATION_RECORDS) and len(files) == len(PREPARATION_FILES) and all(
         path.is_file() and not path.is_symlink() for path in files
@@ -404,7 +407,10 @@ def require_fresh_app(client):
 def verified_preparation(client, files, records):
     for path in files:
         info = path.lstat()
-        if not stat.S_ISREG(info.st_mode) or info.st_uid not in (0, 568) or info.st_mode & 0o077:
+        expected_owner = 0 if path.name in ("settings.json", "truenas-ca.pem") else 568
+        allowed_mode = 0o644 if path.name == "truenas-ca.pem" else 0o600
+        if (not stat.S_ISREG(info.st_mode) or info.st_uid != expected_owner
+                or stat.S_IMODE(info.st_mode) != allowed_mode):
             raise ValueError(f"Nie można bezpiecznie usunąć pliku {path.name}.")
 
     user = records.get("user.query")
@@ -437,7 +443,14 @@ def reset_previous_preparation(client, private, expected_files, expected_records
     files, records = previous_preparation(client, private)
     if files != expected_files or records != expected_records:
         raise ValueError("Poprzednie przygotowanie zmieniło się. Uruchom kreator ponownie.")
-
+    # Never recursively remove an unknown directory, even if its name matches.
+    # Only precisely identified legacy PCC setup files may be deleted.
+    if private.exists():
+        allowed = {p.name for p in files}
+        remaining = {p.name for p in private.iterdir()}
+        if remaining != allowed:
+            raise ValueError("Katalog poprzedniej instalacji zawiera obce pliki. "
+                             "Wymaga ręcznej kontroli przed usunięciem.")
     user, group, privilege, key = verified_preparation(client, files, records)
 
     if key:
@@ -449,8 +462,10 @@ def reset_previous_preparation(client, private, expected_files, expected_records
     if group:
         client.call("group.delete", group["id"], {"delete_users": False})
     for path in files:
-        path.unlink(missing_ok=True)
-    print("Usunięto poprzednie przygotowanie PlexConfigControl.", flush=True)
+        path.unlink()
+    if private.exists():
+        private.rmdir()
+    print("Usunięto pozostałości poprzedniego przygotowania PlexConfigControl.", flush=True)
 
 
 def preflight(client, args, private, *, check_preparation=True):
@@ -526,19 +541,22 @@ def settings(client, args, private, *, staging=None):
     files, records = previous_preparation(client, private)
     replacing = bool(files or records)
     if replacing:
-        print(previous_preparation_summary(private, files, records), flush=True)
-        print("Ponowna instalacja zastąpi konto techniczne i ustawienia kreatora. Kopie i certyfikat CA zostaną zachowane.",
-              flush=True)
+        # In a fresh installation old preparation is disposable, not a source
+        # of settings, identity, keys, or HTTPS trust.
+        verified_preparation(client, files, records)
     desktop_section(getattr(args, "desktop", False), "USTAW HASŁO DO PANELU", color=33)
     encoded = ask_password_verifier()
 
     action = "utworzyć konto techniczne i zainstalować aplikację" if args.krok == "instaluj" else "utworzyć konto techniczne i pliki"
-    confirmation = "od nowa" if replacing else "tak"
+    confirmation = "tak"
     if input(f"Wpisz {confirmation}, aby {action}: ").strip().lower() != confirmation:
         raise ValueError("Przygotowanie anulowane.")
 
     if replacing:
         reset_previous_preparation(client, private, files, records)
+    elif private.exists() and not any(private.iterdir()):
+        # Empty legacy setup directory is not application state.
+        private.rmdir()
     require_fresh_app(client)
     check_previous_preparation(client, private)
     destination = staging or private
