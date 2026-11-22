@@ -14,7 +14,7 @@ from deploy import build_self_extracting, install_pl
 
 
 class GuidedInstallerTests(unittest.TestCase):
-    def test_reset_removes_recognized_preparation_and_preserves_ca(self):
+    def test_reset_removes_recognized_preparation_and_legacy_ca(self):
         records = {
             'user.query': {'id': 10, 'full_name': 'PlexConfigControl', 'builtin': False, 'smb': False,
                            'password_disabled': True, 'shell': '/usr/sbin/nologin', 'home': '/var/empty'},
@@ -31,17 +31,42 @@ class GuidedInstallerTests(unittest.TestCase):
             for path in files:
                 path.touch(mode=0o600)
             certificate = private / 'truenas-ca.pem'
-            certificate.touch()
+            certificate.touch(mode=0o644)
+            files.append(certificate)
             with patch.object(install_pl, 'private_directory'), patch.object(Path, 'lstat') as info:
-                info.return_value = SimpleNamespace(st_mode=stat.S_IFREG | 0o600, st_uid=568)
+                info.side_effect = lambda path: SimpleNamespace(
+                    st_mode=stat.S_IFREG | (0o644 if path.name == 'truenas-ca.pem' else 0o600),
+                    st_uid=0 if path.name in ('truenas-ca.pem', 'settings.json') else 568)
                 install_pl.reset_previous_preparation(client, private, files, records)
-            self.assertTrue(certificate.exists())
+            self.assertFalse(private.exists())
             self.assertFalse(any(path.exists() for path in files))
         self.assertEqual(client.call.call_args_list[-4:], [
             call('api_key.delete', 40), call('privilege.delete', 30),
             call('user.delete', 10, {'delete_group': False}),
             call('group.delete', 20, {'delete_users': False}),
         ])
+
+    def test_legacy_ca_alone_is_detected_for_cleanup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            private=Path(directory)
+            (private/'truenas-ca.pem').write_text('PUBLIC CERTIFICATE')
+            client=Mock()
+            client.call.return_value=[]
+            files,records=install_pl.previous_preparation(client,private)
+            self.assertEqual([p.name for p in files],['truenas-ca.pem'])
+            self.assertEqual(records,{})
+
+    def test_reset_refuses_unknown_files_in_legacy_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            private=Path(directory)
+            (private/'settings.json').touch()
+            (private/'user-document').write_text('preserve')
+            client=Mock()
+            client.call.side_effect=[[],[],[],[],[],[]]
+            with patch.object(install_pl,'private_directory'):
+                with self.assertRaisesRegex(ValueError,'obce pliki'):
+                    install_pl.reset_previous_preparation(client,private,[private/'settings.json'],{})
+            self.assertTrue((private/'user-document').exists())
 
     def test_reset_refuses_an_existing_app_or_volume(self):
         for responses in ([[{'name': install_pl.APP}]], [[], [{'name': 'state'}]]):
