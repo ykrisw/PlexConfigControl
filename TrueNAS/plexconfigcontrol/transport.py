@@ -1,5 +1,8 @@
 """Verified TLS WebSocket transport for the restricted TrueNAS RPC client."""
 import ssl
+import hashlib
+from pathlib import Path
+from .installer_trust import read_leaf_pin
 from urllib.parse import urlsplit
 from .rpc import TrueNASClient
 
@@ -10,12 +13,20 @@ class SecureWebSocket:
         self.timeout=timeout
         self.connector=connector
 
+    def _tls_config(self):
+        pin = read_leaf_pin(Path(self.ca_file).read_text()) if self.ca_file else None
+        context = (ssl.create_default_context(cadata=pin[0]) if pin else
+                   ssl.create_default_context(cafile=self.ca_file))
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
+        context.verify_flags |= ssl.VERIFY_X509_PARTIAL_CHAIN
+        if pin:
+            # Replace hostname verification only with a strict exact-leaf pin.
+            context.check_hostname = False
+        return context, pin
+
     @property
     def context(self):
-        context=ssl.create_default_context(cafile=self.ca_file)
-        context.minimum_version=ssl.TLSVersion.TLSv1_2
-        context.verify_flags |= ssl.VERIFY_X509_PARTIAL_CHAIN
-        return context
+        return self._tls_config()[0]
 
     def __call__(self,url):
         return self.connect_with_timeout(url,self.timeout)
@@ -25,18 +36,37 @@ class SecureWebSocket:
         parsed=urlsplit(url)
         if parsed.scheme!='wss' or not parsed.hostname or parsed.username or parsed.password:
             raise ValueError('WSS endpoint required')
-        # A CA file may be replaced during an explicit maintenance repair.
-        # Build trust anew for every connection; never disable hostname checking.
-        context=ssl.create_default_context(cafile=self.ca_file)
-        context.minimum_version=ssl.TLSVersion.TLSv1_2
-        context.verify_flags |= ssl.VERIFY_X509_PARTIAL_CHAIN
-        connector=self.connector
+        # Re-read trust each time; certificate replacement requires SSH repair.
+        context, pin = self._tls_config()
+        connector = self.connector
         if connector is None:
             from websocket import create_connection
-            connector=create_connection
-        return connector(url,timeout=min(self.timeout,timeout),
-                         sslopt={'context':context},redirect_limit=0,
-                         http_no_proxy=['*'],enable_multithread=True)
+            connector = create_connection
+        if not pin:
+            return connector(url, timeout=min(self.timeout, timeout),
+                             sslopt={'context':context}, redirect_limit=0,
+                             http_no_proxy=['*'], enable_multithread=True)
+        # Check the exact peer during TLS negotiation, BEFORE the WebSocket
+        # upgrade (and any API credentials) are sent over this same socket.
+        import socket
+        port = parsed.port or 443
+        raw = socket.create_connection((parsed.hostname, port),
+                                       timeout=min(self.timeout, timeout))
+        try:
+            secure = context.wrap_socket(raw, server_hostname=parsed.hostname)
+        except BaseException:
+            raw.close()
+            raise
+        try:
+            peer = secure.getpeercert(binary_form=True)
+            if not peer or hashlib.sha256(peer).hexdigest() != pin[1]:
+                raise ssl.SSLCertVerificationError('TrueNAS HTTPS leaf pin mismatch')
+            return connector(url, timeout=min(self.timeout, timeout),
+                             socket=secure, redirect_limit=0,
+                             http_no_proxy=['*'], enable_multithread=True)
+        except BaseException:
+            secure.close()
+            raise
 
 
 def build_client(url,username,api_key,ca_file=None,timeout=30):

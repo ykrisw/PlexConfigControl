@@ -17,7 +17,7 @@ from cryptography.hazmat.primitives import hashes,serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 from plexconfigcontrol.transport import SecureWebSocket,build_client
-from plexconfigcontrol.installer_trust import trusted_issuer_chain,public_certificates
+from plexconfigcontrol.installer_trust import trusted_issuer_chain,public_certificates,make_leaf_pin,read_leaf_pin
 from plexconfigcontrol.connection_errors import connection_code
 from plexconfigcontrol.rpc import TrueNASConnectionError
 from plexconfigcontrol.deferred_worker import DeferredWorker
@@ -149,3 +149,25 @@ class TLSRecovery(unittest.TestCase):
                 with patch('plexconfigcontrol.installer_trust.desktop_candidates',return_value=''):
                     result=installer.verified_ca(api,{'ui_httpsport':port,'ui_certificate':{'id':3}},'127.0.0.1','localhost',folder/'saved-ca.pem',None)
                 self.assertIn('BEGIN CERTIFICATE',result);self.assertNotIn('PRIVATE KEY',result)
+
+    def test_stock_truenas_certificate_without_san_uses_ssh_authenticated_pin(self):
+        import importlib.util
+        spec=importlib.util.spec_from_file_location('installer_tls_stock',Path(__file__).resolve().parents[1]/'deploy/install_pl.py')
+        installer=importlib.util.module_from_spec(spec);spec.loader.exec_module(installer)
+        stock=certificate()  # Self-signed, valid, no subjectAltName.
+        with tempfile.TemporaryDirectory() as directory:
+            folder=Path(directory)
+            source=folder/'public.pem';source.write_text(pem(stock[1]))
+            api=Mock();api.call.return_value={'certificate_path':str(source)}
+            with server(folder/'nas',stock) as port:
+                with patch('plexconfigcontrol.installer_trust.desktop_candidates',return_value=''):
+                    chosen=installer.verified_ca(api,{'ui_httpsport':port,'ui_certificate':{'id':1}},'127.0.0.1','127.0.0.1',folder/'saved.pem',None)
+                self.assertIsNotNone(read_leaf_pin(chosen))
+                self.assertNotIn('PRIVATE KEY',chosen)
+                self.assertEqual(chosen,make_leaf_pin(pem(stock[1])))
+                with tempfile.TemporaryDirectory() as second:
+                    ca=Path(second)/'pinned.pem';ca.write_text(chosen)
+                    transport=SecureWebSocket(str(ca),connector=connector)
+                    with server(folder/'different',certificate()) as other_port:
+                        with self.assertRaises(ssl.SSLError):
+                            transport(f'wss://127.0.0.1:{other_port}/api/current')

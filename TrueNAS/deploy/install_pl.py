@@ -2,6 +2,7 @@
 import argparse
 import errno
 import getpass
+import hashlib
 import ipaddress
 import json
 import os
@@ -159,13 +160,19 @@ def ask_panel_port(ip):
 
 
 def verified_ca(client, ui, ip, host, path, supplied):
-    from plexconfigcontrol.installer_trust import trusted_issuer_chain,desktop_candidates,select_certificate,public_certificates,certificate_pem
+    from plexconfigcontrol.installer_trust import trusted_issuer_chain,desktop_candidates,select_certificate,public_certificates,certificate_pem,make_leaf_pin,read_leaf_pin
     def verify(pem):
-        public_certificates(pem)
-        context = ssl.create_default_context(cadata=pem)
+        pin = read_leaf_pin(pem)
+        public_certificates(pin[0] if pin else pem)
+        context = ssl.create_default_context(cadata=pin[0] if pin else pem)
         context.verify_flags |= ssl.VERIFY_X509_PARTIAL_CHAIN
+        if pin:
+            # The configured public leaf came from independently authenticated SSH.
+            context.check_hostname = False
         with socket.create_connection((str(ip), ui["ui_httpsport"]), timeout=8) as conn:
-            with context.wrap_socket(conn, server_hostname=host):pass
+            with context.wrap_socket(conn, server_hostname=host) as session:
+                if pin and hashlib.sha256(session.getpeercert(binary_form=True)).hexdigest() != pin[1]:
+                    raise ssl.SSLCertVerificationError('TrueNAS HTTPS leaf pin mismatch')
 
     if path.is_symlink():raise ValueError("Plik CA nie może być dowiązaniem symbolicznym.")
     for candidate in (supplied,path if path.exists() else None):
@@ -196,14 +203,23 @@ def verified_ca(client, ui, ip, host, path, supplied):
         if chain:
             try:verify(chain);return chain
             except ssl.SSLError:pass
-        # Last automatic fallback: exact configured public certificate, authenticated
-        # over SSH, not an unverified certificate fetched from the network.
-        try:verify(leaf);return leaf
+        # Exact SSH-authenticated leaf pin: supports the stock TrueNAS HTTPS
+        # certificate without a matching SAN, without accepting other peers.
+        try:
+            verify(leaf)
+            return leaf
         except ssl.SSLCertVerificationError as error:
-            if error.verify_code in (9,10,62,64):
-                message='Certyfikat HTTPS skonfigurowany w TrueNAS jest nieważny lub nie pasuje do adresu. Popraw certyfikat/adres w TrueNAS.' if PROMPT_LANGUAGE=='pl' else 'The configured TrueNAS HTTPS certificate is expired/not yet valid or does not match the address. Correct the NAS certificate/address.'
+            if error.verify_code in (62, 64):
+                pinned = make_leaf_pin(leaf)
+                verify(pinned)
+                return pinned
+            if error.verify_code in (9, 10):
+                message = ('Certyfikat HTTPS TrueNAS nie jest jeszcze ważny lub wygasł.'
+                           if PROMPT_LANGUAGE == 'pl' else
+                           'The TrueNAS HTTPS certificate is not yet valid or expired.')
                 raise ValueError(message) from None
-        except ssl.SSLError:pass
+        except ssl.SSLError:
+            pass
     return select_certificate(host,verify,PROMPT_LANGUAGE)
 
 

@@ -118,3 +118,28 @@ def desktop_candidates():
     data=base64.b64decode(encoded,validate=True)
     if len(data)>2097152 or b'PRIVATE KEY' in data:raise ValueError('Public certificates only')
     return data.decode('utf-8')
+
+# A pin refers to the exact SSH-authenticated PUBLIC leaf, never a private key.
+PIN_PREFIX = '# PCC-SSH-PIN-SHA256='
+
+def make_leaf_pin(pem):
+    public_certificates(pem)
+    leaf = certificate_pem(pem)
+    if len(_PATTERN.findall(leaf)) != 1:
+        raise ValueError('Exactly one public leaf certificate is required')
+    digest = hashlib.sha256(ssl.PEM_cert_to_DER_cert(leaf)).hexdigest()
+    return leaf + PIN_PREFIX + digest + '\n'
+
+def read_leaf_pin(pem):
+    markers = [line[len(PIN_PREFIX):] for line in pem.splitlines()
+               if line.startswith(PIN_PREFIX)]
+    if not markers:
+        return None
+    if len(markers) != 1 or not re.fullmatch('[0-9a-f]{64}', markers[0]):
+        raise ValueError('Invalid SSH certificate pin')
+    leaf = certificate_pem(pem)
+    if len(_PATTERN.findall(leaf)) != 1:
+        raise ValueError('Invalid pinned certificate')
+    if hashlib.sha256(ssl.PEM_cert_to_DER_cert(leaf)).hexdigest() != markers[0]:
+        raise ValueError('Pinned public certificate was modified')
+    return leaf, markers[0]
