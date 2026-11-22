@@ -33,10 +33,9 @@ class GuidedInstallerTests(unittest.TestCase):
             certificate = private / 'truenas-ca.pem'
             certificate.touch(mode=0o644)
             files.append(certificate)
-            with patch.object(install_pl, 'private_directory'), patch.object(Path, 'lstat') as info:
-                info.side_effect = lambda path: SimpleNamespace(
-                    st_mode=stat.S_IFREG | (0o644 if path.name == 'truenas-ca.pem' else 0o600),
-                    st_uid=0 if path.name in ('truenas-ca.pem', 'settings.json') else 568)
+            with patch.object(install_pl, 'private_directory'), patch.object(install_pl, 'verified_preparation', return_value=(records['user.query'],records['group.query'],records['privilege.query'],records['api_key.query'])):
+                for path in files:
+                    path.chmod(0o644 if path.name=='truenas-ca.pem' else 0o600)
                 install_pl.reset_previous_preparation(client, private, files, records)
             self.assertFalse(private.exists())
             self.assertFalse(any(path.exists() for path in files))
@@ -87,14 +86,15 @@ class GuidedInstallerTests(unittest.TestCase):
                 install_pl.reset_previous_preparation(client, Path('/mnt/Pool/PCC-Private'), [], records)
         self.assertTrue(all(entry.args[0].endswith('.query') for entry in client.call.call_args_list))
 
-    def test_old_preparation_requires_explicit_reset_confirmation(self):
+    def test_old_preparation_requires_normal_install_confirmation(self):
         private = Path('/mnt/Pool/PCC-Private')
         client = Mock()
         with patch.object(install_pl, 'preflight', return_value=({}, 'pem')), \
              patch.object(install_pl, 'previous_preparation', return_value=([private / 'settings.json'], {})), \
+             patch.object(install_pl, 'verified_preparation'), \
              patch.object(install_pl, 'ask_password_verifier', return_value='verifier'), \
              patch.object(install_pl, 'reset_previous_preparation') as reset, \
-             patch('builtins.input', return_value='tak'):
+             patch('builtins.input', return_value='nie'):
             with self.assertRaisesRegex(ValueError, 'anulowane'):
                 install_pl.settings(client, SimpleNamespace(krok='instaluj'), private)
         reset.assert_not_called()
@@ -371,7 +371,7 @@ class GuidedInstallerTests(unittest.TestCase):
                     st_mode=stat.S_IFREG | 0o600, st_uid=0)), patch('builtins.print') as output:
                 install_pl.check_previous_preparation(client, private, allow_reset=True)
             self.assertTrue(path.exists())
-        self.assertIn('Można przejść do świeżej instalacji', str(output.call_args_list))
+        self.assertEqual(output.call_args_list, [])
         self.assertNotIn('--wznow', str(output.call_args_list))
         self.assertTrue(all(entry.args[0].endswith('.query') for entry in client.call.call_args_list))
 
