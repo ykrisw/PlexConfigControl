@@ -1,6 +1,6 @@
 # PlexConfigControl
 
-**Current releases — 23 November 2026.** **TrueNAS SCALE 1.6.3** has been installed and successfully tested by the project owner on an actual TrueNAS host: installation, Plex configuration backup and restore all completed without problems. **QNAP QuTS hero 1.6.3** is functioning in the owner's ongoing tests; final acceptance testing is still in progress. Earlier validation records: [QNAP](QNAP/VALIDATION-1.6.md) · [TrueNAS](TrueNAS/VALIDATION-1.6.md). Each platform has its own download and checksum.
+**Current releases — 23 November 2026.** **TrueNAS SCALE 1.6.3** has been installed and successfully tested by the project owner on an actual TrueNAS host: installation, Plex configuration backup and restore all completed without problems. **QNAP QuTS hero 1.6.3** is provisionally owner-tested and working. Final owner acceptance is conditional on one week of satisfactory operation of this exact QNAP version, including successful Plex configuration backup and restore; that condition has not yet been confirmed. Earlier validation records: [QNAP](QNAP/VALIDATION-1.6.md) · [TrueNAS](TrueNAS/VALIDATION-1.6.md). Each platform has its own download and checksum.
 
 ## QNAP QuTS hero — x86-64 (64-bit)
 
@@ -14,6 +14,8 @@
 
 [Source code, build files and instructions](QNAP/README.md) · [MIT License](QNAP/LICENSE) · [SHA-256 checksums](https://github.com/ykrisw/PlexConfigControl/releases/download/qnap-v1.6.3/SHA256SUMS_QNAP)
 
+**Owner test status (23 November 2026): Provisionally tested / working.** The owner will consider QNAP 1.6.3 final only after the current installed version has operated satisfactorily for one week and completed backup and restore successfully. This does **not** yet record final acceptance.
+
 ## TrueNAS SCALE 1.6.3 — x86-64 (64-bit)
 
 [**Download PlexConfigControl_TrueNAS_x86-64v1.6.3.zip**](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6.3/PlexConfigControl_TrueNAS_x86-64v1.6.3.zip)
@@ -26,6 +28,6 @@
 
 [Source code, build files and instructions](TrueNAS/README.md) · [MIT License](TrueNAS/LICENSE) · [SHA-256 checksums](https://github.com/ykrisw/PlexConfigControl/releases/download/v1.6.3/SHA256SUMS)
 
-**Owner-tested release (23 November 2026):** Installation, backup creation, and restore succeeded on TrueNAS SCALE. Current published installer ZIP SHA-256: `3967090989d239bc3d7c7f35aa61ec850fed91af267df7c0d2dc912c2b0ce2ab`. The same TrueNAS 1.6.3 release is tracked on both `main` and `master`; QNAP 1.6.3 remains separately distributed and under testing.
+**Owner-tested release (23 November 2026):** Installation, backup creation, and restore succeeded on TrueNAS SCALE. Current published installer ZIP SHA-256: `3967090989d239bc3d7c7f35aa61ec850fed91af267df7c0d2dc912c2b0ce2ab`. The same TrueNAS 1.6.3 release is tracked on both `main` and `master`; QNAP 1.6.3 remains separately distributed and provisionally tested, pending the owner's one-week acceptance criterion.
 
 TrueNAS 1.6.3 adds certificate recovery through authenticated SSH and keeps the local panel available when the API cannot be verified. [HTTPS and repair instructions](TrueNAS/INSTALL-EN.md#https-and-connection-repair-161). Superseded TrueNAS 1.6 and 1.6.1 installers have been removed; QNAP 1.6.3 reloads the trusted local certificate before each API connection.
