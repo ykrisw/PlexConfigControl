@@ -1,0 +1,53 @@
+name: One-time removal of superseded PCC releases
+on:
+  push:
+    branches:
+      - maintenance/prune-superseded-releases-20261123
+    paths:
+      - .github/workflows/one-time-prune-superseded-releases.yml
+
+permissions:
+  contents: write
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate protected TrueNAS and QNAP 1.6.3 releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ykrisw/PlexConfigControl
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release view v1.6.3 >/dev/null
+          gh release view qnap-v1.6.3 >/dev/null
+          truenas_digest="$(gh api repos/ykrisw/PlexConfigControl/releases/tags/v1.6.3 --jq '.assets[] | select(.name == "PlexConfigControl_TrueNAS_x86-64v1.6.3.zip") | .digest')"
+          if [ "$truenas_digest" != "sha256:3967090989d239bc3d7c7f35aa61ec850fed91af267df7c0d2dc912c2b0ce2ab" ]; then
+            echo "Protected TrueNAS 1.6.3 ZIP checksum mismatch; refusing cleanup"
+            exit 1
+          fi
+          qnap_asset="$(gh api repos/ykrisw/PlexConfigControl/releases/tags/qnap-v1.6.3 --jq '.assets[] | select(.name == "PlexConfigControl_QuTShero_x86-64v1.6.3.qpkg") | .name')"
+          if [ "$qnap_asset" != "PlexConfigControl_QuTShero_x86-64v1.6.3.qpkg" ]; then
+            echo "Protected QNAP 1.6.3 package missing; refusing cleanup"
+            exit 1
+          fi
+
+      - name: Delete only four explicitly superseded releases and their tags
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ykrisw/PlexConfigControl
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in v1.6.2 v1.6 v1.0.5 v1.0.10; do
+            if gh release view "$tag" >/dev/null 2>&1; then
+              gh release delete "$tag" --cleanup-tag --yes
+              echo "Deleted superseded release and tag: $tag"
+            else
+              echo "Already absent: $tag"
+            fi
+          done
+          gh release view v1.6.3 >/dev/null
+          gh release view qnap-v1.6.3 >/dev/null
+          gh release list --limit 100
